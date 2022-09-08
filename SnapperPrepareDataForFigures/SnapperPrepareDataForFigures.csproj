@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MathNet.Numerics" Version="5.0.0" />
+    <ProjectReference Include="..\Utilities\Utilities.csproj" />
   </ItemGroup>
+
 </Project>

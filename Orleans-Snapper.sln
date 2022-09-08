@@ -31,6 +31,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnapperExperimentProcess", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmallBank.DataGenerator", "SmallBank.DataGenerator\SmallBank.DataGenerator.csproj", "{645246FC-F03F-45EA-BEAE-2966E4B3C41E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnapperPrepareDataForFigures", "SnapperPrepareDataForFigures\SnapperPrepareDataForFigures.csproj", "{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,18 @@ Global
 		{645246FC-F03F-45EA-BEAE-2966E4B3C41E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{645246FC-F03F-45EA-BEAE-2966E4B3C41E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{645246FC-F03F-45EA-BEAE-2966E4B3C41E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{555EE5F8-96D0-4E44-A44A-5319BDA58B30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{555EE5F8-96D0-4E44-A44A-5319BDA58B30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{555EE5F8-96D0-4E44-A44A-5319BDA58B30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{555EE5F8-96D0-4E44-A44A-5319BDA58B30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A28DB895-94E6-41CB-82BB-7F2D32174F2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A28DB895-94E6-41CB-82BB-7F2D32174F2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A28DB895-94E6-41CB-82BB-7F2D32174F2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A28DB895-94E6-41CB-82BB-7F2D32174F2E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
