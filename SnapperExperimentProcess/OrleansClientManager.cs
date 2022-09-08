@@ -49,8 +49,11 @@ namespace SnapperExperimentProcess
                             int totalNumSilo = Constants.numSilo;
                             if (Constants.multiSilo && Constants.hierarchicalCoord) totalNumSilo++;
                             var gateways = new IPEndPoint[totalNumSilo];
+
                             for (int siloID = 0; siloID < totalNumSilo; siloID++)
+                            {
                                 gateways[siloID] = new IPEndPoint(IPAddress.Loopback, 30000 + siloID);
+                            }
 
                             clientBuilder.UseStaticClustering(gateways);
                         }
@@ -76,9 +79,10 @@ namespace SnapperExperimentProcess
                     Console.WriteLine("Client successfully connect to silo host");
                     return client;
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
                     Console.WriteLine($"Attempt {i} failed to initialize the Orleans client.");
+                    Console.WriteLine(ex.Message);
                     var time = rnd.Next(0, 10);
                     Thread.Sleep(time * 1000);
                 }

@@ -41,6 +41,7 @@ namespace SnapperSiloHost
                 }
                 else isGlobalSilo = bool.Parse(args[0]);
             }
+
             return RunMainAsync().Result;
         }
 
@@ -121,6 +122,7 @@ namespace SnapperSiloHost
 
             var siloHost = builder.Build();
             await siloHost.StartAsync();
+
             Console.WriteLine("Silo is started...");
 
             if (Constants.LocalCluster == false && Constants.LocalTest == false)

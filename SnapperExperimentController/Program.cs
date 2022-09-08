@@ -8,6 +8,7 @@ using SnapperExperimentProcess;
 using MessagePack;
 using System.Xml;
 using System.Collections.Generic;
+using System.IO;
 
 namespace SnapperExperimentController
 {
@@ -69,7 +70,8 @@ namespace SnapperExperimentController
 
         static void GenerateWorkLoadFromXMLFile()
         {
-            var path = Constants.dataPath + "config.xml";
+            var path = Path.Combine(Constants.dataPath, "config.xml");
+
             var xmlDoc = new XmlDocument();
             xmlDoc.Load(path);
             var rootNode = xmlDoc.DocumentElement;
@@ -105,6 +107,7 @@ namespace SnapperExperimentController
                     }
                 }
             }
+            Console.WriteLine($"workloadGroup count: {workloadGroup.Count}");
         }
 
         static void ConnectWorkers(int numExperiment)
@@ -128,6 +131,7 @@ namespace SnapperExperimentController
             for (int i = 0; i < Constants.numWorker; i++)
             {
                 msg = MessagePackSerializer.Deserialize<NetworkMessage>(inputSocket.ReceiveFrameBytes());
+
                 Trace.Assert(msg.msgType == Utilities.MsgType.WORKER_CONNECT);
                 Console.WriteLine($"Receive WORKER_CONNECT from worker {i}");
             }

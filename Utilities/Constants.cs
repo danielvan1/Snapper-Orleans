@@ -1,4 +1,6 @@
-﻿namespace Utilities
+﻿using System.IO;
+
+namespace Utilities
 {
     public enum CCType { S2PL, TS };
     public enum AccessMode { Read, ReadWrite };
@@ -81,10 +83,11 @@
         public const string TPCC_namespace = "TPCC.Grain.";
         public const string SmallBank_namespace = "SmallBank.Grain.";
 
-        public const string dataPath = @"..\Snapper-Orleans\data\";
-        public const string logPath = dataPath + @"log\";
-        public const string resultPath = dataPath + "result.txt";
-        public const string credentialFile = dataPath + "AWS_credential.txt";
+        public static readonly string dataPath = Path.Combine(new string[]{"..", "Snapper-Orleans", "data"});
+        // @"..\Snapper-Orleans\data\"
+        public static readonly string logPath = Path.Combine(dataPath, "log");
+        public static readonly string resultPath = Path.Combine(dataPath, "result.txt");
+        public static readonly string credentialFile = Path.Combine(dataPath, "AWS_credential.txt");
 
         public const string controller_InputPort = "5557";
         public const string controller_OutputPort = "5558";
