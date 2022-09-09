@@ -20,8 +20,8 @@ var client = new ClientBuilder()
 await client.Connect();
 
 
-//var globalConfigGrain = client.GetGrain<IGlobalConfigGrain>(0);
-//await globalConfigGrain.ConfigGlobalEnv();
+var globalConfigGrain = client.GetGrain<IGlobalConfigGrain>(0);
+await globalConfigGrain.ConfigGlobalEnv();
 
 var actorId = 0;
 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId);
