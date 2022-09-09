@@ -14,39 +14,26 @@ namespace SnapperExperimentController
 {
     public class ServerConnector
     {
-        IClusterClient client;
-        IGlobalConfigGrain globalConfigGrain;
+        private IClusterClient client;
+        private IGlobalConfigGrain globalConfigGrain;
 
-        bool loadingDone;
-        bool initializationFinish;
-        bool resetFinish;
-        bool checkGCFinish;
+        private bool loadingDone;
+        private bool initializationFinish;
+        private bool resetFinish;
+        private bool checkGCFinish;
 
         public ServerConnector()
         {
-            loadingDone = false;
-            initializationFinish = false;
-            resetFinish = false;
-            checkGCFinish = false;
+            this.loadingDone = false;
+            this.initializationFinish = false;
+            this.resetFinish = false;
+            this.checkGCFinish = false;
         }
 
-        public void InitiateClientAndServer()
-        {
-            InitiateClientAndServerAsync();
-            while (!initializationFinish) Thread.Sleep(100);
-        }
-
-        public void LoadGrains()
-        {
-            if (Constants.benchmark == BenchmarkType.SMALLBANK) LoadSmallBankGrains();
-            else if (Constants.benchmark == BenchmarkType.TPCC) LoadTPCCGrains();
-            while (!loadingDone) Thread.Sleep(100);
-        }
-
-        async void InitiateClientAndServerAsync()
+        public async Task InitiateClientAndServerAsync()
         {
             var manager = new OrleansClientManager();
-            client = await manager.StartOrleansClient();
+            this.client = await manager.StartOrleansClient();
             
             if (Constants.implementationType == ImplementationType.SNAPPER)
             {
@@ -54,7 +41,17 @@ namespace SnapperExperimentController
                 await globalConfigGrain.ConfigGlobalEnv();
                 Console.WriteLine($"Spawned the global configuration grain.");
             }
-            initializationFinish = true;
+
+            this.initializationFinish = true;
+
+            while (!this.initializationFinish) await Task.Delay(100);
+        }
+
+        public void LoadGrains()
+        {
+            if (Constants.benchmark == BenchmarkType.SMALLBANK) LoadSmallBankGrains();
+            else if (Constants.benchmark == BenchmarkType.TPCC) LoadTPCCGrains();
+            while (!loadingDone) Thread.Sleep(100);
         }
 
         public void CheckGC()
