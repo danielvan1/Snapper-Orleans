@@ -27,6 +27,11 @@ namespace SnapperSiloHost
 
         private static async Task<int> RunMainAsync(string[] args)
         {
+            if(args.Length == 0)
+            {
+                throw new ArgumentException("Deployment type needs to be specified");
+            }
+
             IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
             .Build();
@@ -41,7 +46,7 @@ namespace SnapperSiloHost
                 foreach(SiloInfo info in localDeployment.Silos)
                 {
                     var siloHostBuilder = new SiloHostBuilder();
-                    var siloHost = LocalDeployment(siloHostBuilder, localDeployment, info);
+                    var siloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, info);
                     siloHosts.Add(siloHost);
 
                     await siloHost.StartAsync();
@@ -72,7 +77,7 @@ namespace SnapperSiloHost
             return 0;
         }
 
-        private static ISiloHost LocalDeployment(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info)
+        private static ISiloHost CreateLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info)
         {
             // Primary silo is only needed for local deployment!
             var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localDeployment.PrimarySiloEndpoint);
