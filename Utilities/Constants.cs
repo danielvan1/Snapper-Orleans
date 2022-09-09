@@ -43,7 +43,7 @@ namespace Utilities
         public const bool loggingBatching = false;
         public const LoggingType loggingType = LoggingType.LOGGER;
         public const StorageType storageType = StorageType.FILESYSTEM;
-        public const ImplementationType implementationType = ImplementationType.ORLEANSTXN;
+        public const ImplementationType implementationType = ImplementationType.SNAPPER;
         // local silo config
         public const int numSilo = 2;
         public const int numCPUBasic = 4;

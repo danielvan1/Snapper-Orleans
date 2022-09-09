@@ -9,28 +9,34 @@ using MessagePack;
 using System.Xml;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace SnapperExperimentController
 {
     static class Program
     {
         // for communication between ExpController and ExpProcess
-        static PullSocket inputSocket;
-        static PublisherSocket outputSocket;
-        static CountdownEvent ackedWorkers;
+        private static PullSocket inputSocket;
+        private static PublisherSocket outputSocket;
+        private static CountdownEvent ackedWorkers;
 
-        static List<WorkloadConfiguration> workloadGroup;
+        private static List<WorkloadConfiguration> workloadGroup;
 
-        static ServerConnector serverConnector;
-        static ExperimentResultAggregator resultAggregator;
+        private static ServerConnector serverConnector;
+        private static ExperimentResultAggregator resultAggregator;
 
         static void Main()
+        {
+            MainAsync().GetAwaiter().GetResult();
+        }
+
+        private static async Task MainAsync()
         {
             GenerateWorkLoadFromXMLFile();
 
             // initialize silo
             serverConnector = new ServerConnector();
-            serverConnector.InitiateClientAndServer();
+            await serverConnector.InitiateClientAndServerAsync();
             serverConnector.LoadGrains();
 
             // build connection between the controller and workers
@@ -87,6 +93,7 @@ namespace SnapperExperimentController
             var distPercentGroup = Array.ConvertAll(rootNode.SelectSingleNode("distPercent").FirstChild.Value.Split(","), x => int.Parse(x));
 
             workloadGroup = new List<WorkloadConfiguration>();
+
             for (int i = 0; i < txnSizeGroup.Length; i++)
             {
                 var txnSize = txnSizeGroup[i];
@@ -107,6 +114,7 @@ namespace SnapperExperimentController
                     }
                 }
             }
+
             Console.WriteLine($"workloadGroup count: {workloadGroup.Count}");
         }
 
