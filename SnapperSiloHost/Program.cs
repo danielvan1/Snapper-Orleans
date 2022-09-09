@@ -1,10 +1,8 @@
 ﻿using System;
 using Orleans;
-using Utilities;
 using System.Net;
 using Orleans.Hosting;
 using Orleans.Runtime;
-using System.Net.Sockets;
 using Orleans.Configuration;
 using System.Threading.Tasks;
 using Orleans.Runtime.Placement;
@@ -14,156 +12,107 @@ using Concurrency.Interface.Logging;
 using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Implementation.Coordinator;
-using System.IO;
-using System.Diagnostics;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using SnapperSiloHost.Models;
+using System.Collections.Generic;
 
 namespace SnapperSiloHost
 {
     public class Program
     {
-        static int siloID = 0;
-        static bool isGlobalSilo = false;
-        static private int siloPort = 11111;    // silo-to-silo endpoint
-        static private int gatewayPort = 30000; // client-to-silo endpoint
-        static readonly bool enableOrleansTxn = Constants.implementationType == ImplementationType.ORLEANSTXN ? true : false;
-
         public static int Main(string[] args)
         {
-            if (Constants.multiSilo)
-            {
-                if (Constants.RealScaleOut == false)
-                {
-                    siloID = int.Parse(args[0]);
-                    siloPort += siloID;
-                    gatewayPort += siloID;
-                    isGlobalSilo = siloID == Constants.numSilo;
-                }
-                else isGlobalSilo = bool.Parse(args[0]);
-            }
-
-            return RunMainAsync().Result;
+            return RunMainAsync(args).GetAwaiter().GetResult();
         }
 
-        static async Task<int> RunMainAsync()
+        private static async Task<int> RunMainAsync(string[] args)
         {
-            var builder = new SiloHostBuilder();
+            IConfiguration config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
 
-            if (Constants.LocalCluster == false)
+            string deploymentType = args[0];
+            var startSiloHostTasks = new List<Task>();
+            var siloHosts = new List<ISiloHost>();
+
+            if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
-                string ServiceRegion;
-                string AccessKey;
-                string SecretKey;
+                var localDeployment = config.GetRequiredSection("LocalDeployment").Get<LocalDeployment>();
 
-                using (var file = new StreamReader(Constants.credentialFile))
+                foreach(SiloInfo info in localDeployment.Silos)
                 {
-                    ServiceRegion = file.ReadLine();
-                    AccessKey = file.ReadLine();
-                    SecretKey = file.ReadLine();
+                    var siloHostBuilder = new SiloHostBuilder();
+                    var siloHost = LocalDeployment(siloHostBuilder, localDeployment, info);
+
+                    Console.WriteLine($"Silo {info.SiloId} is started...");
+
+                    await siloHost.StartAsync();
                 }
-
-                Action<DynamoDBClusteringOptions> dynamoDBOptions = options =>
-                {
-                    options.AccessKey = AccessKey;
-                    options.SecretKey = SecretKey;
-                    options.TableName = Constants.SiloMembershipTable;
-                    options.Service = ServiceRegion;
-                    options.WriteCapacityUnits = 10;
-                    options.ReadCapacityUnits = 10;
-                };
-
-                builder
-                    .UseDynamoDBClustering(dynamoDBOptions)
-                    .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Parse(GetLocalIPAddress()));
             }
             else
             {
-                if (Constants.multiSilo)
-                {
-                    var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, 11111);
-                    builder.UseDevelopmentClustering(primarySiloEndpoint)
-                        // The IP address used for clustering / to be advertised in membership tables
-                        .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback);
-                }
-                else builder.UseLocalhostClustering();
+                throw new ArgumentException($"Invalid deployment type given: {deploymentType}");
             }
 
-            builder
-                .Configure<ClusterOptions>(options =>
-                {
-                    options.ClusterId = Constants.ClusterSilo;
-                    options.ServiceId = Constants.ServiceID;
-                })
-                .Configure<EndpointOptions>(options =>
-                {
-                    options.SiloPort = siloPort;
-                    options.GatewayPort = gatewayPort;
-                })
-                .ConfigureServices(ConfigureServices);
-                //.ConfigureLogging(logging => logging.AddConsole().AddFilter("Orleans", LogLevel.Information));
-
-            if (enableOrleansTxn)
-            {
-                builder.UseTransactions();
-
-                if (Constants.loggingType == LoggingType.NOLOGGING)
-                    builder.AddMemoryTransactionalStateStorageAsDefault(opts => { opts.InitStage = ServiceLifecycleStage.ApplicationServices; });
-                else
-                {
-                    builder.AddFileTransactionalStateStorageAsDefault(opts => { opts.InitStage = ServiceLifecycleStage.ApplicationServices; opts.siloID = siloID; });
-
-                    builder
-                        .Configure<TransactionalStateOptions>(o => o.LockTimeout = TimeSpan.FromMilliseconds(200))
-                        .Configure<TransactionalStateOptions>(o => o.LockAcquireTimeout = TimeSpan.FromMilliseconds(200));
-                        //.Configure<TransactionalStateOptions>(o => o.PrepareTimeout = TimeSpan.FromSeconds(20));
-                }
-            }
-            else builder.AddMemoryGrainStorageAsDefault();
-
-            var siloHost = builder.Build();
-            await siloHost.StartAsync();
-
-            Console.WriteLine("Silo is started...");
-
-            if (Constants.LocalCluster == false && Constants.LocalTest == false)
-            {
-                if (isGlobalSilo == false)
-                {
-                    if (Constants.RealScaleOut == false) Debug.Assert(Environment.ProcessorCount >= Constants.numSilo * Constants.numCPUPerSilo);
-                    else Debug.Assert(Environment.ProcessorCount >= Constants.numCPUPerSilo);
-                    Helper.SetCPU(siloID, "SnapperSiloHost", Constants.numCPUPerSilo);
-                }
-                else
-                {
-                    // this is the global coordinator silo
-                    if (Constants.RealScaleOut == false) Debug.Assert(siloID == Constants.numSilo && Environment.ProcessorCount >= Constants.numCPUForGlobal);
-                    else Debug.Assert(Environment.ProcessorCount >= Constants.numCPUForGlobal);
-                    Helper.SetCPU(0, "SnapperSiloHost", Constants.numCPUForGlobal);
-                }
-            }
-            
-            Console.WriteLine("Press Enter to terminate...");
+            Console.WriteLine("All silos created successfully");
+            Console.WriteLine("Press Enter to terminate all silos...");
             Console.ReadLine();
-            await siloHost.StopAsync();
+
+            foreach(ISiloHost siloHost in siloHosts)
+            {
+                await siloHost.StopAsync();
+            }
+
             return 0;
         }
 
-        static void ConfigureServices(IServiceCollection services)
+        private static ISiloHost LocalDeployment(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info)
         {
-            // all the singletons have one instance per silo host??
+            // Primary silo is only needed for local deployment!
+            var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localDeployment.PrimarySiloEndpoint);
+            siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint)
+                // The IP address used for clustering / to be advertised in membership tables
+                .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback);
 
-            // dependency injection
+            siloHostBuilder.Configure<ClusterOptions>(options =>
+            {
+                options.ClusterId = localDeployment.ClusterId;
+                options.ServiceId = localDeployment.ServiceId;
+            });
+
+            siloHostBuilder.Configure<EndpointOptions>(options =>
+            {
+                options.SiloPort = info.SiloPort;
+                options.GatewayPort = info.GatewayPort;
+            });
+
+            // TODO: Maybe do not add all the configuration for global and local coordinators here? Instead only add one
+            // of them depending on if it is a global or local silo.
+            siloHostBuilder.ConfigureServices(ConfigureGlobalCoordinator)
+                           .ConfigureServices(ConfigureLocalGrains);
+
+            siloHostBuilder.AddMemoryGrainStorageAsDefault();
+
+            return siloHostBuilder.Build();
+        }
+
+        private static void ConfigureGlobalCoordinator(IServiceCollection services)
+        {
             services.AddSingleton<ILoggerGroup, LoggerGroup>();
             services.AddSingleton<ICoordMap, CoordMap>();
 
             services.AddSingletonNamedService<PlacementStrategy, GlobalConfigGrainPlacementStrategy>(nameof(GlobalConfigGrainPlacementStrategy));
             services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigGrainPlacement>(typeof(GlobalConfigGrainPlacementStrategy));
 
-            services.AddSingletonNamedService<PlacementStrategy, LocalConfigGrainPlacementStrategy>(nameof(LocalConfigGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigGrainPlacement>(typeof(LocalConfigGrainPlacementStrategy));
-
             services.AddSingletonNamedService<PlacementStrategy, GlobalCoordGrainPlacementStrategy>(nameof(GlobalCoordGrainPlacementStrategy));
             services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalCoordGrainPlacement>(typeof(GlobalCoordGrainPlacementStrategy));
+        }
+
+        private static void ConfigureLocalGrains(IServiceCollection services)
+        {
+            // all the singletons have one instance per silo host??
+            services.AddSingletonNamedService<PlacementStrategy, LocalConfigGrainPlacementStrategy>(nameof(LocalConfigGrainPlacementStrategy));
+            services.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigGrainPlacement>(typeof(LocalConfigGrainPlacementStrategy));
 
             services.AddSingletonNamedService<PlacementStrategy, LocalCoordGrainPlacementStrategy>(nameof(LocalCoordGrainPlacementStrategy));
             services.AddSingletonKeyedService<Type, IPlacementDirector, LocalCoordGrainPlacement>(typeof(LocalCoordGrainPlacementStrategy));
@@ -173,11 +122,5 @@ namespace SnapperSiloHost
 
         }
 
-        static string GetLocalIPAddress()
-        {
-            var host = Dns.GetHostEntry(Dns.GetHostName());
-            foreach (var ip in host.AddressList) if (ip.AddressFamily == AddressFamily.InterNetwork) return ip.ToString();
-            throw new Exception("No network adapters with an IPv4 address in the system!");
-        }
     }
 }
