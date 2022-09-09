@@ -32,7 +32,6 @@ namespace SnapperSiloHost
             .Build();
 
             string deploymentType = args[0];
-            var startSiloHostTasks = new List<Task>();
             var siloHosts = new List<ISiloHost>();
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
@@ -43,10 +42,11 @@ namespace SnapperSiloHost
                 {
                     var siloHostBuilder = new SiloHostBuilder();
                     var siloHost = LocalDeployment(siloHostBuilder, localDeployment, info);
-
-                    Console.WriteLine($"Silo {info.SiloId} is started...");
+                    siloHosts.Add(siloHost);
 
                     await siloHost.StartAsync();
+
+                    Console.WriteLine($"Silo {info.SiloId} is started...");
                 }
             }
             else
@@ -58,10 +58,16 @@ namespace SnapperSiloHost
             Console.WriteLine("Press Enter to terminate all silos...");
             Console.ReadLine();
 
+            List<Task> stopSiloHostTasks = new List<Task>();
+
             foreach(ISiloHost siloHost in siloHosts)
             {
-                await siloHost.StopAsync();
+                stopSiloHostTasks.Add(siloHost.StopAsync());
             }
+
+            await Task.WhenAll(stopSiloHostTasks);
+
+            Console.WriteLine("Stopped all silos");
 
             return 0;
         }
@@ -119,8 +125,6 @@ namespace SnapperSiloHost
 
             services.AddSingletonNamedService<PlacementStrategy, TransactionExecutionGrainPlacementStrategy>(nameof(TransactionExecutionGrainPlacementStrategy));
             services.AddSingletonKeyedService<Type, IPlacementDirector, TransactionExecutionGrainPlacement>(typeof(TransactionExecutionGrainPlacementStrategy));
-
         }
-
     }
 }
