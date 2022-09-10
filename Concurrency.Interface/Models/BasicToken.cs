@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
-namespace Utilities
+namespace Concurrency.Interface.Models
 {
     [Serializable]
     public class BasicToken
@@ -27,18 +27,6 @@ namespace Utilities
             isLastEmitBidGlobal = false;
             lastBidPerService = new Dictionary<int, long>();
             lastGlobalBidPerGrain = new Dictionary<int, long>();
-        }
-    }
-
-    [Serializable]
-    public class LocalToken : BasicToken
-    {
-        // for global info
-        public long lastEmitGlobalBid;
-
-        public LocalToken() : base()
-        {
-            lastEmitGlobalBid = -1;
         }
     }
 }

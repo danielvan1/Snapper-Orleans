@@ -1,9 +1,9 @@
 ﻿using System;
-using Utilities;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Linq;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.TransactionExecution
 {

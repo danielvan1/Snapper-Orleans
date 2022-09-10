@@ -1,4 +1,5 @@
-﻿using Concurrency.Interface.Coordinator;
+﻿using Concurrency.Interface.Models;
+using Concurrency.Interface.Coordinator;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

@@ -7,6 +7,7 @@ using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.Coordinator;
 using System.IO;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.Configuration
 {

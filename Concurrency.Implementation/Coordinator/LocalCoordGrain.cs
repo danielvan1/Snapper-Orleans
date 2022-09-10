@@ -7,9 +7,9 @@ using Concurrency.Interface.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.TransactionExecution;
+using Concurrency.Interface.Models;
 using Orleans.Concurrency;
 using System.Linq;
-using System.Diagnostics;
 
 namespace Concurrency.Implementation.Coordinator
 {

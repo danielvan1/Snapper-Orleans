@@ -9,6 +9,7 @@ using Concurrency.Interface.TransactionExecution;
 using Concurrency.Interface.Logging;
 using System.Runtime.Serialization;
 using MessagePack;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.TransactionExecution
 {

@@ -9,6 +9,7 @@ using Concurrency.Interface.Coordinator;
 using System.Diagnostics;
 using System;
 using System.IO;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.Configuration
 {

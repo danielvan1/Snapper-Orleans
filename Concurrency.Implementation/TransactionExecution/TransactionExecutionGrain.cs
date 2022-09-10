@@ -5,10 +5,11 @@ using Orleans.Concurrency;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.TransactionExecution;
-using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Models;
 using Concurrency.Implementation.TransactionExecution.Nondeterministic;
 using System.Runtime.Serialization;
 

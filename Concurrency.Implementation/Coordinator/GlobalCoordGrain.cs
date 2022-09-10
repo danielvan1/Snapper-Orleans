@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Interface.Models;
 using Orleans.Concurrency;
 using System.Diagnostics;
 

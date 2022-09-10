@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Utilities;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.Coordinator
 {
