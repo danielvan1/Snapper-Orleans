@@ -140,7 +140,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<int> grainAccessInfo, List<string> grainClassName)
         {
             var receiveTxnTime = DateTime.Now;
-            var cxtInfo = await detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
+            Tuple<long, TransactionContext> cxtInfo = await detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
             var cxt = cxtInfo.Item2;
 
             if (highestCommittedLocalBid < cxtInfo.Item1)

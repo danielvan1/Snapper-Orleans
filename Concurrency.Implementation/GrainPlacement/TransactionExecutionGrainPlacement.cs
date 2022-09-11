@@ -16,7 +16,7 @@ namespace Concurrency.Implementation.GrainPlacement
             var silo = 0;
             if (Constants.multiSilo)
             {
-                var grainID = (int)target.GrainIdentity.PrimaryKeyLong;
+                var grainID = (int) target.GrainIdentity.PrimaryKeyLong;
                 silo = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(grainID);
             }
             return Task.FromResult(silos[silo]);

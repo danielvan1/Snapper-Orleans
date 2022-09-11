@@ -86,6 +86,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 var siloList = new List<int>();
                 var grainListPerSilo = new Dictionary<int, List<int>>();
                 var grainNamePerSilo = new Dictionary<int, List<string>>();
+
                 for (int i = 0; i < grainList.Count; i++)
                 {
                     var grainID = grainList[i];
@@ -127,12 +128,14 @@ namespace Concurrency.Implementation.TransactionExecution
                     Debug.Assert(task != null);
                     var localInfo = await task;
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, globalBid, globalTid);
+
                     return new Tuple<long, TransactionContext>(-1, cxt1) ;
                 }
             }
 
             var info = await myLocalCoord.NewTransaction(grainList, grainClassName);
             var cxt2 = new TransactionContext(info.tid, info.bid);
+
             return new Tuple<long, TransactionContext>(info.highestCommittedBid, cxt2);
         }
 
