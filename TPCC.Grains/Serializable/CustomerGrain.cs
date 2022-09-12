@@ -204,7 +204,7 @@ namespace TPCC.Grains
                 // STEP 4: insert records to OrderGrains
                 {
                     var orderGrainID = Helper.GetOrderGrain(myState.W_ID, myState.D_ID, C_ID);
-                    var orderGrain = GrainFactory.GetGrain<IOrderGrain>(orderGrainID);
+                    var orderGrain = GrainFactory.GetGrain<IOrderGrain>(orderGrainID, Constants.PlaceholderKeyExtension);
                     if (abort)     // must finish the calls for PACT
                     {
                         Debug.Assert(context.localBid != -1);

@@ -3,6 +3,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
 using Concurrency.Interface.Configuration;
+using Utilities;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
@@ -15,14 +16,12 @@ var client = new ClientBuilder()
 
 await client.Connect();
 
-
 var globalConfigGrain = client.GetGrain<IGlobalConfigGrain>(0);
 await globalConfigGrain.ConfigGlobalEnv();
 
 var actorId = 0;
 
-var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId);
-
+var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId, Constants.PlaceholderKeyExtension);
 
 
 // Required for the Tx 

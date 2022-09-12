@@ -39,6 +39,11 @@ namespace SnapperSiloHost
             string deploymentType = args[0];
             var siloHosts = new List<ISiloHost>();
 
+            NextFreePort nextFreePort = new NextFreePort(10000);
+
+            // We want to map each region with its replica ports,
+            // store it in some singleton configuration, and inject it into each silo,
+            // But each silo doesn't need to know where the other silos replicas are
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
                 var localDeployment = config.GetRequiredSection("LocalDeployment").Get<LocalDeployment>();
@@ -47,6 +52,10 @@ namespace SnapperSiloHost
                 {
                     var siloHostBuilder = new SiloHostBuilder();
                     var siloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, info);
+                    var replicaSiloHosts = CreateLocalDeploymentReplicaSiloHosts(siloHostBuilder, localDeployment, info, localDeployment.Silos, nextFreePort);
+                    foreach(ISiloHost replicaSiloHost in replicaSiloHosts) {
+                        siloHosts.Add(replicaSiloHost);
+                    }
                     siloHosts.Add(siloHost);
 
                     await siloHost.StartAsync();
@@ -75,6 +84,22 @@ namespace SnapperSiloHost
             Console.WriteLine("Stopped all silos");
 
             return 0;
+        }
+
+        private static IList<ISiloHost> CreateLocalDeploymentReplicaSiloHosts(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info, IList<SiloInfo> silos, NextFreePort nextFreePort)
+        {
+            IList<ISiloHost> replicaSiloHosts = new List<ISiloHost>();
+
+            foreach (SiloInfo replicaSiloInfo in silos)
+            {
+                if(replicaSiloInfo.Region != info.Region)
+                {
+                    replicaSiloInfo.GatewayPort = ++nextFreePort.Port;
+                    var replicaSiloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, replicaSiloInfo);
+                    replicaSiloHosts.Add(replicaSiloHost);
+                }
+            }
+            return replicaSiloHosts;
         }
 
         private static ISiloHost CreateLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info)

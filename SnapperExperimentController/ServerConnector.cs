@@ -73,7 +73,7 @@ namespace SnapperExperimentController
             // check all transactional grains
             for (int i = 0; i < Constants.numGrainPerSilo * Constants.numSilo; i++)
             {
-                var grain = client.GetGrain<ISnapperTransactionalAccountGrain>(i);
+                var grain = client.GetGrain<ISnapperTransactionalAccountGrain>(i, Constants.PlaceholderKeyExtension);
                 tasks.Add(grain.CheckGC());
             }
 
@@ -109,7 +109,7 @@ namespace SnapperExperimentController
                         }
                         else
                         {
-                            var grain = client.GetGrain<IOrderGrain>(index);
+                            var grain = client.GetGrain<IOrderGrain>(index, Constants.PlaceholderKeyExtension);
                             tasks.Add(grain.StartTransaction("Init", input));
                         }
                         if (tasks.Count == Environment.ProcessorCount)
@@ -146,7 +146,7 @@ namespace SnapperExperimentController
                         tasks.Add(orltxnGrain.StartTransaction("Init", i));
                         break;
                     case ImplementationType.SNAPPER:
-                        var sntxnGrain = client.GetGrain<ISnapperTransactionalAccountGrain>(i);
+                        var sntxnGrain = client.GetGrain<ISnapperTransactionalAccountGrain>(i, Constants.PlaceholderKeyExtension);
                         tasks.Add(sntxnGrain.StartTransaction("Init", i));
                         break;
                     default:
@@ -184,7 +184,7 @@ namespace SnapperExperimentController
                 }
                 else
                 {
-                    var grain = client.GetGrain<IItemGrain>(grainID);
+                    var grain = client.GetGrain<IItemGrain>(grainID, Constants.PlaceholderKeyExtension);
                     await grain.StartTransaction("Init", null);
                 }
             }
@@ -201,7 +201,7 @@ namespace SnapperExperimentController
                 }
                 else
                 {
-                    var grain = client.GetGrain<IWarehouseGrain>(grainID);
+                    var grain = client.GetGrain<IWarehouseGrain>(grainID, Constants.PlaceholderKeyExtension);
                     await grain.StartTransaction("Init", W_ID);
                 }
             }
@@ -227,9 +227,9 @@ namespace SnapperExperimentController
                     }
                     else
                     {
-                        var districtGrain = client.GetGrain<IDistrictGrain>(districtGrainID);
+                        var districtGrain = client.GetGrain<IDistrictGrain>(districtGrainID, Constants.PlaceholderKeyExtension);
                         tasks.Add(districtGrain.StartTransaction("Init", input));
-                        var customerGrain = client.GetGrain<ICustomerGrain>(customerGrainID);
+                        var customerGrain = client.GetGrain<ICustomerGrain>(customerGrainID, Constants.PlaceholderKeyExtension);
                         tasks.Add(customerGrain.StartTransaction("Init", input));
                     }
                     if (sequence && tasks.Count == Environment.ProcessorCount)
@@ -258,7 +258,7 @@ namespace SnapperExperimentController
                     }
                     else
                     {
-                        var grain = client.GetGrain<IStockGrain>(stockGrainID);
+                        var grain = client.GetGrain<IStockGrain>(stockGrainID, Constants.PlaceholderKeyExtension);
                         tasks.Add(grain.StartTransaction("Init", input));
                     }
                     if (sequence && tasks.Count == Environment.ProcessorCount)
@@ -289,7 +289,7 @@ namespace SnapperExperimentController
                         }
                         else
                         {
-                            var grain = client.GetGrain<IOrderGrain>(orderGrainID);
+                            var grain = client.GetGrain<IOrderGrain>(orderGrainID, Constants.PlaceholderKeyExtension);
                             tasks.Add(grain.StartTransaction("Init", input));
                         }
                         if (sequence && tasks.Count == Environment.ProcessorCount)

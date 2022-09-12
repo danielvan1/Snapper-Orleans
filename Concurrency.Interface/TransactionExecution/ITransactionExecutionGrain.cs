@@ -3,10 +3,11 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System;
 using Concurrency.Interface.Models;
+using Orleans;
 
 namespace Concurrency.Interface.TransactionExecution
 {
-    public interface ITransactionExecutionGrain : Orleans.IGrainWithIntegerKey
+    public interface ITransactionExecutionGrain : IGrainWithIntegerCompoundKey
     {
         // PACT
         Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<int> grainAccessInfo, List<string> grainClassName);

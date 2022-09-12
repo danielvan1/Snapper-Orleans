@@ -23,6 +23,7 @@ namespace Utilities
         public const string LogTable = "SnapperLog";
         public const string GrainStateTable = "SnapperGrainStateTable";
         public const string SiloMembershipTable = "SnapperMembershipTable";
+        public const string PlaceholderKeyExtension = "PlaceholderKeyExtension";
 
         // architecture 1: single silo
         //                 local coordinators (num = numLocalCoordPerSilo)

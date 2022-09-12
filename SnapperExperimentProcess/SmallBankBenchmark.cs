@@ -28,7 +28,7 @@ namespace SnapperExperimentProcess
             switch (Constants.implementationType)
             {
                 case ImplementationType.SNAPPER:
-                    var grain = client.GetGrain<ISnapperTransactionalAccountGrain>(grainId);
+                    var grain = client.GetGrain<ISnapperTransactionalAccountGrain>(grainId, Constants.PlaceholderKeyExtension);
                     if (isDet) return grain.StartTransaction(startFunc, funcInput, grainIDList, grainNameList);
                     else return grain.StartTransaction(startFunc, funcInput);
                 case ImplementationType.ORLEANSEVENTUAL:
