@@ -105,7 +105,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 if (siloList.Count != 1)
                 {
                     // get global tid from global coordinator
-                    var globalInfo = await myGlobalCoord.NewTransaction(siloList);
+                    Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myGlobalCoord.NewTransaction(siloList);
                     var globalTid = globalInfo.Item1.tid;
                     var globalBid = globalInfo.Item1.bid;
                     var siloIDToLocalCoordID = globalInfo.Item2;
@@ -121,8 +121,16 @@ namespace Concurrency.Implementation.TransactionExecution
 
                         // get local tid, bid from local coordinator
                         var localCoord = coordMap.GetLocalCoord(coordID);
-                        if (siloID == this.siloID) task = localCoord.NewGlobalTransaction(globalBid, globalTid, grainListPerSilo[siloID], grainNamePerSilo[siloID]);
-                        else _ = localCoord.NewGlobalTransaction(globalBid, globalTid, grainListPerSilo[siloID], grainNamePerSilo[siloID]);
+                        if (siloID == this.siloID)
+                        {
+                            task = localCoord.NewGlobalTransaction(globalBid, globalTid, 
+                                                                   grainListPerSilo[siloID], grainNamePerSilo[siloID]);
+                        } 
+                        else
+                        {
+                            _ = localCoord.NewGlobalTransaction(globalBid, globalTid, 
+                                                                grainListPerSilo[siloID], grainNamePerSilo[siloID]);
+                        } 
                     }
 
                     Debug.Assert(task != null);

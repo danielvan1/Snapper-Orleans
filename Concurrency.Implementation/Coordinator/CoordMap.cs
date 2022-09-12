@@ -8,8 +8,8 @@ namespace Concurrency.Implementation.Coordinator
 {
     public class CoordMap : ICoordMap
     {
-        Dictionary<int, ILocalCoordGrain> localCoordMap;
-        Dictionary<int, IGlobalCoordGrain> globalCoordMap;
+        private Dictionary<int, ILocalCoordGrain> localCoordMap;
+        private Dictionary<int, IGlobalCoordGrain> globalCoordMap;
 
         public void Init(IGrainFactory myGrainFactory)
         {
@@ -23,34 +23,41 @@ namespace Concurrency.Implementation.Coordinator
                     totalNumLocalCoord = Constants.numSilo * Constants.numLocalCoordPerSilo;
                     totalNumGlobalCoord = Constants.numGlobalCoord;
                 }
-                else totalNumLocalCoord = Constants.numGlobalCoord;
+                else
+                {
+                    totalNumLocalCoord = Constants.numGlobalCoord;
+                }             
             }
-            else totalNumLocalCoord = Constants.numLocalCoordPerSilo;
+            else
+            {
+                totalNumLocalCoord = Constants.numLocalCoordPerSilo;
+            }
 
-            localCoordMap = new Dictionary<int, ILocalCoordGrain>();
-            globalCoordMap = new Dictionary<int, IGlobalCoordGrain>();
+            this.localCoordMap = new Dictionary<int, ILocalCoordGrain>();
+            this.globalCoordMap = new Dictionary<int, IGlobalCoordGrain>();
+
             for (int i = 0; i < totalNumLocalCoord; i++)
             {
                 var localCoord = myGrainFactory.GetGrain<ILocalCoordGrain>(i);
-                localCoordMap.Add(i, localCoord);
+                this.localCoordMap.Add(i, localCoord);
             }
 
             for (int i = 0; i < totalNumGlobalCoord; i++)
             {
                 var globalCoord = myGrainFactory.GetGrain<IGlobalCoordGrain>(i);
-                globalCoordMap.Add(i, globalCoord);
+                this.globalCoordMap.Add(i, globalCoord);
             }
         }
 
         public IGlobalCoordGrain GetGlobalCoord(int globalCoordID)
         {
-            Debug.Assert(globalCoordMap.ContainsKey(globalCoordID));
-            return globalCoordMap[globalCoordID];
+            Debug.Assert(this.globalCoordMap.ContainsKey(globalCoordID));
+            return this.globalCoordMap[globalCoordID];
         }
 
         public ILocalCoordGrain GetLocalCoord(int localCoordID)
         {
-            Debug.Assert(localCoordMap.ContainsKey(localCoordID));
+            Debug.Assert(this.localCoordMap.ContainsKey(localCoordID));
             return localCoordMap[localCoordID];
         }
     }
