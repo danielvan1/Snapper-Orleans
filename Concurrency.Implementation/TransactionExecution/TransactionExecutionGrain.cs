@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         // grain basic info
         int myID;
-        int mySiloID;
+        int mySiloID; 
         readonly ICoordMap coordMap;
         readonly string myClassName;
         static int myLocalCoordID;

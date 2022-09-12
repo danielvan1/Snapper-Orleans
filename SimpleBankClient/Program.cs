@@ -1,12 +1,8 @@
 ﻿using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
-using Utilities;
-using SmallBank;
 using SmallBank.Interfaces;
-using SmallBank.Grains;
 using Concurrency.Interface.Configuration;
-
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
@@ -24,7 +20,10 @@ var globalConfigGrain = client.GetGrain<IGlobalConfigGrain>(0);
 await globalConfigGrain.ConfigGlobalEnv();
 
 var actorId = 0;
+
 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId);
+
+
 
 // Required for the Tx 
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);

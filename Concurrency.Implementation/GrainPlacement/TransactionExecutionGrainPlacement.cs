@@ -13,12 +13,15 @@ namespace Concurrency.Implementation.GrainPlacement
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             var silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+
             var silo = 0;
             if (Constants.multiSilo)
             {
                 var grainID = (int) target.GrainIdentity.PrimaryKeyLong;
                 silo = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(grainID);
+                Console.WriteLine($"grainId = {grainID} ---- Silo {silo}");
             }
+
             return Task.FromResult(silos[silo]);
         }
     }

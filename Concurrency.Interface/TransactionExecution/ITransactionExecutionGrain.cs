@@ -14,6 +14,7 @@ namespace Concurrency.Interface.TransactionExecution
         Task ReceiveBatchSchedule(LocalSubBatch batch);
         Task AckBatchCommit(long bid);
 
+
         // ACT
         Task<TransactionResult> StartTransaction(string startFunc, object funcInput);
         Task<Tuple<NonDetFuncResult, DateTime>> ExecuteNonDet(FunctionCall call, TransactionContext ctx);

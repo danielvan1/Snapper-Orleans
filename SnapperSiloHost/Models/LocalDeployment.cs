@@ -7,6 +7,7 @@ namespace SnapperSiloHost.Models
         public string ClusterId {get; set;}
 
         public string ServiceId {get; set;}
+
         public int PrimarySiloEndpoint {get; set;}
 
         public string IsMultiSiloDeployment {get; set;}

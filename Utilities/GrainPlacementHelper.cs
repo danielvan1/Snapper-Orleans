@@ -55,7 +55,7 @@ namespace Utilities
         public static int MapGrainIDToSilo(int grainID)
         {
             // grain [0, 10K) locate in the 0th silo
-            return grainID / Constants.numGrainPerSilo;
+            return grainID <= 10 ? 0 : 1;
         }
     }
 }

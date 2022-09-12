@@ -7,5 +7,7 @@ namespace SnapperSiloHost.Models
         public int SiloPort {get; set;}
 
         public int GatewayPort {get; set;}
+
+        public string Region {get; set;} 
     }
 }
