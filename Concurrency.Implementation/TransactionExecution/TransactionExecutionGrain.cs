@@ -46,11 +46,14 @@ namespace Concurrency.Implementation.TransactionExecution
         // garbage collection
         long highestCommittedLocalBid;
 
-        public TransactionExecutionGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, string myClassName)
+        private SiloInfo siloInfo;
+
+        public TransactionExecutionGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, string myClassName, SiloInfo siloInfo)
         {
             this.loggerGroup = loggerGroup;
             this.coordMap = coordMap;
             this.myClassName = myClassName;
+            this.siloInfo = siloInfo;
         }
 
         public Task CheckGC()
@@ -220,7 +223,8 @@ namespace Concurrency.Implementation.TransactionExecution
                 {
                     var siloID = siloInfo.Key;
                     var grainID = siloInfo.Value;
-                    var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID.Item1, grainID.Item2);
+                    // TODO: Refactor the `this.siloInfo.Region` when we want to add multi-home
+                    var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID.Item1, this.siloInfo.Region, grainID.Item2);
                     await grain.WaitForBatchCommit(funcResult.scheduleInfoPerSilo[siloID].maxBeforeBid);
                 }
             }
@@ -337,7 +341,9 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
         public Task<TransactionResult> CallGrain(TransactionContext cxt, int grainID, string grainNameSpace, FunctionCall call)
         {
-            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, grainNameSpace);
+
+            // TODO: Refactor the `this.siloInfo.Region` when we want to add multi-home
+            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, this.siloInfo.Region, grainNameSpace);
             var isDet = cxt.localBid != -1;
             if (isDet) return detTxnExecutor.CallGrain(cxt, call, grain);
             else return nonDetTxnExecutor.CallGrain(cxt, call, grain);
