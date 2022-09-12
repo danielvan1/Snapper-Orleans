@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Concurrency.Interface.Models;
 
 namespace SnapperSiloHost.Models
 {

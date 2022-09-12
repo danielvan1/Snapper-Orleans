@@ -45,6 +45,12 @@ namespace Concurrency.Implementation.Coordinator
         
         // ACT
         NonDetTxnProcessor nonDetTxnProcessor;
+        private readonly SiloInfo SiloInfo;
+
+        public LocalCoordGrain(SiloInfo siloInfo)
+        {
+            this.SiloInfo = siloInfo;
+        }
 
         public Task CheckGC()
         {
@@ -228,7 +234,7 @@ namespace Concurrency.Implementation.Coordinator
 
             foreach (var item in curScheduleMap)
             {
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, grainClassName[item.Key]);
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, this.SiloInfo.Region, grainClassName[item.Key]);
                 var batch = item.Value;
 
                 var localSubBatch = new LocalSubBatch(globalBid, batch);
@@ -284,7 +290,7 @@ namespace Concurrency.Implementation.Coordinator
             var curScheduleMap = bidToSubBatches[bid];
             foreach (var item in curScheduleMap)
             {
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, grainClassName[item.Key]);
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, this.SiloInfo.Region, grainClassName[item.Key]);
                 _ = dest.AckBatchCommit(bid);
             }
 

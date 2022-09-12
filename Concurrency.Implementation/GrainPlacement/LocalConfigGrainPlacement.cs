@@ -5,21 +5,37 @@ using Orleans.Runtime;
 using Orleans.Placement;
 using System.Threading.Tasks;
 using Orleans.Runtime.Placement;
+using System.Collections.Generic;
+using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.GrainPlacement
 {
     public class LocalConfigGrainPlacement : IPlacementDirector
     {
+        private readonly Dictionary<string, Replica> replicaSilos;
+        private readonly SiloInfo currentSilo;
+
+        public LocalConfigGrainPlacement(Dictionary<string, Replica> replicaSilos, SiloInfo currentSilo)
+        {
+            this.currentSilo = currentSilo ?? throw new ArgumentNullException(nameof(currentSilo));
+            this.replicaSilos = replicaSilos ?? throw new ArgumentNullException(nameof(replicaSilos));
+        }
+
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             var silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-            var silo = 0;
+            var siloId = 0;
             if (Constants.multiSilo)
             {
-                var grainID = (int)target.GrainIdentity.PrimaryKeyLong;
-                silo = LocalConfigGrainPlacementHelper.MapGrainIDToSilo(grainID);
+                var grainID = (int)target.GrainIdentity.GetPrimaryKeyLong(out string region);
+                if (this.replicaSilos.TryGetValue(region, out Replica replica)) {
+                    siloId = replica.Id;
+                } else
+                {
+                    siloId = this.currentSilo.SiloId;
+                }
             }
-            return Task.FromResult(silos[silo]);
+            return Task.FromResult(silos[siloId]);
         }
     }
 

@@ -15,6 +15,8 @@ using Concurrency.Implementation.Coordinator;
 using Microsoft.Extensions.Configuration;
 using SnapperSiloHost.Models;
 using System.Collections.Generic;
+using Concurrency.Interface.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace SnapperSiloHost
 {
@@ -51,11 +53,21 @@ namespace SnapperSiloHost
                 foreach(SiloInfo info in localDeployment.Silos)
                 {
                     var siloHostBuilder = new SiloHostBuilder();
+                    var replicaMapping = new Dictionary<string, Replica>();
+                    var replicaSiloHosts = CreateLocalDeploymentReplicaSiloHosts(localDeployment, info, localDeployment.Silos, nextFreePort, replicaMapping);
                     var siloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, info);
-                    var replicaSiloHosts = CreateLocalDeploymentReplicaSiloHosts(siloHostBuilder, localDeployment, info, localDeployment.Silos, nextFreePort);
-                    foreach(ISiloHost replicaSiloHost in replicaSiloHosts) {
+
+                    siloHostBuilder.ConfigureServices(s => 
+                    {
+                        s.AddSingleton(replicaMapping);
+                        s.AddSingleton(info);
+                    });
+                    
+                    foreach(ISiloHost replicaSiloHost in replicaSiloHosts) 
+                    {
                         siloHosts.Add(replicaSiloHost);
                     }
+
                     siloHosts.Add(siloHost);
 
                     await siloHost.StartAsync();
@@ -86,23 +98,41 @@ namespace SnapperSiloHost
             return 0;
         }
 
-        private static IList<ISiloHost> CreateLocalDeploymentReplicaSiloHosts(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info, IList<SiloInfo> silos, NextFreePort nextFreePort)
+        private static IList<ISiloHost> CreateLocalDeploymentReplicaSiloHosts(LocalDeployment localDeployment, 
+                                                                              SiloInfo info, 
+                                                                              IList<SiloInfo> silos, 
+                                                                              NextFreePort nextFreePort,
+                                                                              Dictionary<string, Replica> replicas)
         {
             IList<ISiloHost> replicaSiloHosts = new List<ISiloHost>();
 
             foreach (SiloInfo replicaSiloInfo in silos)
             {
-                if(replicaSiloInfo.Region != info.Region)
+                SiloHostBuilder siloHostBuilder = new SiloHostBuilder();
+
+                if(replicaSiloInfo.Region != info.Region && !info.Region.Equals("Global"))
                 {
                     replicaSiloInfo.GatewayPort = ++nextFreePort.Port;
                     var replicaSiloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, replicaSiloInfo);
                     replicaSiloHosts.Add(replicaSiloHost);
+
+                    Replica replica = new Replica
+                    {
+                        Id = info.SiloId,
+                        Region = info.Region,
+                        Port = info.SiloPort
+                    };
+
+                    replicas.Add(replicaSiloInfo.Region, replica);
                 }
             }
+
             return replicaSiloHosts;
         }
 
-        private static ISiloHost CreateLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, LocalDeployment localDeployment, SiloInfo info)
+        private static ISiloHost CreateLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
+                                                               LocalDeployment localDeployment, 
+                                                               SiloInfo info)
         {
             // Primary silo is only needed for local deployment!
             var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localDeployment.PrimarySiloEndpoint);
@@ -124,8 +154,6 @@ namespace SnapperSiloHost
 
             // TODO: Maybe do not add all the configuration for global and local coordinators here? Instead only add one
             // of them depending on if it is a global or local silo.
-            siloHostBuilder.ConfigureServices(ConfigureGlobalCoordinator)
-                           .ConfigureServices(ConfigureLocalGrains);
 
             siloHostBuilder.AddMemoryGrainStorageAsDefault();
 
