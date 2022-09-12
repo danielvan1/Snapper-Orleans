@@ -24,6 +24,9 @@ namespace Utilities
         public const string GrainStateTable = "SnapperGrainStateTable";
         public const string SiloMembershipTable = "SnapperMembershipTable";
         public const string PlaceholderKeyExtension = "PlaceholderKeyExtension";
+        public const string US = "US";
+        public const string EU = "EU";
+        public const string ASIA = "ASIA";
 
         // architecture 1: single silo
         //                 local coordinators (num = numLocalCoordPerSilo)
