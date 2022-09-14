@@ -31,9 +31,6 @@ namespace SnapperSiloHost
             var siloHosts = new List<ISiloHost>();
             var startSiloTasks = new List<Task>();
             var silos = localDeployment.LocalSilos;
-            int numberOfSilos = silos.Count;
-            int startPort = localDeployment.PrimarySiloEndpoint;
-            int startGatewayPort = localDeployment.StartGatewayPort;
 
             Dictionary<string, SiloInfo> replicas = CreateReplicasDictionary(silos, localDeployment.PrimarySiloEndpoint, localDeployment.StartGatewayPort);
 
@@ -41,7 +38,7 @@ namespace SnapperSiloHost
             {
                 var siloHostBuilder = new SiloHostBuilder();
 
-                this.ConfiureLocalDeploymentSiloHost(siloHostBuilder, 
+                this.ConfigureLocalDeploymentSiloHost(siloHostBuilder, 
                                                      localDeployment.ClusterId, 
                                                      localDeployment.ServiceId, 
                                                      localDeployment.PrimarySiloEndpoint, 
@@ -73,7 +70,7 @@ namespace SnapperSiloHost
             SiloConfiguration globalSiloInfo = localDeployment.GlobalSilo;
             var siloHostBuilder = new SiloHostBuilder();
 
-            ConfiureLocalDeploymentSiloHost(siloHostBuilder, localDeployment.ClusterId, localDeployment.ServiceId,
+            ConfigureLocalDeploymentSiloHost(siloHostBuilder, localDeployment.ClusterId, localDeployment.ServiceId,
                                             localDeployment.PrimarySiloEndpoint, globalSiloInfo.SiloPort, globalSiloInfo.GatewayPort);
             var siloHost = siloHostBuilder.Build();
 
@@ -84,7 +81,7 @@ namespace SnapperSiloHost
             return siloHost;
         }
 
-        private void ConfiureLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
+        private void ConfigureLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
                                                      string clusterId,
                                                      string serviceId,
                                                      int localPrimarySiloEndpoint,
