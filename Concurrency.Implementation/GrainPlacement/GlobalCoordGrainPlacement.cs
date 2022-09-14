@@ -13,13 +13,9 @@ namespace Concurrency.Implementation.GrainPlacement
     {
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            var silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+            var silos = context.GetCompatibleSilos(target).Where(silo => silo.Endpoint.Port == 15000).ToArray();
             var silo = 0;
-            if (Constants.multiSilo)
-            {
-                Debug.Assert(silos.Length == Constants.numSilo + 1);
-                silo = Constants.numSilo;      // put all global coords in last silo (the list of silos cannot change)
-            }
+            Debug.Assert(silos.Length == 1);
             return Task.FromResult(silos[silo]);
         }
     }

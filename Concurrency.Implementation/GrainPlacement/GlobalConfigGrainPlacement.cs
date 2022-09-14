@@ -13,11 +13,14 @@ namespace Concurrency.Implementation.GrainPlacement
     {
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            var coordID = (int)target.GrainIdentity.PrimaryKeyLong;
-            Debug.Assert(coordID == 0);     // there is only one global config grain in the whole system
-            var silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();   // get the list of registered silo hosts
+
+            // globalConfigGrainID here is just used to check if its ID = 0 (for some reason)
+            var globalConfigGrainID = (int)target.GrainIdentity.PrimaryKeyLong;
+            Debug.Assert(globalConfigGrainID == 0);     // there is only one global config grain in the whole system
+
+            var silos = context.GetCompatibleSilos(target).Where(silo => silo.Endpoint.Port == 15000).ToArray();   // get the list of registered silo hosts
+            Debug.Assert(silos.Length == 0);     // there is only one global config grain in the whole system
             var silo = 0;
-            if (Constants.multiSilo) silo = Constants.numSilo;  // put global config grain in last silo
             return Task.FromResult(silos[silo]);
         }
     }

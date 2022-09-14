@@ -181,6 +181,8 @@ namespace Concurrency.Implementation.Configuration
 
         async Task ConfigLocalEnv()
         {
+            // Initialize an empty array with enough space for
+            // one local config grain for each silo 
             configGrains = new ILocalConfigGrain[Constants.numSilo];
             var tasks = new List<Task>();
             for (int i = 0; i < Constants.numSilo; i++)
