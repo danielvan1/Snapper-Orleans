@@ -40,6 +40,9 @@
 		<PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="6.0.0" />
 		<PackageReference Include="Microsoft.Extensions.Configuration" Version="6.0.1" />
+
+		<PackageReference Include="Unity.Container" Version="5.11.11" />
+
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\Concurrency.Implementation\Concurrency.Implementation.csproj" />

@@ -2,11 +2,9 @@ using System;
 
 namespace SnapperSiloHost
 {
-    public class NextFreePort
+    public record NextFreePort
     {
         public int Port {get; set;}
-        public NextFreePort(int initialPort) {
-            this.Port = initialPort;
-        }
+        public int GatewayPort {get; set;}
     }
 }

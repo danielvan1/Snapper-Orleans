@@ -1,22 +1,10 @@
 ﻿using System;
-using Orleans;
-using System.Net;
 using Orleans.Hosting;
-using Orleans.Runtime;
-using Orleans.Configuration;
 using System.Threading.Tasks;
-using Orleans.Runtime.Placement;
-using Microsoft.Extensions.DependencyInjection;
-using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Interface.Logging;
-using Concurrency.Implementation.Logging;
-using Concurrency.Interface.Coordinator;
-using Concurrency.Implementation.Coordinator;
 using Microsoft.Extensions.Configuration;
 using SnapperSiloHost.Models;
 using System.Collections.Generic;
-using Concurrency.Interface.Models;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Unity;
 
 namespace SnapperSiloHost
 {
@@ -24,15 +12,19 @@ namespace SnapperSiloHost
     {
         public static int Main(string[] args)
         {
-            return RunMainAsync(args).GetAwaiter().GetResult();
+            return MainAsync(args).GetAwaiter().GetResult();
         }
 
-        private static async Task<int> RunMainAsync(string[] args)
+        private static async Task<int> MainAsync(string[] args)
         {
             if(args.Length == 0)
             {
                 throw new ArgumentException("Deployment type needs to be specified");
             }
+
+            UnityContainer container = new UnityContainer();
+            container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
+            container.RegisterType<DeployLocalDevelopmentEnvironment>(TypeLifetime.Singleton);
 
             IConfiguration config = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json")
@@ -41,39 +33,17 @@ namespace SnapperSiloHost
             string deploymentType = args[0];
             var siloHosts = new List<ISiloHost>();
 
-            NextFreePort nextFreePort = new NextFreePort(10000);
-
-            // We want to map each region with its replica ports,
-            // store it in some singleton configuration, and inject it into each silo,
-            // But each silo doesn't need to know where the other silos replicas are
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
+                var deployLocalDevelopmentEnvironment = container.Resolve<DeployLocalDevelopmentEnvironment>();
                 var localDeployment = config.GetRequiredSection("LocalDeployment").Get<LocalDeployment>();
+                Console.WriteLine($"port: {localDeployment.StartGatewayPort}");
 
-                foreach(SiloInfo info in localDeployment.Silos)
-                {
-                    var siloHostBuilder = new SiloHostBuilder();
-                    var replicaMapping = new Dictionary<string, Replica>();
-                    var replicaSiloHosts = CreateLocalDeploymentReplicaSiloHosts(localDeployment, info, localDeployment.Silos, nextFreePort, replicaMapping);
-                    var siloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, info);
+                IList<ISiloHost> replicaSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(localDeployment);
+                siloHosts.AddRange(replicaSiloHosts);
 
-                    siloHostBuilder.ConfigureServices(s => 
-                    {
-                        s.AddSingleton(replicaMapping);
-                        s.AddSingleton(info);
-                    });
-                    
-                    foreach(ISiloHost replicaSiloHost in replicaSiloHosts) 
-                    {
-                        siloHosts.Add(replicaSiloHost);
-                    }
-
-                    siloHosts.Add(siloHost);
-
-                    await siloHost.StartAsync();
-
-                    Console.WriteLine($"Silo {info.SiloId} is started...");
-                }
+                var globalSiloHost = await deployLocalDevelopmentEnvironment.DeployGlobalSilo(localDeployment);
+                siloHosts.Add(globalSiloHost);
             }
             else
             {
@@ -96,93 +66,6 @@ namespace SnapperSiloHost
             Console.WriteLine("Stopped all silos");
 
             return 0;
-        }
-
-        private static IList<ISiloHost> CreateLocalDeploymentReplicaSiloHosts(LocalDeployment localDeployment, 
-                                                                              SiloInfo info, 
-                                                                              IList<SiloInfo> silos, 
-                                                                              NextFreePort nextFreePort,
-                                                                              Dictionary<string, Replica> replicas)
-        {
-            IList<ISiloHost> replicaSiloHosts = new List<ISiloHost>();
-
-            foreach (SiloInfo replicaSiloInfo in silos)
-            {
-                SiloHostBuilder siloHostBuilder = new SiloHostBuilder();
-
-                if(replicaSiloInfo.Region != info.Region && !info.Region.Equals("Global"))
-                {
-                    replicaSiloInfo.GatewayPort = ++nextFreePort.Port;
-                    var replicaSiloHost = CreateLocalDeploymentSiloHost(siloHostBuilder, localDeployment, replicaSiloInfo);
-                    replicaSiloHosts.Add(replicaSiloHost);
-
-                    Replica replica = new Replica
-                    {
-                        Id = info.SiloId,
-                        Region = info.Region,
-                        Port = info.SiloPort
-                    };
-
-                    replicas.Add(replicaSiloInfo.Region, replica);
-                }
-            }
-
-            return replicaSiloHosts;
-        }
-
-        private static ISiloHost CreateLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
-                                                               LocalDeployment localDeployment, 
-                                                               SiloInfo info)
-        {
-            // Primary silo is only needed for local deployment!
-            var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localDeployment.PrimarySiloEndpoint);
-            siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint)
-                // The IP address used for clustering / to be advertised in membership tables
-                .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback);
-
-            siloHostBuilder.Configure<ClusterOptions>(options =>
-            {
-                options.ClusterId = localDeployment.ClusterId;
-                options.ServiceId = localDeployment.ServiceId;
-            });
-
-            siloHostBuilder.Configure<EndpointOptions>(options =>
-            {
-                options.SiloPort = info.SiloPort;
-                options.GatewayPort = info.GatewayPort;
-            });
-
-            // TODO: Maybe do not add all the configuration for global and local coordinators here? Instead only add one
-            // of them depending on if it is a global or local silo.
-
-            siloHostBuilder.AddMemoryGrainStorageAsDefault();
-
-            return siloHostBuilder.Build();
-        }
-
-        private static void ConfigureGlobalCoordinator(IServiceCollection services)
-        {
-            services.AddSingleton<ILoggerGroup, LoggerGroup>();
-            services.AddSingleton<ICoordMap, CoordMap>();
-
-            services.AddSingletonNamedService<PlacementStrategy, GlobalConfigGrainPlacementStrategy>(nameof(GlobalConfigGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigGrainPlacement>(typeof(GlobalConfigGrainPlacementStrategy));
-
-            services.AddSingletonNamedService<PlacementStrategy, GlobalCoordGrainPlacementStrategy>(nameof(GlobalCoordGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalCoordGrainPlacement>(typeof(GlobalCoordGrainPlacementStrategy));
-        }
-
-        private static void ConfigureLocalGrains(IServiceCollection services)
-        {
-            // all the singletons have one instance per silo host??
-            services.AddSingletonNamedService<PlacementStrategy, LocalConfigGrainPlacementStrategy>(nameof(LocalConfigGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigGrainPlacement>(typeof(LocalConfigGrainPlacementStrategy));
-
-            services.AddSingletonNamedService<PlacementStrategy, LocalCoordGrainPlacementStrategy>(nameof(LocalCoordGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, LocalCoordGrainPlacement>(typeof(LocalCoordGrainPlacementStrategy));
-
-            services.AddSingletonNamedService<PlacementStrategy, TransactionExecutionGrainPlacementStrategy>(nameof(TransactionExecutionGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, TransactionExecutionGrainPlacement>(typeof(TransactionExecutionGrainPlacementStrategy));
         }
     }
 }

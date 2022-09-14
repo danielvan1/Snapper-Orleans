@@ -9,6 +9,8 @@ namespace SnapperSiloHost.Models
 
         public string ServiceId {get; set;}
 
+        public int StartGatewayPort {get; set;}
+
         public int PrimarySiloEndpoint {get; set;}
 
         public string IsMultiSiloDeployment {get; set;}
@@ -21,10 +23,11 @@ namespace SnapperSiloHost.Models
 
         public string NumberOfCPUPerSilo {get; set;}
 
-        public string NumberOfSilos {get; set;}
 
         public string ImplementationType {get; set;}
 
-        public List<SiloInfo> Silos {get; set;}
+        public List<SiloConfiguration> LocalSilos {get; set;}
+
+        public SiloConfiguration GlobalSilo {get; set;}
     }
 }

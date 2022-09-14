@@ -1,6 +1,6 @@
-namespace Concurrency.Interface.Models
+namespace SnapperSiloHost.Models
 {
-    public record SiloInfo
+    public sealed class SiloConfiguration
     {
         public int SiloId {get; init;}
 
@@ -9,9 +9,5 @@ namespace Concurrency.Interface.Models
         public int GatewayPort {get; init;}
 
         public string Region {get; set;} 
-
-        public string HomeRegion {get; set;}
-
-        public bool IsReplica {get; set;}
     }
 }
