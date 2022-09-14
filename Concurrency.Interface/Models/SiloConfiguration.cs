@@ -1,4 +1,4 @@
-namespace SnapperSiloHost.Models
+namespace Concurrency.Interface
 {
     public sealed class SiloConfiguration
     {

@@ -26,7 +26,7 @@ namespace Concurrency.Implementation.GrainPlacement
             var siloId = 0;
 
             var grainID = (int)target.GrainIdentity.GetPrimaryKeyLong(out string region);
-
+            
             if (this.replicas.TryGetValue(region, out SiloInfo replica)) 
             {
                 siloId = replica.SiloId;

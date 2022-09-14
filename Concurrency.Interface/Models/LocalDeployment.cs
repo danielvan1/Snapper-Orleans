@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Concurrency.Interface.Models;
 
-namespace SnapperSiloHost.Models
+namespace Concurrency.Interface 
 {
     public sealed class LocalDeployment
     {

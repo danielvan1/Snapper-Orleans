@@ -2,9 +2,9 @@
 using Orleans.Hosting;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
-using SnapperSiloHost.Models;
 using System.Collections.Generic;
 using Unity;
+using Concurrency.Interface;
 
 namespace SnapperSiloHost
 {

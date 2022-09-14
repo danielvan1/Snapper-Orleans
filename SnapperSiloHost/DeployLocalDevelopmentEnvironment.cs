@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Interface;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
@@ -13,7 +14,6 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
-using SnapperSiloHost.Models;
 
 namespace SnapperSiloHost
 {
@@ -49,6 +49,7 @@ namespace SnapperSiloHost
                 
                 siloHostBuilder.ConfigureServices(s => 
                 {
+                    
                     s.AddSingleton(replicas);
                 });
 
