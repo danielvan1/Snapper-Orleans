@@ -1,15 +1,14 @@
-﻿using System;
-using Orleans.Hosting;
-using System.Threading.Tasks;
+﻿using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
-using System.Collections.Generic;
+using Orleans.Hosting;
 using Unity;
-using Concurrency.Interface;
 
-namespace SnapperSiloHost
+namespace GeoSnapperDeployment 
 {
     public class Program
     {
+        private const string Configurations = "Configurations";
+
         public static int Main(string[] args)
         {
             return MainAsync(args).GetAwaiter().GetResult();
@@ -24,10 +23,12 @@ namespace SnapperSiloHost
 
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
-            container.RegisterType<DeployLocalDevelopmentEnvironment>(TypeLifetime.Singleton);
+            container.RegisterType<DeploySiloLocalDevelopmentEnvironment>(TypeLifetime.Singleton);
+            container.RegisterType<ClusterDeployment>(TypeLifetime.Singleton);
 
             IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile("appsettings.json")
+            .AddJsonFile(Path.Combine(Configurations, "ClusterConfigurations.json"))
+            .AddJsonFile(Path.Combine(Configurations, "SiloConfigurations.json"))
             .Build();
 
             string deploymentType = args[0];
@@ -35,14 +36,15 @@ namespace SnapperSiloHost
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
-                var deployLocalDevelopmentEnvironment = container.Resolve<DeployLocalDevelopmentEnvironment>();
-                var localDeployment = config.GetRequiredSection("LocalDeployment").Get<LocalDeployment>();
-                Console.WriteLine($"port: {localDeployment.StartGatewayPort}");
+                var deployLocalDevelopmentEnvironment = container.Resolve<DeploySiloLocalDevelopmentEnvironment>();
 
-                IList<ISiloHost> replicaSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(localDeployment);
+                var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
+                Console.WriteLine($"port: {siloConfigurations.StartGatewayPort}");
+
+                IList<ISiloHost> replicaSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(siloConfigurations);
                 siloHosts.AddRange(replicaSiloHosts);
 
-                var globalSiloHost = await deployLocalDevelopmentEnvironment.DeployGlobalSilo(localDeployment);
+                var globalSiloHost = await deployLocalDevelopmentEnvironment.DeployGlobalSilo(siloConfigurations);
                 siloHosts.Add(globalSiloHost);
             }
             else
@@ -68,4 +70,5 @@ namespace SnapperSiloHost
             return 0;
         }
     }
+    
 }

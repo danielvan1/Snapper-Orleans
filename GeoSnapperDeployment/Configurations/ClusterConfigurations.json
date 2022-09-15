@@ -1,0 +1,16 @@
+{
+    "ClusterConfigurations" : 
+    {
+        "Clusters" : 
+        [
+            {
+                "ClusterId" : "EU",
+                "ServiceId" : "EU"
+            },
+            {
+                "ClusterId" : "US",
+                "ServiceId" : "US"
+            }
+        ]
+    }
+}

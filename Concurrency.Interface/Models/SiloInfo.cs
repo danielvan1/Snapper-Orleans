@@ -1,9 +1,11 @@
-using System.Dynamic;
-
 namespace Concurrency.Interface.Models
 {
     public record SiloInfo
     {
+        public string ClusterId {get; set;}
+
+        public string ServiceId {get; set;}
+
         public int SiloId {get; init;}
 
         public int SiloPort {get; init;}

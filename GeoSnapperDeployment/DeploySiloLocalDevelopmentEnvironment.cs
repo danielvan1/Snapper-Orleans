@@ -1,52 +1,48 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Threading.Tasks;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
-using Concurrency.Interface;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
+using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 
-namespace SnapperSiloHost
+namespace GeoSnapperDeployment 
 {
-    public class DeployLocalDevelopmentEnvironment
+    public class DeploySiloLocalDevelopmentEnvironment
     {
         private readonly ISiloInfoFactory siloInfoFactory;
 
-        public DeployLocalDevelopmentEnvironment(ISiloInfoFactory siloInfoFactory)
+        public DeploySiloLocalDevelopmentEnvironment(ISiloInfoFactory siloInfoFactory)
         {
             this.siloInfoFactory = siloInfoFactory ?? throw new ArgumentNullException(nameof(siloInfoFactory));
         }
 
-        public async Task<IList<ISiloHost>> DeploySilosAndReplicas(LocalDeployment localDeployment)
+        public async Task<IList<ISiloHost>> DeploySilosAndReplicas(SiloConfigurations siloConfigurations)
         {
             var siloHosts = new List<ISiloHost>();
             var startSiloTasks = new List<Task>();
-            var silos = localDeployment.LocalSilos;
+            var silos = siloConfigurations.Silos.LocalSilos;
 
-            Dictionary<string, SiloInfo> replicas = CreateReplicasDictionary(silos, localDeployment.PrimarySiloEndpoint, localDeployment.StartGatewayPort);
+            Dictionary<string, SiloInfo> replicas = CreateReplicasDictionary(silos, siloConfigurations.PrimarySiloEndpoint, siloConfigurations.StartGatewayPort);
 
             foreach((string siloRegion, SiloInfo siloInfo) in replicas)
             {
                 var siloHostBuilder = new SiloHostBuilder();
 
                 this.ConfigureLocalDeploymentSiloHost(siloHostBuilder, 
-                                                     localDeployment.ClusterId, 
-                                                     localDeployment.ServiceId, 
-                                                     localDeployment.PrimarySiloEndpoint, 
-                                                     siloInfo.SiloPort, siloInfo.GatewayPort);
+                                                      siloInfo.ClusterId, 
+                                                      siloInfo.ServiceId, 
+                                                      siloConfigurations.PrimarySiloEndpoint, 
+                                                      siloInfo.SiloPort, siloInfo.GatewayPort);
                 
                 siloHostBuilder.ConfigureServices(s => 
                 {
-                    
                     s.AddSingleton(replicas);
                 });
 
@@ -65,18 +61,18 @@ namespace SnapperSiloHost
 
         }
 
-        public async Task<ISiloHost> DeployGlobalSilo(LocalDeployment localDeployment)
+        public async Task<ISiloHost> DeployGlobalSilo(SiloConfigurations siloConfigurations)
         {
-            SiloConfiguration globalSiloInfo = localDeployment.GlobalSilo;
+            SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
             var siloHostBuilder = new SiloHostBuilder();
 
-            ConfigureLocalDeploymentSiloHost(siloHostBuilder, localDeployment.ClusterId, localDeployment.ServiceId,
-                                            localDeployment.PrimarySiloEndpoint, globalSiloInfo.SiloPort, globalSiloInfo.GatewayPort);
+            ConfigureLocalDeploymentSiloHost(siloHostBuilder, globalSiloConfiguration.ClusterId, globalSiloConfiguration.ServiceId,
+                                            siloConfigurations.PrimarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
             var siloHost = siloHostBuilder.Build();
 
             await siloHost.StartAsync();
 
-            Console.WriteLine($"Global silo {globalSiloInfo.SiloId} is started");
+            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} is started");
 
             return siloHost;
         }
@@ -123,10 +119,10 @@ namespace SnapperSiloHost
                 int siloId = siloConfiguration.SiloId;
                 int siloPort = siloConfiguration.SiloPort;
                 int gatewayPort = siloConfiguration.GatewayPort;
-                string region = siloConfiguration.Region;
+                string region = siloConfiguration.ClusterId;
                 bool isReplica = false;
 
-                SiloInfo siloInfo = this.siloInfoFactory.Create(siloId, siloPort, gatewayPort, region, region, isReplica);
+                SiloInfo siloInfo = this.siloInfoFactory.Create(region, region, siloId, siloPort, gatewayPort, region, region, isReplica);
 
                 string stringKey = $"{siloInfo.Region}-{siloInfo.Region}";
 
@@ -151,15 +147,15 @@ namespace SnapperSiloHost
                     int siloId = startId; 
                     int siloPort = startPort;
                     int gatewayPort = startGatewayPort;
-                    string deployRegion = replicaSiloConfiguration.Region;
-                    string homeRegion = currentSiloConfiguration.Region;
+                    string deployRegion = replicaSiloConfiguration.ClusterId;
+                    string homeRegion = currentSiloConfiguration.ClusterId;
                     bool isReplica = true;
 
                     startId++;
                     startPort++;
                     startGatewayPort++;
 
-                    SiloInfo siloInfo = this.siloInfoFactory.Create(siloId, siloPort, gatewayPort, deployRegion, homeRegion, isReplica);
+                    SiloInfo siloInfo = this.siloInfoFactory.Create(deployRegion, deployRegion, siloId, siloPort, gatewayPort, deployRegion, homeRegion, isReplica);
 
                     string stringKey = $"{homeRegion}-{deployRegion}";
 

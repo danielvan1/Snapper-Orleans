@@ -9,8 +9,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Concurrency.Implementation"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Utilities", "Utilities\Utilities.csproj", "{5E31DAD0-3493-4D6A-81B1-A0A03483305C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SnapperSiloHost", "SnapperSiloHost\SnapperSiloHost.csproj", "{29D51B58-BC0A-4083-8CF5-351DC46A90EA}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TPCC.Interfaces", "TPCC.Interfaces\TPCC.Interfaces.csproj", "{DD5957B3-DBB6-43B7-9D61-CADCEB4FD094}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TPCC.Grains", "TPCC.Grains\TPCC.Grains.csproj", "{4FF2DBAD-6461-46E1-A1F1-93EACAB979C3}"
@@ -34,6 +32,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnapperPrepareDataForFigures", "SnapperPrepareDataForFigures\SnapperPrepareDataForFigures.csproj", "{6274E8CF-16DC-417F-8E0A-7315EFDE98E2}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimpleBankClient", "SimpleBankClient\SimpleBankClient.csproj", "{BE25B1CD-6451-4418-980F-B2C37B0E4426}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GeoSnapperDeployment", "GeoSnapperDeployment\GeoSnapperDeployment.csproj", "{0F24969E-D91B-4B30-AA60-6BEC72FBA351}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -101,6 +101,10 @@ Global
 		{BE25B1CD-6451-4418-980F-B2C37B0E4426}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BE25B1CD-6451-4418-980F-B2C37B0E4426}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BE25B1CD-6451-4418-980F-B2C37B0E4426}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F24969E-D91B-4B30-AA60-6BEC72FBA351}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F24969E-D91B-4B30-AA60-6BEC72FBA351}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F24969E-D91B-4B30-AA60-6BEC72FBA351}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F24969E-D91B-4B30-AA60-6BEC72FBA351}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
