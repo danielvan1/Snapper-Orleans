@@ -23,11 +23,9 @@ namespace GeoSnapperDeployment
 
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
-            container.RegisterType<DeploySiloLocalDevelopmentEnvironment>(TypeLifetime.Singleton);
-            container.RegisterType<ClusterDeployment>(TypeLifetime.Singleton);
+            container.RegisterType<LocalSiloDeployer>(TypeLifetime.Singleton);
 
             IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(Configurations, "ClusterConfigurations.json"))
             .AddJsonFile(Path.Combine(Configurations, "SiloConfigurations.json"))
             .Build();
 
@@ -36,16 +34,18 @@ namespace GeoSnapperDeployment
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
-                var deployLocalDevelopmentEnvironment = container.Resolve<DeploySiloLocalDevelopmentEnvironment>();
+                var deployLocalDevelopmentEnvironment = container.Resolve<LocalSiloDeployer>();
 
                 var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
-                Console.WriteLine($"port: {siloConfigurations.StartGatewayPort}");
-
-                IList<ISiloHost> replicaSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(siloConfigurations);
-                siloHosts.AddRange(replicaSiloHosts);
 
                 var globalSiloHost = await deployLocalDevelopmentEnvironment.DeployGlobalSilo(siloConfigurations);
                 siloHosts.Add(globalSiloHost);
+
+                IList<ISiloHost> regionSiloHosts = await deployLocalDevelopmentEnvironment.DeployRegionalSilos(siloConfigurations);
+                siloHosts.AddRange(regionSiloHosts);
+
+                // IList<ISiloHost> localSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(siloConfigurations);
+                // siloHosts.AddRange(localSiloHosts);
             }
             else
             {
@@ -70,5 +70,4 @@ namespace GeoSnapperDeployment
             return 0;
         }
     }
-    
 }

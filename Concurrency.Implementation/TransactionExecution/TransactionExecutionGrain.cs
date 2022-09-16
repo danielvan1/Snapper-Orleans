@@ -48,7 +48,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private SiloInfo siloInfo;
 
-        public TransactionExecutionGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, string myClassName, SiloInfo siloInfo)
+        public TransactionExecutionGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, string myClassName)
         {
             this.loggerGroup = loggerGroup;
             this.coordMap = coordMap;
@@ -78,7 +78,7 @@ namespace Concurrency.Implementation.TransactionExecution
             mySiloID = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(myID);
 
             // transaction execution
-            loggerGroup.GetLoggingProtocol(myID, out log);
+            // loggerGroup.GetLoggingProtocol(myID, out log);
             myScheduler = new TransactionScheduler(myID);
             state = new HybridState<TState>();
             batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
@@ -93,8 +93,8 @@ namespace Concurrency.Implementation.TransactionExecution
                     myLocalCoordID = LocalCoordGrainPlacementHelper.MapCoordIndexToCoordID(localCoordIndex, mySiloID);
                     myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID);
 
-                    var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
-                    myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
+                    // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
+                    // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
                 }
                 else   // all local coordinators are put in a separate silo
                 {

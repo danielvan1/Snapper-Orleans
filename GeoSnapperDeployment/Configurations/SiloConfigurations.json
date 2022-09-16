@@ -4,6 +4,35 @@
         "PrimarySiloEndpoint": 10000,
         "StartGatewayPort": 30000,
         "Silos": {
+
+            "GlobalSilo": {
+                "ClusterId": "EU",
+                "ServiceId": "EU",
+                "SiloId": 10000,
+                "Region": "EU",
+                "SiloPort": 20000,
+                "GatewayPort": 30000 
+            },
+
+            "RegionalSilos" : [
+                {
+                    "ClusterId" : "EU",
+                    "ServiceId" : "EU",
+                    "SiloId": 5000,
+                    "Region": "EU",
+                    "SiloPort": 15000,
+                    "GatewayPort": 30004
+                },
+                {
+                    "ClusterId" : "US",
+                    "ServiceId" : "US",
+                    "SiloId": 5001,
+                    "Region": "US",
+                    "SiloPort": 15001,
+                    "GatewayPort": 30005
+                }
+            ],
+
             "LocalSilos": [
                 {
                     "ClusterId" : "EU",
@@ -21,16 +50,7 @@
                     "SiloPort": 10001,
                     "GatewayPort": 30001
                 }
-            ],
-            "GlobalSilo": {
-                "ClusterId": "EU",
-                "ServiceId": "EU",
-                "SiloId": 5000,
-                "Region": "EU",
-                "SiloPort": 15000,
-                "GatewayPort": 35000
-            }
+            ]
         }
-
     }
 }

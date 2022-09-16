@@ -1,14 +1,14 @@
 ﻿using System;
-using Orleans;
-using Utilities;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using Concurrency.Interface.Logging;
-using Concurrency.Interface.Coordinator;
-using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Interface.Models;
-using Orleans.Concurrency;
 using System.Diagnostics;
+using System.Threading.Tasks;
+using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Logging;
+using Concurrency.Interface.Models;
+using Orleans;
+using Orleans.Concurrency;
+using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
 {
@@ -48,7 +48,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public override Task OnActivateAsync()
         {
-            myID = (int)this.GetPrimaryKeyLong();
+            myID = (int)this.GetPrimaryKeyLong(out string _);
             expectedAcksPerBatch = new Dictionary<long, int>();
             bidToSubBatches = new Dictionary<long, Dictionary<int, SubBatch>>();
             coordPerBatchPerSilo = new Dictionary<long, Dictionary<int, int>>();
@@ -92,8 +92,8 @@ namespace Concurrency.Implementation.Coordinator
             {
                 curBatchID = detTxnProcessor.GenerateBatch(token);
                 if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
-            } 
-            
+            }
+
             nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
@@ -151,21 +151,21 @@ namespace Concurrency.Implementation.Coordinator
             await detTxnProcessor.WaitBatchCommit(bid);
         }
 
-        public Task SpawnGlobalCoordGrain()
+        public Task SpawnGlobalCoordGrain(IGlobalCoordGrain neighbor)
         {
-            detTxnProcessor.Init();
-            nonDetTxnProcessor.Init();
+            this.detTxnProcessor.Init();
+            this.nonDetTxnProcessor.Init();
 
-            var neighborID = GlobalCoordGrainPlacementHelper.MapCoordIDToNeighborID(myID);
-            neighborCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(neighborID);
+            this.neighborCoord = neighbor;
 
-            loggerGroup.GetLoggingProtocol(myID, out log);
-            
-            batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
+            // this.loggerGroup.GetLoggingProtocol(myID, out log);
+
+            this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
             for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
-            timeOfBatchGeneration = DateTime.Now;
+            this.timeOfBatchGeneration = DateTime.Now;
 
             Console.WriteLine($"Global coord {myID} initialize logging {Constants.loggingType}, batch size = {Helper.ChangeFormat(batchSizeInMSecs, 0)}ms");
+
             return Task.CompletedTask;
         }
     }

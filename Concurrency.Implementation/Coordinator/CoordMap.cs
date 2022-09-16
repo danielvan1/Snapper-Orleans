@@ -42,22 +42,24 @@ namespace Concurrency.Implementation.Coordinator
                 this.localCoordMap.Add(i, localCoord);
             }
 
-            for (int i = 0; i < totalNumGlobalCoord; i++)
-            {
-                var globalCoord = myGrainFactory.GetGrain<IGlobalCoordGrain>(i);
-                this.globalCoordMap.Add(i, globalCoord);
-            }
+            // for (int i = 0; i < totalNumGlobalCoord; i++)
+            // {
+            //     var globalCoord = myGrainFactory.GetGrain<IGlobalCoordGrain>(i);
+            //     this.globalCoordMap.Add(i, globalCoord);
+            // }
         }
 
         public IGlobalCoordGrain GetGlobalCoord(int globalCoordID)
         {
             Debug.Assert(this.globalCoordMap.ContainsKey(globalCoordID));
+
             return this.globalCoordMap[globalCoordID];
         }
 
         public ILocalCoordGrain GetLocalCoord(int localCoordID)
         {
             Debug.Assert(this.localCoordMap.ContainsKey(localCoordID));
+
             return localCoordMap[localCoordID];
         }
     }

@@ -3,13 +3,8 @@ using System.Threading.Tasks;
 
 namespace Concurrency.Interface.Configuration
 {
-    public interface IGlobalConfigGrain : IGrainWithIntegerKey
+    public interface IGlobalConfigurationGrain : IGrainWithIntegerKey 
     {
-        Task ConfigGlobalEnv();
-
-        Task SetIOCount();
-        Task<long> GetIOCount();
-
-        Task CheckGC();
+        Task InitializeGlobalCoordinators();
     }
 }

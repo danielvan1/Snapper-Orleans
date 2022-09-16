@@ -1,12 +1,11 @@
 ﻿using System;
-using Utilities;
-using SmallBank.Interfaces;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Concurrency.Implementation.TransactionExecution;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Models;
+using Concurrency.Interface.Logging;
+using SmallBank.Interfaces;
+using Utilities;
 
 namespace SmallBank.Grains
 {
@@ -14,7 +13,7 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
-        public SnapperTransactionalAccountGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, SiloInfo siloInfo) : base(loggerGroup, coordMap, "SmallBank.Grains.SnapperTransactionalAccountGrain", siloInfo)
+        public SnapperTransactionalAccountGrain(ILoggerGroup loggerGroup, ICoordMap coordMap) : base(loggerGroup, coordMap, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
         }
 
@@ -44,13 +43,13 @@ namespace SmallBank.Grains
                     var funcCall = new FunctionCall("Deposit", money, typeof(SnapperTransactionalAccountGrain));
                     var t = CallGrain(context, accountID, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
                     task.Add(t);
-                } 
+                }
                 else task.Add(Deposit(context, money));
             }
             await Task.WhenAll(task);
             return new TransactionResult();
         }
-       
+
         public async Task<TransactionResult> Deposit(TransactionContext context, object funcInput)
         {
             var money = (int)funcInput;

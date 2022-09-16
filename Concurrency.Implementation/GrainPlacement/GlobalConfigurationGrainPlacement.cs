@@ -7,7 +7,7 @@ using Orleans.Runtime.Placement;
 
 namespace Concurrency.Implementation.GrainPlacement
 {
-    public class GlobalCoordGrainPlacement : IPlacementDirector
+    public class GlobalConfigurationGrainPlacement : IPlacementDirector
     {
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
@@ -18,14 +18,14 @@ namespace Concurrency.Implementation.GrainPlacement
     }
 
     [Serializable]
-    public class GlobalCoordGrainPlacementStrategy : PlacementStrategy
+    public class GlobalConfigurationGrainPlacementStrategy : PlacementStrategy
     {
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public sealed class GlobalCoordGrainPlacementStrategyAttribute : PlacementAttribute
+    public sealed class GlobalConfigurationGrainPlacementStrategyAttribute : PlacementAttribute
     {
-        public GlobalCoordGrainPlacementStrategyAttribute() : base(new GlobalCoordGrainPlacementStrategy())
+        public GlobalConfigurationGrainPlacementStrategyAttribute() : base(new GlobalConfigurationGrainPlacementStrategy())
         {
         }
     }

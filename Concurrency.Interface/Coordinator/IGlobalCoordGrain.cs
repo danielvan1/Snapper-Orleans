@@ -1,15 +1,15 @@
-﻿using Orleans;
-using Utilities;
-using System.Threading.Tasks;
+﻿using System;
 using System.Collections.Generic;
-using System;
+using System.Threading.Tasks;
 using Concurrency.Interface.Models;
+using Orleans;
+using Utilities;
 
 namespace Concurrency.Interface.Coordinator
 {
-    public interface IGlobalCoordGrain : IGrainWithIntegerKey
+    public interface IGlobalCoordGrain : IGrainWithIntegerCompoundKey
     {
-        Task SpawnGlobalCoordGrain();
+        Task SpawnGlobalCoordGrain(IGlobalCoordGrain neighbor);
 
         Task PassToken(BasicToken token);
 

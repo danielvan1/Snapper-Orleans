@@ -1,7 +1,7 @@
-using System.Net;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
@@ -12,13 +12,13 @@ using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 
-namespace GeoSnapperDeployment 
+namespace GeoSnapperDeployment
 {
-    public class DeploySiloLocalDevelopmentEnvironment
+    public class LocalSiloDeployer
     {
         private readonly ISiloInfoFactory siloInfoFactory;
 
-        public DeploySiloLocalDevelopmentEnvironment(ISiloInfoFactory siloInfoFactory)
+        public LocalSiloDeployer(ISiloInfoFactory siloInfoFactory)
         {
             this.siloInfoFactory = siloInfoFactory ?? throw new ArgumentNullException(nameof(siloInfoFactory));
         }
@@ -41,16 +41,13 @@ namespace GeoSnapperDeployment
                                                       siloConfigurations.PrimarySiloEndpoint, 
                                                       siloInfo.SiloPort, siloInfo.GatewayPort);
                 
-                siloHostBuilder.ConfigureServices(s => 
-                {
-                    s.AddSingleton(replicas);
-                });
+                siloHostBuilder.ConfigureServices(serviceCollection => serviceCollection.AddSingleton(replicas));
 
                 var siloHost = siloHostBuilder.Build();
 
                 startSiloTasks.Add(siloHost.StartAsync());
 
-                Console.WriteLine($"Silo {(siloInfo.IsReplica ? "replica" : string.Empty)} {siloInfo.SiloId} is started...");
+                Console.WriteLine($"Silo {(siloInfo.IsReplica ? "replica" : string.Empty)} {siloInfo.SiloId} in region {siloRegion} is started...");
 
                 siloHosts.Add(siloHost);
             }
@@ -58,7 +55,49 @@ namespace GeoSnapperDeployment
             await Task.WhenAll(startSiloTasks);
 
             return siloHosts;
+        }
 
+        public async Task<IList<ISiloHost>> DeployRegionalSilos(SiloConfigurations siloConfigurations)
+        {
+            var siloHosts = new List<ISiloHost>();
+            var startSiloTasks = new List<Task>();
+            IReadOnlyList<SiloConfiguration> silos = siloConfigurations.Silos.RegionalSilos;
+
+            var regionalSilos = new Dictionary<string, SiloInfo>();
+
+            foreach(SiloConfiguration siloConfiguration in silos)
+            {
+                bool isReplica = false;
+
+                var siloInfo = this.siloInfoFactory.Create(siloConfiguration.ClusterId, siloConfiguration.ServiceId, siloConfiguration.SiloId,
+                                                           siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.ClusterId, 
+                                                           siloConfiguration.ClusterId, isReplica);
+
+                regionalSilos.Add(siloConfiguration.ClusterId, siloInfo);
+            }
+
+            foreach(SiloConfiguration siloConfiguration in silos)
+            {
+                var siloHostBuilder = new SiloHostBuilder();
+
+                ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfiguration.ClusterId, siloConfiguration.ServiceId,
+                                                 siloConfigurations.PrimarySiloEndpoint, siloConfiguration.SiloPort, siloConfiguration.GatewayPort);
+
+                siloHostBuilder.ConfigureServices(serviceCollection => serviceCollection.AddSingleton(regionalSilos));
+                siloHostBuilder.ConfigureServices(ConfigureRegionalGrains);
+                
+                var siloHost = siloHostBuilder.Build();
+
+                startSiloTasks.Add(siloHost.StartAsync());
+
+                Console.WriteLine($"Silo regional {siloConfiguration.SiloId} in region {siloConfiguration.ClusterId} is started...");
+
+                siloHosts.Add(siloHost);
+            }
+
+            await Task.WhenAll(startSiloTasks);
+
+            return siloHosts;
         }
 
         public async Task<ISiloHost> DeployGlobalSilo(SiloConfigurations siloConfigurations)
@@ -67,27 +106,34 @@ namespace GeoSnapperDeployment
             var siloHostBuilder = new SiloHostBuilder();
 
             ConfigureLocalDeploymentSiloHost(siloHostBuilder, globalSiloConfiguration.ClusterId, globalSiloConfiguration.ServiceId,
-                                            siloConfigurations.PrimarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
+                                             siloConfigurations.PrimarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
+                                            
+
+            var regions = siloConfigurations.Silos.RegionalSilos.Select(regionalSilo => regionalSilo.ClusterId).ToList();
+            GlobalConfiguration globalConfiguration = new GlobalConfiguration() 
+            {
+                Regions = regions
+            };
+
+            ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
+
             var siloHost = siloHostBuilder.Build();
 
             await siloHost.StartAsync();
 
-            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} is started");
+            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} in region {globalSiloConfiguration.ClusterId} is started");
 
             return siloHost;
         }
 
         private void ConfigureLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
-                                                     string clusterId,
-                                                     string serviceId,
-                                                     int localPrimarySiloEndpoint,
-                                                     int siloPort,
-                                                     int gatewayPort)
+                                                      string clusterId,
+                                                      string serviceId,
+                                                      int localPrimarySiloEndpoint,
+                                                      int siloPort,
+                                                      int gatewayPort)
         {
-            var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localPrimarySiloEndpoint);
-            siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint)
-                // The IP address used for clustering / to be advertised in membership tables
-                .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback);
+            siloHostBuilder.UseLocalhostClustering();
 
             siloHostBuilder.Configure<ClusterOptions>(options =>
             {
@@ -101,14 +147,10 @@ namespace GeoSnapperDeployment
                 options.GatewayPort = gatewayPort;
             });
 
-            siloHostBuilder.ConfigureServices(ConfigureGlobalCoordinator)
-                           .ConfigureServices(ConfigureLocalGrains);
-
             siloHostBuilder.AddMemoryGrainStorageAsDefault();
         }
 
-
-        private Dictionary<string, SiloInfo> CreateReplicasDictionary(IList<SiloConfiguration> silos, int startPort, int startGatewayPort)
+        private Dictionary<string, SiloInfo> CreateReplicasDictionary(IReadOnlyList<SiloConfiguration> silos, int startPort, int startGatewayPort)
         {
             var replicas = new Dictionary<string, SiloInfo>();
 
@@ -166,16 +208,30 @@ namespace GeoSnapperDeployment
             return replicas;
         }
 
-        private static void ConfigureGlobalCoordinator(IServiceCollection services)
+        private static void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration)
         {
-            services.AddSingleton<ILoggerGroup, LoggerGroup>();
-            services.AddSingleton<ICoordMap, CoordMap>();
+            siloHostBuilder.ConfigureServices(serviceCollection => {
 
-            services.AddSingletonNamedService<PlacementStrategy, GlobalConfigGrainPlacementStrategy>(nameof(GlobalConfigGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigGrainPlacement>(typeof(GlobalConfigGrainPlacementStrategy));
+                serviceCollection.AddSingleton(globalConfiguration);
 
-            services.AddSingletonNamedService<PlacementStrategy, GlobalCoordGrainPlacementStrategy>(nameof(GlobalCoordGrainPlacementStrategy));
-            services.AddSingletonKeyedService<Type, IPlacementDirector, GlobalCoordGrainPlacement>(typeof(GlobalCoordGrainPlacementStrategy));
+                serviceCollection.AddSingleton<ILoggerGroup, LoggerGroup>();
+                serviceCollection.AddSingleton<ICoordMap, CoordMap>();
+
+                serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));
+                serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigurationGrainPlacement>(typeof(GlobalConfigurationGrainPlacementStrategy));
+
+                serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalCoordGrainPlacementStrategy>(nameof(GlobalCoordGrainPlacementStrategy));
+                serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, GlobalCoordGrainPlacement>(typeof(GlobalCoordGrainPlacementStrategy));
+            });
+        }
+
+        private static void ConfigureRegionalGrains(IServiceCollection services)
+        {
+            services.AddSingletonNamedService<PlacementStrategy, RegionalConfigGrainPlacementStrategy>(nameof(RegionalConfigGrainPlacementStrategy));
+            services.AddSingletonKeyedService<Type, IPlacementDirector, RegionalConfigGrainPlacement>(typeof(RegionalConfigGrainPlacement));
+
+            services.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
+            services.AddSingletonKeyedService<Type, IPlacementDirector, RegionalCoordinatorGrainPlacement>(typeof(RegionalCoordinatorGrainPlacement));
         }
 
         private static void ConfigureLocalGrains(IServiceCollection services)
