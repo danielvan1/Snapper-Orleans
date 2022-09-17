@@ -1,12 +1,15 @@
 using System;
+using System.Net;
 using Concurrency.Interface.Models;
 
 namespace GeoSnapperDeployment 
 {
     public class SiloInfoFactory : ISiloInfoFactory
     {
-        public SiloInfo Create(string clusterId, string serviceId, int siloId, int siloPort, int gatewayPort, string region, string homeRegion, bool IsReplica)
+        public SiloInfo Create(IPAddress ipAddress, string clusterId, string serviceId, int siloId, int siloPort, int gatewayPort, string region, string homeRegion, bool IsReplica)
         {
+            IPEndPoint IPAddress = new IPEndPoint(ipAddress, siloPort);
+
             return new SiloInfo()
             {
                 ClusterId = clusterId,

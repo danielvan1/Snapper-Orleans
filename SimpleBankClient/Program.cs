@@ -4,23 +4,28 @@ using Orleans.Hosting;
 using SmallBank.Interfaces;
 using Concurrency.Interface.Configuration;
 using Utilities;
+using Concurrency.Interface.Coordinator;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
 .Configure<ClusterOptions>(options =>
 {
-    options.ClusterId = "EU";
-    options.ServiceId = "EU";
+    options.ClusterId = "Snapper";
+    options.ServiceId = "Snapper";
 })
 .Build();
 
 await client.Connect();
 
 IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
+IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
+IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 
 // Spawn regional at each cluster
 
 await globalConfigGrain.InitializeGlobalCoordinators();
+await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
 
 // var actorId1 = 1;
 // var actorId2 = 2;

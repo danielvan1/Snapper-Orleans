@@ -3,10 +3,11 @@
     {
         "PrimarySiloEndpoint": 10000,
         "StartGatewayPort": 30000,
+        "ClusterId": "Snapper",
+        "ServiceId": "Snapper",
         "Silos": {
             "GlobalSilo": {
-                "ClusterId": "EU",
-                "ServiceId": "EU",
+                "IPAddress" : "127.0.0.1",
                 "SiloId": 10000,
                 "Region": "EU",
                 "SiloPort": 10000,
@@ -14,38 +15,34 @@
             },
             "RegionalSilos" : [
                 {
-                    "ClusterId" : "EU",
-                    "ServiceId" : "EU",
-                    "SiloId": 5000,
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15000,
                     "Region": "EU",
                     "SiloPort": 15000,
-                    "GatewayPort": 30004
+                    "GatewayPort": 30001
                 },
                 {
-                    "ClusterId" : "US",
-                    "ServiceId" : "US",
-                    "SiloId": 5001,
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15001,
                     "Region": "US",
                     "SiloPort": 15001,
-                    "GatewayPort": 30005
+                    "GatewayPort": 30002
                 }
             ],
             "LocalSilos": [
                 {
-                    "ClusterId" : "EU",
-                    "ServiceId" : "EU",
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 0,
                     "Region": "EU",
-                    "SiloPort": 10000,
-                    "GatewayPort": 30000
+                    "SiloPort": 20000,
+                    "GatewayPort": 30003
                 },
                 {
-                    "ClusterId" : "US",
-                    "ServiceId" : "US",
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 1,
                     "Region": "US",
-                    "SiloPort": 10001,
-                    "GatewayPort": 30001
+                    "SiloPort": 20001,
+                    "GatewayPort": 30004
                 }
             ]
         }

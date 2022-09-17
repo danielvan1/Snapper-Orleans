@@ -1,10 +1,10 @@
 namespace GeoSnapperDeployment.Models 
 {
-    public sealed class SiloConfiguration
+    public record SiloConfiguration
     {
-        public string ClusterId {get; init;} = string.Empty;
+        public string Region {get; init;}
 
-        public string ServiceId {get; init;} = string.Empty;
+        public string IPAddress {get; init;}
 
         public int SiloId {get; init;}
 

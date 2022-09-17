@@ -1,7 +1,11 @@
+using System.Net;
+
 namespace Concurrency.Interface.Models
 {
     public record SiloInfo
     {
+        public IPEndPoint ipEndPoint {get; init;}
+
         public string ClusterId {get; set;}
 
         public string ServiceId {get; set;}
