@@ -1,3 +1,4 @@
+using System.Net;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -133,7 +134,10 @@ namespace GeoSnapperDeployment
                                                       int siloPort,
                                                       int gatewayPort)
         {
-            siloHostBuilder.UseLocalhostClustering();
+            // siloHostBuilder.UseLocalhostClustering();
+            var primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, localPrimarySiloEndpoint);
+            siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint)
+                           .Configure<EndpointOptions>(options => options.AdvertisedIPAddress = IPAddress.Loopback);
 
             siloHostBuilder.Configure<ClusterOptions>(options =>
             {

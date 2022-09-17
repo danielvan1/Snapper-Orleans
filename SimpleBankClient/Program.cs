@@ -18,6 +18,8 @@ await client.Connect();
 
 IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
 
+// Spawn regional at each cluster
+
 await globalConfigGrain.InitializeGlobalCoordinators();
 
 // var actorId1 = 1;

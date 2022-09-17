@@ -17,6 +17,7 @@ namespace Concurrency.Implementation.GrainPlacement
     [Serializable]
     public class RegionalConfigGrainPlacementStrategy : PlacementStrategy
     {
+
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]

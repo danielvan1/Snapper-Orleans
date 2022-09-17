@@ -12,6 +12,7 @@ namespace Concurrency.Implementation.GrainPlacement
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             var silos = context.GetCompatibleSilos(target);   // get the list of registered silo hosts
+            Console.WriteLine($"silos: {string.Join(", ", silos)}");
 
             return Task.FromResult(silos[0]);
         }

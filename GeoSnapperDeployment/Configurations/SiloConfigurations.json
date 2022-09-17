@@ -4,16 +4,14 @@
         "PrimarySiloEndpoint": 10000,
         "StartGatewayPort": 30000,
         "Silos": {
-
             "GlobalSilo": {
                 "ClusterId": "EU",
                 "ServiceId": "EU",
                 "SiloId": 10000,
                 "Region": "EU",
-                "SiloPort": 20000,
+                "SiloPort": 10000,
                 "GatewayPort": 30000 
             },
-
             "RegionalSilos" : [
                 {
                     "ClusterId" : "EU",
@@ -32,7 +30,6 @@
                     "GatewayPort": 30005
                 }
             ],
-
             "LocalSilos": [
                 {
                     "ClusterId" : "EU",
