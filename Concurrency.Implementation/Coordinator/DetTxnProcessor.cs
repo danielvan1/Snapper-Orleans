@@ -88,7 +88,7 @@ namespace Concurrency.Implementation.Coordinator
             for (int i = 0; i < detRequests.Count; i++)
             {
                 var tid = ++token.lastEmitTid;
-                GnerateSchedulePerService(tid, curBatchID, detRequests[i]);
+                GenerateSchedulePerService(tid, curBatchID, detRequests[i]);
                 detRequestPromise[i].SetResult(new Tuple<long, long>(curBatchID, tid));
             }
             UpdateToken(token, curBatchID, -1);
@@ -98,7 +98,7 @@ namespace Concurrency.Implementation.Coordinator
             return curBatchID;
         }
 
-        public void GnerateSchedulePerService(long tid, long curBatchID, List<int> serviceList)
+        public void GenerateSchedulePerService(long tid, long curBatchID, List<int> serviceList)
         {
             if (bidToSubBatches.ContainsKey(curBatchID) == false)
             {

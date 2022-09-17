@@ -202,7 +202,7 @@ namespace Concurrency.Implementation.Coordinator
                     globalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(curBatchID, localTid));
 
                     var grainAccessInfo = globalTransactionInfo[globalBid][globalTid];
-                    detTxnProcessor.GnerateSchedulePerService(localTid, curBatchID, grainAccessInfo);
+                    detTxnProcessor.GenerateSchedulePerService(localTid, curBatchID, grainAccessInfo);
 
                     globalTidToLocalTidPerBatch[curBatchID].Add(globalTid, localTid);
                     globalDetRequestPromise.Remove(globalTid);
