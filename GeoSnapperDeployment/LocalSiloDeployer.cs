@@ -163,6 +163,9 @@ namespace GeoSnapperDeployment
             }
             siloHostBuilder
             .ConfigureEndpoints(IPAddress.Loopback, siloPort, gatewayPort)
+            //Can see the dashboard at: http://localhost:8080/#/
+            //TODO: Maybe revert it s.t. each dashboard is hosted on its own port
+            // Someone suggested it + maybe we can get some extra info for that particular silo
             .UseDashboard(options => { 
                 options.Port = 8080;
                 options.Host = "*";
