@@ -5,8 +5,8 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Utilities;
 
@@ -15,16 +15,16 @@ namespace Concurrency.Implementation.Configuration
     [GlobalConfigurationGrainPlacementStrategy]
     public class GlobalConfigurationGrain : Grain, IGlobalConfigurationGrain
     {
-        private readonly ILoggerGroup loggerGroup;  // this logger group is only accessible within this silo host
         private readonly ICoordMap coordMap;
         private readonly GlobalConfiguration globalConfiguration;
+        private readonly ILogger logger;  // this logger group is only accessible within this silo host
         private bool tokenEnabled;
         private ILocalConfigGrain[] configGrains;
 
-        public GlobalConfigurationGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, 
+        public GlobalConfigurationGrain(ILogger logger, ICoordMap coordMap, 
                                         GlobalConfiguration globalConfiguration)   // dependency injection
         {
-            this.loggerGroup = loggerGroup ?? throw new System.ArgumentNullException(nameof(loggerGroup));
+            this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
             this.coordMap = coordMap ?? throw new System.ArgumentNullException(nameof(coordMap));
             this.globalConfiguration = globalConfiguration ?? throw new System.ArgumentNullException(nameof(globalConfiguration));
 
@@ -42,9 +42,6 @@ namespace Concurrency.Implementation.Configuration
             return base.OnActivateAsync();
         }
 
-        public async Task Hej() {
-
-        }
         public async Task InitializeGlobalCoordinators()
         {
             // initialize global coordinators

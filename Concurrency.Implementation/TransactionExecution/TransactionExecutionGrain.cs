@@ -6,12 +6,12 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.TransactionExecution;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Implementation.TransactionExecution.Nondeterministic;
 using System.Runtime.Serialization;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
@@ -19,6 +19,8 @@ namespace Concurrency.Implementation.TransactionExecution
     [TransactionExecutionGrainPlacementStrategy]
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
+        private readonly ILogger logger;
+
         // grain basic info
         int myID;
         int mySiloID; 
@@ -29,8 +31,6 @@ namespace Concurrency.Implementation.TransactionExecution
         static IGlobalCoordGrain myGlobalCoord;
 
         // transaction execution
-        ILoggingProtocol log;
-        readonly ILoggerGroup loggerGroup;
         TransactionScheduler myScheduler;
         ITransactionalState<TState> state;
 
@@ -48,9 +48,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private SiloInfo siloInfo;
 
-        public TransactionExecutionGrain(ILoggerGroup loggerGroup, ICoordMap coordMap, string myClassName)
+        public TransactionExecutionGrain(ILogger logger, ICoordMap coordMap, string myClassName)
         {
-            this.loggerGroup = loggerGroup;
+            this.logger = logger;
             this.coordMap = coordMap;
             this.myClassName = myClassName;
             this.siloInfo = siloInfo;
@@ -109,6 +109,7 @@ namespace Concurrency.Implementation.TransactionExecution
             }
 
             detTxnExecutor = new DetTxnExecutor<TState>(
+                this.logger,
                 myID,
                 mySiloID,
                 coordMap,
@@ -117,8 +118,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 myGlobalCoord,
                 GrainFactory,
                 myScheduler,
-                state,
-                log);
+                state);
 
             nonDetTxnExecutor = new NonDetTxnExecutor<TState>(
                 myID,
@@ -130,10 +130,10 @@ namespace Concurrency.Implementation.TransactionExecution
                 state);
 
             nonDetCommitter = new NonDetCommitter<TState>(
+                this.logger,
                 myID,
                 coordinatorMap,
                 state,
-                log,
                 GrainFactory);
 
             return Task.CompletedTask;

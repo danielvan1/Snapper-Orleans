@@ -6,15 +6,16 @@ using Concurrency.Interface.Coordinator;
 using Orleans;
 using System.Diagnostics;
 using Concurrency.Interface.TransactionExecution;
-using Concurrency.Interface.Logging;
 using System.Runtime.Serialization;
-using MessagePack;
 using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
     public class DetTxnExecutor<TState> where TState : ICloneable, ISerializable
     {
+        private readonly ILogger logger;
+
         // grain basic info
         readonly int myID;
         readonly int siloID;
@@ -22,7 +23,6 @@ namespace Concurrency.Implementation.TransactionExecution
         // transaction execution
         TransactionScheduler myScheduler;
         ITransactionalState<TState> state;
-        ILoggingProtocol log;
 
         // local and global coordinators
         readonly int myLocalCoordID;
@@ -49,6 +49,7 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         public DetTxnExecutor(
+            ILogger logger,
             int myID,
             int siloID, 
             ICoordMap coordMap,
@@ -57,9 +58,10 @@ namespace Concurrency.Implementation.TransactionExecution
             IGlobalCoordGrain myGlobalCoord,
             IGrainFactory myGrainFactory,
             TransactionScheduler myScheduler,
-            ITransactionalState<TState> state,
-            ILoggingProtocol log)
+            ITransactionalState<TState> state
+            )
         {
+            this.logger = logger;
             this.myID = myID;
             this.siloID = siloID;
             this.coordMap = coordMap;
@@ -68,7 +70,6 @@ namespace Concurrency.Implementation.TransactionExecution
             this.myGlobalCoord = myGlobalCoord;
             this.myScheduler = myScheduler;
             this.state = state;
-            this.log = log;
 
             localBtchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
             detFuncResults = new Dictionary<long, BasicFuncResult>();
@@ -179,13 +180,6 @@ namespace Concurrency.Implementation.TransactionExecution
             var coordID = myScheduler.AckComplete(cxt.localBid, cxt.localTid);
             if (coordID != -1)   // the current batch has completed on this grain
             {
-                // TODO: only writer transaction needs to persist the updated grain state
-                if (log != null)
-                {
-                    var data = MessagePackSerializer.Serialize(state.GetCommittedState(cxt.localBid));
-                    await log.HandleOnCompleteInDeterministicProtocol(data, cxt.localBid, coordID);
-                } 
-
                 localBtchInfoPromise.Remove(cxt.localBid);
                 if (cxt.globalBid != -1)
                 {

@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
 using Orleans;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.Configuration
 {
@@ -10,10 +11,11 @@ namespace Concurrency.Implementation.Configuration
     public class RegionalConfigGrain : Grain, IRegionalConfigGrain
     {
         private readonly RegionalConfiguration regionalConfiguration;
+        private readonly ILogger logger;
 
-        public RegionalConfigGrain(RegionalConfiguration regionalConfiguration)
+        public RegionalConfigGrain(ILogger logger, RegionalConfiguration regionalConfiguration)
         {
-            Console.WriteLine($"Initializing regional coordinator Reached here");
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));
         }
 

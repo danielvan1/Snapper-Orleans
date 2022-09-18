@@ -5,8 +5,8 @@ using SmallBank.Interfaces;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Orleans.Transactions.Abstractions;
-using Concurrency.Interface.Logging;
 using Concurrency.Implementation.GrainPlacement;
+using Microsoft.Extensions.Logging;
 
 namespace SmallBank.Grains
 {
@@ -16,24 +16,13 @@ namespace SmallBank.Grains
     [TransactionExecutionGrainPlacementStrategy]
     class OrleansTransactionalAccountGrain : Orleans.Grain, IOrleansTransactionalAccountGrain
     {
-        readonly ILoggerGroup loggerGroup;
+        readonly ILogger logger;
         readonly ITransactionalState<BankAccount> state;
 
-        public OrleansTransactionalAccountGrain(ILoggerGroup loggerGroup, [TransactionalState("state")] ITransactionalState<BankAccount> state)
+        public OrleansTransactionalAccountGrain(ILogger logger, [TransactionalState("state")] ITransactionalState<BankAccount> state)
         {
-            this.loggerGroup = loggerGroup;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.state = state ?? throw new ArgumentNullException(nameof(state));
-        }
-
-        public Task SetIOCount()
-        {
-            loggerGroup.SetIOCount();
-            return Task.CompletedTask;
-        }
-
-        public Task<long> GetIOCount()
-        {
-            return Task.FromResult(loggerGroup.GetIOCount());
         }
 
         async Task<TransactionResult> Init(object funcInput)

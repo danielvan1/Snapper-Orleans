@@ -3,13 +3,13 @@ using Orleans;
 using Utilities;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.TransactionExecution;
 using Concurrency.Interface.Models;
 using Orleans.Concurrency;
 using System.Linq;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.Coordinator
 {
@@ -22,8 +22,7 @@ namespace Concurrency.Implementation.Coordinator
         readonly ICoordMap coordMap;
         ILocalCoordGrain neighborCoord;
         Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
-        ILoggingProtocol log;
-        readonly ILoggerGroup loggerGroup;
+        private readonly ILogger logger;
 
         // PACT
         DetTxnProcessor detTxnProcessor;
@@ -50,6 +49,12 @@ namespace Concurrency.Implementation.Coordinator
         public LocalCoordGrain(SiloInfo siloInfo)
         {
             this.SiloInfo = siloInfo;
+        }
+
+        public LocalCoordGrain(ILogger logger, ICoordMap coordMap)
+        {
+            this.logger = logger;
+            this.coordMap = coordMap;
         }
 
         public Task CheckGC()
@@ -98,11 +103,6 @@ namespace Concurrency.Implementation.Coordinator
             return base.OnActivateAsync();
         }
 
-        public LocalCoordGrain(ILoggerGroup loggerGroup, ICoordMap coordMap)
-        {
-            this.loggerGroup = loggerGroup;
-            this.coordMap = coordMap;
-        }
 
         public Task ReceiveBatchSchedule(SubBatch batch)
         {
@@ -219,8 +219,6 @@ namespace Concurrency.Implementation.Coordinator
         {
             var curScheduleMap = bidToSubBatches[bid];
 
-            if (log != null) await log.HandleOnPrepareInDeterministicProtocol(bid, new HashSet<int>(curScheduleMap.Keys));
-
             long globalBid = -1;
             if (localBidToGlobalBid.ContainsKey(bid))
                 globalBid = localBidToGlobalBid[bid];
@@ -283,8 +281,6 @@ namespace Concurrency.Implementation.Coordinator
                 globalBidToIsPrevBatchGlobal.Remove(globalBid);
             } 
 
-            if (log != null) await log.HandleOnCommitInDeterministicProtocol(bid);
-
             detTxnProcessor.AckBatchCommit(bid);
 
             var curScheduleMap = bidToSubBatches[bid];
@@ -335,7 +331,6 @@ namespace Concurrency.Implementation.Coordinator
             
             neighborCoord = GrainFactory.GetGrain<ILocalCoordGrain>(neighborID);
 
-            loggerGroup.GetLoggingProtocol(myID, out log);
             Console.WriteLine($"Local coord {myID} initialize logging {Constants.loggingType}.");
 
             return Task.CompletedTask;

@@ -2,8 +2,6 @@
 using Microsoft.Extensions.Configuration;
 using Orleans.Hosting;
 using Unity;
-using Orleans;
-using Orleans.Configuration;
 
 namespace GeoSnapperDeployment 
 {

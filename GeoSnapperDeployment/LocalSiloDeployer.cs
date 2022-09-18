@@ -1,10 +1,8 @@
 using System.Net;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +11,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
+using Microsoft.Extensions.Logging;
 
 namespace GeoSnapperDeployment
 {
@@ -180,7 +179,8 @@ namespace GeoSnapperDeployment
             {
                 options.ClusterId = clusterId;
                 options.ServiceId = serviceId;
-            });
+            })
+            .ConfigureLogging(logging => logging.AddConsole());
         }
 
         private Dictionary<string, SiloInfo> CreateReplicasDictionary(IReadOnlyList<SiloConfiguration> silos, int startPort, int startGatewayPort)
@@ -244,13 +244,11 @@ namespace GeoSnapperDeployment
         private static void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, Dictionary<string, SiloInfo> siloInfos)
         {
             siloHostBuilder.ConfigureServices(serviceCollection => {
-
                 serviceCollection.AddSingleton(globalConfiguration);
                 RegionalConfiguration regionalConfiguration = new RegionalConfiguration();
                 serviceCollection.AddSingleton(regionalConfiguration);
                 serviceCollection.AddSingleton(siloInfos);
 
-                serviceCollection.AddSingleton<ILoggerGroup, LoggerGroup>();
                 serviceCollection.AddSingleton<ICoordMap, CoordMap>();
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));

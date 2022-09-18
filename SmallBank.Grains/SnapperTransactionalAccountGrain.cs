@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.TransactionExecution;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Logging;
+using Microsoft.Extensions.Logging;
 using SmallBank.Interfaces;
 using Utilities;
 
@@ -13,7 +13,7 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
-        public SnapperTransactionalAccountGrain(ILoggerGroup loggerGroup, ICoordMap coordMap) : base(loggerGroup, coordMap, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger logger, ICoordMap coordMap) : base(logger, coordMap, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
         }
 

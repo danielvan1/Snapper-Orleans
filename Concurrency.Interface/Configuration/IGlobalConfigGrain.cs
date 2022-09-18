@@ -6,6 +6,5 @@ namespace Concurrency.Interface.Configuration
     public interface IGlobalConfigurationGrain : IGrainWithIntegerKey 
     {
         Task InitializeGlobalCoordinators();
-        Task Hej();
     }
 }

@@ -4,8 +4,8 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Logging;
 using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
 using Utilities;
@@ -19,8 +19,7 @@ namespace Concurrency.Implementation.Coordinator
         // coord basic info
         int myID;
         ICoordMap coordMap;
-        ILoggerGroup loggerGroup;
-        ILoggingProtocol log;
+        private readonly ILogger logger;
         IGlobalCoordGrain neighborCoord;
 
         // PACT
@@ -62,9 +61,9 @@ namespace Concurrency.Implementation.Coordinator
             return base.OnActivateAsync();
         }
 
-        public GlobalCoordGrain(ILoggerGroup loggerGroup, ICoordMap coordMap)
+        public GlobalCoordGrain(ILogger logger, ICoordMap coordMap)
         {
-            this.loggerGroup = loggerGroup;
+            this.logger = logger;
             this.coordMap = coordMap;
         }
 
@@ -108,7 +107,6 @@ namespace Concurrency.Implementation.Coordinator
         async Task EmitBatch(long bid)
         {
             var curScheduleMap = bidToSubBatches[bid];
-            if (log != null) await log.HandleOnPrepareInDeterministicProtocol(bid, new HashSet<int>(curScheduleMap.Keys));
 
             var coords = coordPerBatchPerSilo[bid];
             foreach (var item in curScheduleMap)
@@ -127,7 +125,6 @@ namespace Concurrency.Implementation.Coordinator
 
             // commit the batch
             await detTxnProcessor.WaitPrevBatchToCommit(bid);
-            if (log != null) await log.HandleOnCommitInDeterministicProtocol(bid);
             detTxnProcessor.AckBatchCommit(bid);
 
             // send ACKs to local coordinators

@@ -3,11 +3,11 @@ using Utilities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Interface.TransactionExecution;
-using Concurrency.Interface.Logging;
 using Orleans;
 using System.Runtime.Serialization;
 using MessagePack;
 using System.Diagnostics;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.TransactionExecution.Nondeterministic
 {
@@ -16,21 +16,21 @@ namespace Concurrency.Implementation.TransactionExecution.Nondeterministic
     {
         readonly int myID;
         readonly Dictionary<long, int> coordinatorMap;    // <global ACT tid, the grain ID who starts the ACT>
-        readonly ILoggingProtocol log;
+        readonly ILogger logger;
         readonly IGrainFactory myGrainFactory;
 
         ITransactionalState<TState> state;
 
         public NonDetCommitter(
+            ILogger logger,
             int myID,
             Dictionary<long, int> coordinatorMap,
-            ITransactionalState<TState> state, 
-            ILoggingProtocol log, 
+            ITransactionalState<TState> state,
             IGrainFactory myGrainFactory)
         {
             this.myID = myID;
             this.state = state;
-            this.log = log;
+            this.logger = logger;
             this.myGrainFactory = myGrainFactory;
             this.coordinatorMap = coordinatorMap;
         }
@@ -72,8 +72,6 @@ namespace Concurrency.Implementation.TransactionExecution.Nondeterministic
 
         public async Task<bool> CoordPrepare(long tid, Dictionary<int, OpOnGrain> grainOpInfo)
         {
-            if (log != null) await log.HandleBeforePrepareIn2PC(tid, myID, new HashSet<int>(grainOpInfo.Keys));
-
             var prepareTask = new List<Task<bool>>();
             foreach (var item in grainOpInfo)
             {
@@ -93,8 +91,6 @@ namespace Concurrency.Implementation.TransactionExecution.Nondeterministic
 
         public async Task CoordCommit(long tid, NonDetFuncResult funcResult)
         {
-            if (log != null) await log.HandleOnCommitIn2PC(tid, coordinatorMap[tid]);
-
             var commitTask = new List<Task>();
             foreach (var item in funcResult.grainOpInfo)
             {
@@ -131,18 +127,12 @@ namespace Concurrency.Implementation.TransactionExecution.Nondeterministic
         public async Task<bool> Prepare(long tid, bool isReader)
         {
             var vote = await state.Prepare(tid, isReader);
-            if (vote && log != null && !isReader)
-            {
-                var data = MessagePackSerializer.Serialize(state.GetPreparedState(tid));
-                await log.HandleOnPrepareIn2PC(data, tid, coordinatorMap[tid]);
-            } 
             return vote;
         }
 
         public async Task Commit(long tid)
         {
             state.Commit(tid);
-            if (log != null) await log.HandleOnCommitIn2PC(tid, coordinatorMap[tid]);
         }
 
         public void Abort(long tid)
