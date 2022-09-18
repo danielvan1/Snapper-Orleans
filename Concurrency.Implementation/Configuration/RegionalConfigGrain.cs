@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
 
@@ -12,11 +15,19 @@ namespace Concurrency.Implementation.Configuration
     {
         private readonly RegionalConfiguration regionalConfiguration;
         private readonly ILogger logger;
+        private bool tokenEnabled;
 
         public RegionalConfigGrain(ILogger logger, RegionalConfiguration regionalConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));
+        }
+
+        public override Task OnActivateAsync()
+        {
+            this.tokenEnabled = false;
+
+            return base.OnActivateAsync();
         }
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
@@ -30,38 +41,32 @@ namespace Concurrency.Implementation.Configuration
                 return;
             }
 
+            var initRegionalCoordinatorTasks = new List<Task>();
 
-            // var initGlobalCoordinatorTasks = new List<Task>();
+            // Connecting last coordinator with the first, so making the ring of coordinators circular.
+            var coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(silos - 1, currentRegion);
+            var nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
+            initRegionalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
-            // // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            // var coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(silos - 1, regions[silos - 1]);
-            // var nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, regions[0]);
-            // initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
+            for (int i = 0; i < silos; i++)
+            {
+                coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i, currentRegion);
+                nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i + 1, currentRegion);
 
-            // for (int i = 0; i < silos; i++)
-            // {
-            //     string region = regions[i];
-            //     string nextRegion = regions[i + 1];
+                initRegionalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
+            }
 
-            //     coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i, region);
-            //     nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i + 1, nextRegion);
+            await Task.WhenAll(initRegionalCoordinatorTasks);
 
-            //     initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
-            // }
+            this.logger.LogInformation($"Initialized all regional coordinators in region {currentRegion}");
 
-            // await Task.WhenAll(initGlobalCoordinatorTasks);
-
-            // Console.WriteLine("Initialized all global coordinators");
-
-            // if (!this.tokenEnabled)
-            // {
-            //     var coordinator0 = GrainFactory.GetGrain<IGlobalCoordGrain>(0, regions[0]);
-            //     BasicToken token = new BasicToken();
-            //     await coordinator0.PassToken(token);
-            //     this.tokenEnabled = true;
-            // }
-
-
+            if (!this.tokenEnabled)
+            {
+                var coordinator0 = GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
+                BasicToken token = new BasicToken();
+                await coordinator0.PassToken(token);
+                this.tokenEnabled = true;
+            }
         }
     }
 }

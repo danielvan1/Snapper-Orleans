@@ -18,6 +18,7 @@ var client = new ClientBuilder()
 await client.Connect();
 
 IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
+await globalConfigGrain.InitializeGlobalCoordinators();
 
 IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
 IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");

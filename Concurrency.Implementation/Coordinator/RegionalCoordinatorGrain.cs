@@ -14,12 +14,12 @@ namespace Concurrency.Implementation.Coordinator
 {
     [Reentrant]
     [RegionalCoordinatorGrainPlacementStrategy]
-    public class RegionalCoordinatorGrain : Grain, IGlobalCoordGrain
+    public class RegionalCoordinatorGrain : Grain, IRegionalCoordinatorGrain
     {
         // coord basic info
         int myID;
         ICoordMap coordMap;
-        IGlobalCoordGrain neighborCoord;
+        IRegionalCoordinatorGrain neighborCoord;
         private readonly ILogger logger;
 
         // PACT
@@ -35,10 +35,9 @@ namespace Concurrency.Implementation.Coordinator
         DateTime timeOfBatchGeneration;
         double batchSizeInMSecs;
 
-        public RegionalCoordinatorGrain(ILogger logger, ICoordMap coordMap)
+        public RegionalCoordinatorGrain(ILogger logger)
         {
             this.logger = logger;
-            this.coordMap = coordMap;
         }
 
         public Task CheckGC()
@@ -149,7 +148,7 @@ namespace Concurrency.Implementation.Coordinator
             await detTxnProcessor.WaitBatchCommit(bid);
         }
 
-        public Task SpawnGlobalCoordGrain(IGlobalCoordGrain neighbor)
+        public Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor)
         {
             this.detTxnProcessor.Init();
             this.nonDetTxnProcessor.Init();
@@ -162,7 +161,8 @@ namespace Concurrency.Implementation.Coordinator
             for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
             this.timeOfBatchGeneration = DateTime.Now;
 
-            Console.WriteLine($"Global coord {myID} initialize logging {Constants.loggingType}, batch size = {Helper.ChangeFormat(batchSizeInMSecs, 0)}ms");
+            this.logger.LogInformation($"Regional coordinator {myID} initialize logging {Constants.loggingType}, batch size = {Helper.ChangeFormat(batchSizeInMSecs, 0)}ms");
+
 
             return Task.CompletedTask;
         }
