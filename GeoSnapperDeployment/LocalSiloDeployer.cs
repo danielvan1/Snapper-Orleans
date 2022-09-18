@@ -243,11 +243,15 @@ namespace GeoSnapperDeployment
 
         private static void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, Dictionary<string, SiloInfo> siloInfos)
         {
+
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger=> Logger.AddConsole());
+            ILogger logger = loggerFactory.CreateLogger("smt");
             siloHostBuilder.ConfigureServices(serviceCollection => {
                 serviceCollection.AddSingleton(globalConfiguration);
                 RegionalConfiguration regionalConfiguration = new RegionalConfiguration();
                 serviceCollection.AddSingleton(regionalConfiguration);
                 serviceCollection.AddSingleton(siloInfos);
+                serviceCollection.AddSingleton(logger);
 
                 serviceCollection.AddSingleton<ICoordMap, CoordMap>();
 
@@ -264,10 +268,13 @@ namespace GeoSnapperDeployment
 
         private static void ConfigureRegionalGrains(SiloHostBuilder siloHostBuilder, Dictionary<string, SiloInfo> siloInfos, RegionalConfiguration regionalConfiguration)
         {
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger=> Logger.AddConsole());
+            ILogger logger = loggerFactory.CreateLogger("smt");
             siloHostBuilder.ConfigureServices(services => 
             {
                 services.AddSingleton(siloInfos);
                 services.AddSingleton(regionalConfiguration);
+                services.AddSingleton(logger);
 
                 //services.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
                 //services.AddSingletonKeyedService<Type, IPlacementDirector, RegionalCoordinatorGrainPlacement>(typeof(RegionalCoordinatorGrainPlacement));

@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            Console.WriteLine($"Initializing regional coordinators {currentRegion}");
+            //this.logger.LogInformation(0, null, "InitializeRegionalCoordinators", null);
 
             // if(this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
             // {
