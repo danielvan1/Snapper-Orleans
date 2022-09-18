@@ -19,7 +19,8 @@ namespace GeoSnapperDeployment
                 GatewayPort = gatewayPort,
                 Region = region,
                 HomeRegion = homeRegion,
-                IsReplica = IsReplica
+                IsReplica = IsReplica,
+                ipEndPoint = IPAddress
             };
         }
     }

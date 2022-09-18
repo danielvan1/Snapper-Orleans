@@ -18,11 +18,12 @@ var client = new ClientBuilder()
 await client.Connect();
 
 IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
-//IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
 
+IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
 IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 //IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(0, "US");
 await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
+await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
 
 // Spawn regional at each cluster
 

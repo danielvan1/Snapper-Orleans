@@ -21,16 +21,22 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            // long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
-            string region = "EU";
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
             if(this.silos.TryGetValue(region, out SiloInfo siloInfo))
             {
                 Console.WriteLine($"siloInfo: {siloInfo}");
                 Console.WriteLine("HerPDerp2");
-                Console.WriteLine(string.Join(" ,", context.GetCompatibleSilos(target)));
+                foreach (var siloAddress2 in context.GetCompatibleSilos(target))
+                {
+                    Console.WriteLine("----");
+                    Console.WriteLine(siloAddress2.Endpoint.Address.ToString() + siloAddress2.Endpoint.Port.ToString());
+                    Console.WriteLine(siloInfo.ipEndPoint.Address.ToString() + siloInfo.SiloPort.ToString());
+                    Console.WriteLine("----");
+                }
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Port == 15001)
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.ToString() == siloInfo.ipEndPoint.Address.ToString() &&
+                                                                       siloAddress.Endpoint.Port == siloInfo.SiloPort)
                                                  .First();   
 
 
