@@ -26,13 +26,14 @@ namespace Concurrency.Implementation.Configuration
         public override Task OnActivateAsync()
         {
             this.tokenEnabled = false;
+            this.logger.LogInformation($"OnActivateAsync is called inside:{this.IdentityString}");
 
             return base.OnActivateAsync();
         }
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation(0, null, $"InitializeRegionalCoordinators in region {currentRegion}", null);
+            this.logger.LogInformation($"InitializeRegionalCoordinators in region {currentRegion}");
 
             if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
             {
