@@ -1,9 +1,7 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
-using Concurrency.Interface.Coordinator;
 using Orleans;
 
 namespace Concurrency.Implementation.Configuration
@@ -15,10 +13,8 @@ namespace Concurrency.Implementation.Configuration
 
         public RegionalConfigGrain(RegionalConfiguration regionalConfiguration)
         {
-
-            Console.WriteLine($"Initializing regional coordinators Reached here1");
+            Console.WriteLine($"Initializing regional coordinator Reached here");
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));
-            Console.WriteLine($"Initializing regional coordinators Reached here2");
         }
 
         public async Task InitializeRegionalCoordinators(string currentRegion)

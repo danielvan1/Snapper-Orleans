@@ -1,16 +1,16 @@
 {
     "SiloConfigurations" :
     {
-        "PrimarySiloEndpoint": 10000,
-        "StartGatewayPort": 30000,
+        "PrimarySiloEndpoint": 30000,
+        "StartGatewayPort": 6000,
         "ClusterId": "Snapper",
         "ServiceId": "Snapper",
         "Silos": {
             "GlobalSilo": {
                 "IPAddress" : "127.0.0.1",
                 "SiloId": 10000,
-                "Region": "EU",
-                "SiloPort": 10000,
+                "Region": "Global",
+                "SiloPort": 11111,
                 "GatewayPort": 30000 
             },
             "RegionalSilos" : [
@@ -19,14 +19,14 @@
                     "SiloId": 15000,
                     "Region": "EU",
                     "SiloPort": 15000,
-                    "GatewayPort": 30001
+                    "GatewayPort": 30002
                 },
                 {
                     "IPAddress" : "127.0.0.1",
                     "SiloId": 15001,
                     "Region": "US",
                     "SiloPort": 15001,
-                    "GatewayPort": 30002
+                    "GatewayPort": 30003
                 }
             ],
             "LocalSilos": [
@@ -35,14 +35,14 @@
                     "SiloId": 0,
                     "Region": "EU",
                     "SiloPort": 20000,
-                    "GatewayPort": 30003
+                    "GatewayPort": 30004
                 },
                 {
                     "IPAddress" : "127.0.0.1",
                     "SiloId": 1,
-                    "Region": "US",
+                    "Region": "EU",
                     "SiloPort": 20001,
-                    "GatewayPort": 30004
+                    "GatewayPort": 30005
                 }
             ]
         }

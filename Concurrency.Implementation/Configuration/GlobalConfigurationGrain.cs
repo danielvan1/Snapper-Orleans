@@ -42,6 +42,9 @@ namespace Concurrency.Implementation.Configuration
             return base.OnActivateAsync();
         }
 
+        public async Task Hej() {
+
+        }
         public async Task InitializeGlobalCoordinators()
         {
             // initialize global coordinators

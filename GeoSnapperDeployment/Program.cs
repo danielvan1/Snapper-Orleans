@@ -2,6 +2,8 @@
 using Microsoft.Extensions.Configuration;
 using Orleans.Hosting;
 using Unity;
+using Orleans;
+using Orleans.Configuration;
 
 namespace GeoSnapperDeployment 
 {
@@ -20,6 +22,8 @@ namespace GeoSnapperDeployment
             {
                 throw new ArgumentException("Deployment type needs to be specified");
             }
+
+            //Can see the dashboard at: http://localhost:8080/#/
 
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);

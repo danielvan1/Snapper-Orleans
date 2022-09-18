@@ -15,30 +15,31 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public RegionalConfigGrainPlacement(Dictionary<string, SiloInfo> silos)
         {
-            Console.WriteLine("Herpadmapsodmasod");
             this.silos = silos ?? throw new ArgumentNullException(nameof(silos));
             Console.WriteLine(string.Join(", ", silos));
-            Console.WriteLine("Herpadmapsodmasod");
         }
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             // long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
             string region = "EU";
-            Console.WriteLine("HerPDerp");
 
             if(this.silos.TryGetValue(region, out SiloInfo siloInfo))
             {
+                Console.WriteLine($"siloInfo: {siloInfo}");
+                Console.WriteLine("HerPDerp2");
+                Console.WriteLine(string.Join(" ,", context.GetCompatibleSilos(target)));
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Equals(siloInfo.ipEndPoint))
+                                                 .Where(siloAddress => siloAddress.Endpoint.Port == 15001)
                                                  .First();   
 
 
                 return Task.FromResult(siloAddress);
             }
 
+            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+            return Task.FromResult(silos[0]);
             // TODO: Handle this in a better way.
-            throw new Exception("HerpDerp");
         }
     }
 
