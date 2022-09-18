@@ -7,15 +7,12 @@ using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
-using Microsoft.Extensions.Logging;
-using Amazon.DynamoDBv2.Model;
-using Microsoft.AspNetCore.Mvc.ModelBinding.Binders;
-
 namespace GeoSnapperDeployment
 {
     public class LocalSiloDeployer
@@ -34,7 +31,7 @@ namespace GeoSnapperDeployment
 
             IPEndPoint nullPrimarySiloEndpoint = null;
 
-            ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfigurations.ClusterId, 
+            ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfigurations.ClusterId,
                                              siloConfigurations.ServiceId, nullPrimarySiloEndpoint,
                                              primarySiloConfiguration.SiloPort, primarySiloConfiguration.GatewayPort);
 
@@ -67,7 +64,7 @@ namespace GeoSnapperDeployment
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
             ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfigurations.ClusterId, siloConfigurations.ServiceId,
                                              primarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
-                                            
+
             GlobalConfiguration globalConfiguration = this.CreateGlobalConfiguration(siloConfigurations);
 
             ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
@@ -93,7 +90,7 @@ namespace GeoSnapperDeployment
 
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
-            foreach(SiloConfiguration siloConfiguration in silos)
+            foreach (SiloConfiguration siloConfiguration in silos)
             {
                 var siloHostBuilder = new SiloHostBuilder();
 
@@ -124,16 +121,16 @@ namespace GeoSnapperDeployment
 
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
-            foreach((string siloRegion, SiloInfo siloInfo) in replicas)
+            foreach ((string siloRegion, SiloInfo siloInfo) in replicas)
             {
                 var siloHostBuilder = new SiloHostBuilder();
 
-                this.ConfigureLocalDeploymentSiloHost(siloHostBuilder, 
-                                                      siloInfo.ClusterId, 
-                                                      siloInfo.ServiceId, 
-                                                      primarySiloEndpoint, 
+                this.ConfigureLocalDeploymentSiloHost(siloHostBuilder,
+                                                      siloInfo.ClusterId,
+                                                      siloInfo.ServiceId,
+                                                      primarySiloEndpoint,
                                                       siloInfo.SiloPort, siloInfo.GatewayPort);
-                
+
                 siloHostBuilder.ConfigureServices(serviceCollection => serviceCollection.AddSingleton(replicas));
 
                 var siloHost = siloHostBuilder.Build();
@@ -151,7 +148,7 @@ namespace GeoSnapperDeployment
         }
 
 
-        private void ConfigureLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder, 
+        private void ConfigureLocalDeploymentSiloHost(SiloHostBuilder siloHostBuilder,
                                                       string clusterId,
                                                       string serviceId,
                                                       IPEndPoint primarySiloEndpoint,
@@ -160,12 +157,13 @@ namespace GeoSnapperDeployment
         {
             siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint);
             siloHostBuilder.ConfigureEndpoints(IPAddress.Loopback, siloPort, gatewayPort)
-                           .UseDashboard(options => { 
+                           .UseDashboard(options =>
+                           {
                                options.Port = 8080;
                                options.Host = "*";
                                options.HostSelf = true;
                                options.CounterUpdateIntervalMs = 1000;
-                               })
+                           })
                            .Configure<EndpointOptions>(options =>
                            {
                                options.AdvertisedIPAddress = IPAddress.Loopback;
@@ -182,7 +180,7 @@ namespace GeoSnapperDeployment
             var replicas = new Dictionary<string, SiloInfo>();
 
             // Create main regions
-            for(int i = 0; i < silos.Count; i++)
+            for (int i = 0; i < silos.Count; i++)
             {
                 var siloConfiguration = silos[i];
                 int siloId = siloConfiguration.SiloId;
@@ -203,17 +201,17 @@ namespace GeoSnapperDeployment
             int startId = silos.Count;
 
             // Create replicas
-            for(int i = 0; i < silos.Count; i++)
+            for (int i = 0; i < silos.Count; i++)
             {
                 var currentSiloConfiguration = silos[i];
 
-                for(int j = 0; j < silos.Count; j++)
+                for (int j = 0; j < silos.Count; j++)
                 {
-                    if(i == j) continue;
+                    if (i == j) continue;
 
                     var replicaSiloConfiguration = silos[j];
 
-                    int siloId = startId; 
+                    int siloId = startId;
                     int siloPort = startPort;
                     int gatewayPort = startGatewayPort;
                     string deployRegion = replicaSiloConfiguration.Region;
@@ -241,9 +239,12 @@ namespace GeoSnapperDeployment
                                                                 .Distinct()
                                                                 .ToList();
 
-            return new GlobalConfiguration() 
+            string deploymentRegion = siloConfigurations.Silos.GlobalSilo.Region;
+
+            return new GlobalConfiguration()
             {
-                Regions = regions
+                Regions = regions,
+                DeploymentRegion = deploymentRegion
             };
         }
 
@@ -251,12 +252,12 @@ namespace GeoSnapperDeployment
         {
             var regionalSilos = new Dictionary<string, SiloInfo>();
 
-            foreach(SiloConfiguration siloConfiguration in siloConfigurations.Silos.RegionalSilos)
+            foreach (SiloConfiguration siloConfiguration in siloConfigurations.Silos.RegionalSilos)
             {
                 bool isReplica = false;
 
                 SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloId,
-                                                                siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region, 
+                                                                siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
                                                                 siloConfiguration.Region, isReplica);
 
                 regionalSilos.Add(siloConfiguration.Region, siloInfo);
@@ -268,10 +269,10 @@ namespace GeoSnapperDeployment
         private RegionalConfiguration CreateRegionalConfiguration(SiloConfigurations siloConfigurations)
         {
             Dictionary<string, int> numberOfSilosPerRegion = new Dictionary<string, int>();
-            foreach(var siloConfiguration in siloConfigurations.Silos.LocalSilos)
+            foreach (var siloConfiguration in siloConfigurations.Silos.LocalSilos)
             {
                 string region = siloConfiguration.Region;
-                if(numberOfSilosPerRegion.ContainsKey(region))
+                if (numberOfSilosPerRegion.ContainsKey(region))
                 {
                     numberOfSilosPerRegion[region]++;
                 }
@@ -290,9 +291,10 @@ namespace GeoSnapperDeployment
         private static void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration)
         {
 
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger=> Logger.AddConsole());
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
             ILogger logger = loggerFactory.CreateLogger("smt");
-            siloHostBuilder.ConfigureServices(serviceCollection => {
+            siloHostBuilder.ConfigureServices(serviceCollection =>
+            {
                 serviceCollection.AddSingleton(globalConfiguration);
                 serviceCollection.AddSingleton(logger);
                 serviceCollection.AddSingleton<ICoordMap, CoordMap>();
@@ -307,9 +309,9 @@ namespace GeoSnapperDeployment
 
         private static void ConfigureRegionalGrains(SiloHostBuilder siloHostBuilder, RegionalSilos regionalSilos, RegionalConfiguration regionalConfiguration)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger=> Logger.AddConsole());
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
             ILogger logger = loggerFactory.CreateLogger("smt");
-            siloHostBuilder.ConfigureServices(services => 
+            siloHostBuilder.ConfigureServices(services =>
             {
                 services.AddSingleton(regionalSilos);
                 services.AddSingleton(regionalConfiguration);

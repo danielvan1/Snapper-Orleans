@@ -23,20 +23,20 @@ namespace Concurrency.Implementation.GrainPlacement
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
-            if(this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
-                                                 .First();   
-
+                                                 .First();
 
                 return Task.FromResult(siloAddress);
             }
 
             // TODO: Handle this in a better way.
             SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-            return Task.FromResult(silos[0]); }
+            return Task.FromResult(silos[0]);
+        }
     }
 
     [Serializable]
@@ -46,7 +46,7 @@ namespace Concurrency.Implementation.GrainPlacement
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public sealed class RegionalConfigGrainPlacementStrategyAttribute  : PlacementAttribute
+    public sealed class RegionalConfigGrainPlacementStrategyAttribute : PlacementAttribute
 
     {
         public RegionalConfigGrainPlacementStrategyAttribute() : base(new RegionalConfigGrainPlacementStrategy())

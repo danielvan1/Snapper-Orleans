@@ -11,7 +11,7 @@
                 "SiloId": 10000,
                 "Region": "Global",
                 "SiloPort": 11111,
-                "GatewayPort": 30000 
+                "GatewayPort": 30000
             },
 
             "GlobalSilo": {
@@ -19,7 +19,7 @@
                 "SiloId": 10001,
                 "Region": "EU",
                 "SiloPort": 11112,
-                "GatewayPort": 30001 
+                "GatewayPort": 30001
             },
 
             "RegionalSilos" : [
@@ -50,7 +50,7 @@
                 {
                     "IPAddress" : "127.0.0.1",
                     "SiloId": 1,
-                    "Region": "EU",
+                    "Region": "US",
                     "SiloPort": 20001,
                     "GatewayPort": 30005
                 }

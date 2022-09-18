@@ -1,4 +1,4 @@
-namespace GeoSnapperDeployment.Models 
+namespace GeoSnapperDeployment.Models
 {
     public record SiloConfiguration
     {

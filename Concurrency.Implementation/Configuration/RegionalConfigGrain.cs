@@ -2,8 +2,8 @@ using System;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
-using Orleans;
 using Microsoft.Extensions.Logging;
+using Orleans;
 
 namespace Concurrency.Implementation.Configuration
 {
@@ -21,22 +21,24 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation(0, null, "InitializeRegionalCoordinators", null);
+            this.logger.LogInformation(0, null, $"InitializeRegionalCoordinators in region {currentRegion}", null);
 
-            // if(this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
-            // {
+            if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
+            {
+                this.logger.LogError($"Could not find number of silos in the region {currentRegion}");
 
-            // }
+                return;
+            }
 
 
             // var initGlobalCoordinatorTasks = new List<Task>();
 
-            // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            // var coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(regions.Count - 1, regions[regions.Count - 1]);
-            // var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(0, regions[0]);
+            // // Connecting last coordinator with the first, so making the ring of coordinators circular.
+            // var coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(silos - 1, regions[silos - 1]);
+            // var nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, regions[0]);
             // initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
-            // for (int i = 0; i < regions.Count - 1; i++)
+            // for (int i = 0; i < silos; i++)
             // {
             //     string region = regions[i];
             //     string nextRegion = regions[i + 1];

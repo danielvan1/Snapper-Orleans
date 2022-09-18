@@ -15,17 +15,13 @@ namespace Concurrency.Implementation.Configuration
     [GlobalConfigurationGrainPlacementStrategy]
     public class GlobalConfigurationGrain : Grain, IGlobalConfigurationGrain
     {
-        private readonly ICoordMap coordMap;
         private readonly GlobalConfiguration globalConfiguration;
         private readonly ILogger logger;  // this logger group is only accessible within this silo host
         private bool tokenEnabled;
-        private ILocalConfigGrain[] configGrains;
 
-        public GlobalConfigurationGrain(ILogger logger, ICoordMap coordMap, 
-                                        GlobalConfiguration globalConfiguration)   // dependency injection
+        public GlobalConfigurationGrain(ILogger logger, GlobalConfiguration globalConfiguration)   // dependency injection
         {
             this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
-            this.coordMap = coordMap ?? throw new System.ArgumentNullException(nameof(coordMap));
             this.globalConfiguration = globalConfiguration ?? throw new System.ArgumentNullException(nameof(globalConfiguration));
 
             // create the log folder if not exists
@@ -47,22 +43,22 @@ namespace Concurrency.Implementation.Configuration
             // initialize global coordinators
             Console.WriteLine("Initializing global coordinators");
             IReadOnlyList<string> regions = this.globalConfiguration.Regions;
+            string deploymentRegion = this.globalConfiguration.DeploymentRegion;
             Console.WriteLine($"The given regions are: {string.Join(", ", regions)}");
 
             var initGlobalCoordinatorTasks = new List<Task>();
 
             // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(regions.Count - 1, regions[regions.Count - 1]);
-            var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(0, regions[0]);
+            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(regions.Count - 1, deploymentRegion);
+            var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(0, deploymentRegion);
             initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
             for (int i = 0; i < regions.Count - 1; i++)
             {
-                string region = regions[i];
                 string nextRegion = regions[i + 1];
 
-                coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i, region);
-                nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i + 1, nextRegion);
+                coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i, deploymentRegion);
+                nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i + 1, deploymentRegion);
 
                 initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
             }
@@ -73,7 +69,7 @@ namespace Concurrency.Implementation.Configuration
 
             if (!this.tokenEnabled)
             {
-                var coordinator0 = GrainFactory.GetGrain<IGlobalCoordGrain>(0, regions[0]);
+                var coordinator0 = GrainFactory.GetGrain<IGlobalCoordGrain>(0, deploymentRegion);
                 BasicToken token = new BasicToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;
