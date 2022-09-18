@@ -16,7 +16,6 @@ namespace Concurrency.Implementation.GrainPlacement
         public RegionalConfigGrainPlacement(Dictionary<string, SiloInfo> silos)
         {
             this.silos = silos ?? throw new ArgumentNullException(nameof(silos));
-            Console.WriteLine(string.Join(", ", silos));
         }
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
@@ -25,15 +24,6 @@ namespace Concurrency.Implementation.GrainPlacement
 
             if(this.silos.TryGetValue(region, out SiloInfo siloInfo))
             {
-                Console.WriteLine($"siloInfo: {siloInfo}");
-                Console.WriteLine("HerPDerp2");
-                foreach (var siloAddress2 in context.GetCompatibleSilos(target))
-                {
-                    Console.WriteLine("----");
-                    Console.WriteLine(siloAddress2.Endpoint.Address.ToString() + siloAddress2.Endpoint.Port.ToString());
-                    Console.WriteLine(siloInfo.ipEndPoint.Address.ToString() + siloInfo.SiloPort.ToString());
-                    Console.WriteLine("----");
-                }
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.ToString() == siloInfo.ipEndPoint.Address.ToString() &&
                                                                        siloAddress.Endpoint.Port == siloInfo.SiloPort)
@@ -43,10 +33,9 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-            return Task.FromResult(silos[0]);
             // TODO: Handle this in a better way.
-        }
+            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+            return Task.FromResult(silos[0]); }
     }
 
     [Serializable]
