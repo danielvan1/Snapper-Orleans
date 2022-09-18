@@ -35,14 +35,17 @@ namespace GeoSnapperDeployment
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
-                var deployLocalDevelopmentEnvironment = container.Resolve<LocalSiloDeployer>();
+                var localSiloDeployer = container.Resolve<LocalSiloDeployer>();
 
                 var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
 
-                var globalSiloHost = await deployLocalDevelopmentEnvironment.DeployGlobalSilo(siloConfigurations);
+                var primarySiloHost = await localSiloDeployer.DeployPrimarySilo(siloConfigurations);
+                siloHosts.Add(primarySiloHost);
+
+                var globalSiloHost = await localSiloDeployer.DeployGlobalSilo(siloConfigurations);
                 siloHosts.Add(globalSiloHost);
 
-                IList<ISiloHost> regionSiloHosts = await deployLocalDevelopmentEnvironment.DeployRegionalSilos(siloConfigurations);
+                IList<ISiloHost> regionSiloHosts = await localSiloDeployer.DeployRegionalSilos(siloConfigurations);
                 siloHosts.AddRange(regionSiloHosts);
 
                 // IList<ISiloHost> localSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(siloConfigurations);

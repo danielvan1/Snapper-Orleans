@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using Orleans.Placement;
 using Orleans.Runtime;
@@ -11,18 +12,18 @@ namespace Concurrency.Implementation.GrainPlacement
 {
     public class RegionalConfigGrainPlacement : IPlacementDirector
     {
-        private readonly Dictionary<string, SiloInfo> silos;
+        private readonly RegionalSilos regionalSilos;
 
-        public RegionalConfigGrainPlacement(Dictionary<string, SiloInfo> silos)
+        public RegionalConfigGrainPlacement(RegionalSilos regionalSilos)
         {
-            this.silos = silos ?? throw new ArgumentNullException(nameof(silos));
+            this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
         }
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
-            if(this.silos.TryGetValue(region, out SiloInfo siloInfo))
+            if(this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.ToString() == siloInfo.ipEndPoint.Address.ToString() &&

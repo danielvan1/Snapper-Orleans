@@ -10,5 +10,7 @@ namespace GeoSnapperDeployment.Models
         public IReadOnlyList<SiloConfiguration> RegionalSilos {get; init;}
 
         public SiloConfiguration GlobalSilo {get; init;}
+
+        public SiloConfiguration PrimarySilo {get; init;}
     }
 }
