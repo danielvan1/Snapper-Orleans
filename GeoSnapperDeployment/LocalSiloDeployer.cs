@@ -82,12 +82,11 @@ namespace GeoSnapperDeployment
             RegionalConfiguration regionalConfiguration = new RegionalConfiguration()
             {
             };
-            Console.WriteLine($"silos count: {silos.Count}");
+
             foreach(SiloConfiguration siloConfiguration in silos)
             {
                 var siloHostBuilder = new SiloHostBuilder();
 
-                Console.WriteLine("Going to call ConfigureLocalDeploymentSiloHost");
                 ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfigurations.ClusterId, siloConfigurations.ServiceId,
                                                  siloConfigurations.PrimarySiloEndpoint, siloConfiguration.SiloPort, siloConfiguration.GatewayPort);
 
@@ -95,9 +94,7 @@ namespace GeoSnapperDeployment
 
                 var siloHost = siloHostBuilder.Build();
 
-                Console.WriteLine("--1--");
                 await siloHost.StartAsync();
-                Console.WriteLine("--2--");
 
                 Console.WriteLine($"Silo regional {siloConfiguration.SiloId} in region {siloConfiguration.Region} is started...");
 
@@ -111,7 +108,6 @@ namespace GeoSnapperDeployment
         {
             SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
             var siloHostBuilder = new SiloHostBuilder();
-            Console.WriteLine(globalSiloConfiguration);
 
             var regionalSilos = new Dictionary<string, SiloInfo>();
 
@@ -143,9 +139,7 @@ namespace GeoSnapperDeployment
 
             var siloHost = siloHostBuilder.Build();
 
-            Console.WriteLine("--1--");
             await siloHost.StartAsync();
-            Console.WriteLine("--2--");
 
             Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} in region {globalSiloConfiguration.Region} is started");
 
@@ -159,14 +153,6 @@ namespace GeoSnapperDeployment
                                                       int siloPort,
                                                       int gatewayPort)
         {
-            Console.WriteLine("----");
-            Console.WriteLine($"clusterId:{clusterId}");
-            Console.WriteLine($"serviceId:{serviceId}");
-            Console.WriteLine($"localPrimarySiloEndpoint: {localPrimarySiloEndpoint}");
-            Console.WriteLine($"siloPort: {siloPort}");
-            Console.WriteLine($"gatewayPort: {gatewayPort}");
-            Console.WriteLine("----");
-
             if(gatewayPort == localPrimarySiloEndpoint) {
                 IPEndPoint nullPrimarySiloEndpoint = null;
                 siloHostBuilder.UseDevelopmentClustering(nullPrimarySiloEndpoint);
@@ -178,7 +164,7 @@ namespace GeoSnapperDeployment
             siloHostBuilder
             .ConfigureEndpoints(IPAddress.Loopback, siloPort, gatewayPort)
             .UseDashboard(options => { 
-                options.Port = gatewayPort+7;
+                options.Port = 8080;
                 options.Host = "*";
                 options.HostSelf = true;
                 options.CounterUpdateIntervalMs = 1000;
@@ -192,7 +178,6 @@ namespace GeoSnapperDeployment
                 options.ClusterId = clusterId;
                 options.ServiceId = serviceId;
             });
-            Console.WriteLine("End of config of global");
         }
 
         private Dictionary<string, SiloInfo> CreateReplicasDictionary(IReadOnlyList<SiloConfiguration> silos, int startPort, int startGatewayPort)
