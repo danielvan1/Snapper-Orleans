@@ -14,9 +14,9 @@ namespace Concurrency.Implementation.GrainPlacement
     public class RegionalConfigGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
-        private readonly RegionalSilos regionalSilos;
+        private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public RegionalConfigGrainPlacement(ILogger logger, RegionalSilos regionalSilos)
+        public RegionalConfigGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));

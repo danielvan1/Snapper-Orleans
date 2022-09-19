@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Interface.Configuration;
@@ -14,9 +13,9 @@ namespace Concurrency.Implementation.GrainPlacement
     public class LocalCoordGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
-        private readonly LocalSilos localSilos;
+        private readonly LocalSiloPlacementInfo localSilos;
 
-        public LocalCoordGrainPlacement(ILogger logger, LocalSilos localSilos)
+        public LocalCoordGrainPlacement(ILogger logger, LocalSiloPlacementInfo localSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localSilos = localSilos ?? throw new ArgumentNullException(nameof(localSilos));

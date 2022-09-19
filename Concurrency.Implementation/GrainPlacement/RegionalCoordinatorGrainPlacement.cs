@@ -11,9 +11,9 @@ namespace Concurrency.Implementation.GrainPlacement
 {
     public class RegionalCoordinatorGrainPlacement : IPlacementDirector
     {
-        private readonly RegionalSilos regionalSilos;
+        private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public RegionalCoordinatorGrainPlacement(RegionalSilos regionalSilos)
+        public RegionalCoordinatorGrainPlacement(RegionalSilosPlacementInfo regionalSilos)
         {
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
         }

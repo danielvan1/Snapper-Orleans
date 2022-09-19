@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Configuration;
+using Concurrency.Implementation.Coordinator;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -13,9 +15,14 @@ namespace Concurrency.Implementation.GrainPlacement
     public class LocalConfigGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
-        private readonly RegionalSilos regionalSilos;
+        private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public LocalConfigGrainPlacement(ILogger logger, RegionalSilos regionalSilos)
+        /// <summary>
+        /// Here we use the  <see cref="RegionalSilosPlacementInfo"/> since we want to spawn each <see cref="LocalConfigGrain"/>  in
+        /// each of the regional silos. There is one regional silo per region and this should be sufficient for
+        /// spawning each <see cref="LocalCoordGrain"/> in every local silo for each region.
+        /// </summary>
+        public LocalConfigGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
