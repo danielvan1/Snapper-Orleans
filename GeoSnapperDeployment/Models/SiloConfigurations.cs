@@ -1,14 +1,16 @@
 namespace GeoSnapperDeployment.Models
 {
-    public sealed class SiloConfigurations
+    public record SiloConfigurations
     {
-        public int StartGatewayPort {get; set;}
+        public int ReplicaStartGatewayPort {get; init;}
 
-        public int PrimarySiloEndpoint {get; set;}
+        public int ReplicaStartPort {get; init;}
 
-        public string ClusterId {get; set;}
+        public int ReplicaStartId {get; init;}
 
-        public string ServiceId {get; set;}
+        public string ClusterId {get; init;}
+
+        public string ServiceId {get; init;}
 
         public Silos Silos {get; init;}
     }

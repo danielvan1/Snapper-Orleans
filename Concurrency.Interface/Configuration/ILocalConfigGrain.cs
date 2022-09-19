@@ -3,10 +3,8 @@ using System.Threading.Tasks;
 
 namespace Concurrency.Interface.Configuration
 {
-    public interface ILocalConfigGrain : IGrainWithIntegerKey
+    public interface ILocalConfigGrain : IGrainWithIntegerCompoundKey
     {
-        Task ConfigLocalEnv();
-
-        Task CheckGC();
+        Task InitializeLocalCoordinators(string currentRegion);
     }
 }

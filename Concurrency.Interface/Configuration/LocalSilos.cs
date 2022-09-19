@@ -3,8 +3,8 @@ using Concurrency.Interface.Models;
 
 namespace Concurrency.Interface.Configuration
 {
-    public class RegionalSilos
+    public record LocalSilos
     {
-        public Dictionary<string, SiloInfo> RegionsSiloInfo {get; init;}
+        public IReadOnlyDictionary<string, SiloInfo> LocalSiloInfo {get; init;}
     }
 }

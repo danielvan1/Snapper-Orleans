@@ -30,7 +30,6 @@ namespace Concurrency.Implementation.Coordinator
 
         public DetTxnProcessor(
             int myID,
-            ICoordMap coordMap,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches,
             Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo = null)

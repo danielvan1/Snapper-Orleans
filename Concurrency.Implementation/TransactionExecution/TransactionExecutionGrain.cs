@@ -23,7 +23,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         // grain basic info
         int myID;
-        int mySiloID; 
+        int mySiloID;
         readonly ICoordMap coordMap;
         readonly string myClassName;
         static int myLocalCoordID;
@@ -48,12 +48,10 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private SiloInfo siloInfo;
 
-        public TransactionExecutionGrain(ILogger logger, ICoordMap coordMap, string myClassName)
+        public TransactionExecutionGrain(ILogger logger, string myClassName)
         {
             this.logger = logger;
-            this.coordMap = coordMap;
             this.myClassName = myClassName;
-            this.siloInfo = siloInfo;
         }
 
         public Task CheckGC()
@@ -91,7 +89,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 {
                     var localCoordIndex = Helper.MapGrainIDToServiceID(myID, Constants.numLocalCoordPerSilo);
                     myLocalCoordID = LocalCoordGrainPlacementHelper.MapCoordIndexToCoordID(localCoordIndex, mySiloID);
-                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID);
+                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID, "HerpDerp");
 
                     // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
                     // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
@@ -99,20 +97,19 @@ namespace Concurrency.Implementation.TransactionExecution
                 else   // all local coordinators are put in a separate silo
                 {
                     myLocalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
-                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID);
+                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID, "HerpDerp");
                 }
             }
             else   // single silo deployment
             {
                 myLocalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numLocalCoordPerSilo);
-                myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID);
+                myLocalCoord = GrainFactory.GetGrain<ILocalCoordGrain>(myLocalCoordID, "HerpDerp");
             }
 
             detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
                 myID,
                 mySiloID,
-                coordMap,
                 myLocalCoordID,
                 myLocalCoord,
                 myGlobalCoord,

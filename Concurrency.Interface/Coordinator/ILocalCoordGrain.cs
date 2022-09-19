@@ -6,9 +6,9 @@ using Concurrency.Interface.Models;
 
 namespace Concurrency.Interface.Coordinator
 {
-    public interface ILocalCoordGrain : IGrainWithIntegerKey
+    public interface ILocalCoordGrain : IGrainWithIntegerCompoundKey
     {
-        Task SpawnLocalCoordGrain();
+        Task SpawnLocalCoordGrain(ILocalCoordGrain neighbor);
 
         Task<TransactionRegistInfo> NewTransaction(List<int> grainAccessInfo, List<string> grainClassName);
 

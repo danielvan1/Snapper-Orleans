@@ -1,24 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
-using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
-using Utilities;
 
 namespace Concurrency.Implementation.Configuration
 {
     [LocalConfigGrainPlacementStrategy]
     public class LocalConfigGrain : Grain, ILocalConfigGrain
     {
+        private const int NumberOfLocalCoordinatorsPerSilo = 4;
         private readonly ILogger logger;
-        private readonly ICoordMap coordMap;
         private readonly LocalConfiguration localConfiguration;
-        private int siloID;
         private bool tokenEnabled;
 
         public LocalConfigGrain(ILogger logger, LocalConfiguration localConfiguration)
@@ -29,56 +25,42 @@ namespace Concurrency.Implementation.Configuration
 
         public override Task OnActivateAsync()
         {
-            this.siloID = (int)this.GetPrimaryKeyLong();
             this.tokenEnabled = false;
 
             return base.OnActivateAsync();
         }
 
-        public async Task CheckGC()
+        public async Task InitializeLocalCoordinators(string currentRegion)
         {
-            Debug.Assert(!Constants.multiSilo || Constants.hierarchicalCoord);
-            var tasks = new List<Task>();
-            var firstCoordID = LocalCoordGrainPlacementHelper.MapSiloIDToFirstLocalCoordID(siloID);
-
-            for (int i = 0; i < Constants.numLocalCoordPerSilo; i++)
+            this.logger.LogInformation($"Initializing configuration in local config grain in region: {currentRegion}");
+            if(!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
             {
-                var coordID = i + firstCoordID;
-                var coord = this.GrainFactory.GetGrain<ILocalCoordGrain>(coordID);
-                tasks.Add(coord.CheckGC());
+                this.logger.LogError($"Currentregion: {currentRegion} does not exist in the dictionary");
+
+                return;
             }
 
-            await Task.WhenAll(tasks);
-        }
+            var initializeLocalCoordinatorsTasks = new List<Task>();
+            this.logger.LogInformation("Herpderp123123n12i3n12");
 
-        public async Task ConfigLocalEnv()
-        {
-            Console.WriteLine($"local config grain {siloID} is initiated, silo ID = {siloID}");
-
-            // in this case, all coordinators locate in a separate silo
-            this.coordMap.Init(this.GrainFactory);
-
-            // initialize local coordinators in this silo
-            var tasks = new List<Task>();
-            var firstCoordID = LocalCoordGrainPlacementHelper.MapSiloIDToFirstLocalCoordID(siloID);
-
-            for (int i = 0; i < Constants.numLocalCoordPerSilo; i++)
+            foreach(string siloKey in siloKeys)
             {
-                var coordID = i + firstCoordID;
-                var coord = GrainFactory.GetGrain<ILocalCoordGrain>(coordID);
-                tasks.Add(coord.SpawnLocalCoordGrain());
+                var coordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
+                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(0, siloKey);
+                initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
+
+                for(int i = 0; i < NumberOfLocalCoordinatorsPerSilo; i++)
+                {
+                    coordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(i, siloKey);
+                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(i + 1, siloKey);
+
+                    initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
+                }
             }
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(initializeLocalCoordinatorsTasks);
 
-            if (!this.tokenEnabled)
-            {
-                // inject token to the first local coordinator in this silo
-                var coord0 = GrainFactory.GetGrain<ILocalCoordGrain>(firstCoordID);
-                LocalToken token = new LocalToken();
-                await coord0.PassToken(token);
-                this.tokenEnabled = true;
-            }
+            this.logger.LogInformation("Spawned all local coordinators");
         }
     }
 }

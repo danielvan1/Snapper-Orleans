@@ -19,7 +19,6 @@ namespace Concurrency.Implementation.Coordinator
     {
         // coord basic info
         int myID;
-        readonly ICoordMap coordMap;
         ILocalCoordGrain neighborCoord;
         Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
         private readonly ILogger logger;
@@ -41,20 +40,14 @@ namespace Concurrency.Implementation.Coordinator
         Dictionary<long, int> globalBidToGlobalCoordID;
         Dictionary<long, bool> globalBidToIsPrevBatchGlobal;                                // global bid, if this batch's previous one is also a global batch
         Dictionary<long, TaskCompletionSource<bool>> globalBatchCommit;                     // global bid, commit promise
-        
+
         // ACT
         NonDetTxnProcessor nonDetTxnProcessor;
         private readonly SiloInfo SiloInfo;
 
-        public LocalCoordGrain(SiloInfo siloInfo)
-        {
-            this.SiloInfo = siloInfo;
-        }
-
-        public LocalCoordGrain(ILogger logger, ICoordMap coordMap)
+        public LocalCoordGrain(ILogger logger)
         {
             this.logger = logger;
-            this.coordMap = coordMap;
         }
 
         public Task CheckGC()
@@ -93,11 +86,10 @@ namespace Concurrency.Implementation.Coordinator
         public override Task OnActivateAsync()
         {
             Init();
-            myID = (int)this.GetPrimaryKeyLong();
+            myID = (int)this.GetPrimaryKeyLong(out _);
             nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
                 myID,
-                coordMap,
                 expectedAcksPerBatch,
                 bidToSubBatches);
             return base.OnActivateAsync();
@@ -246,8 +238,6 @@ namespace Concurrency.Implementation.Coordinator
         void ACKGlobalCoord(long globalBid)
         {
             var globalCoordID = globalBidToGlobalCoordID[globalBid];
-            var globalCoord = coordMap.GetGlobalCoord(globalCoordID);
-            _ = globalCoord.AckBatchCompletion(globalBid);
         }
 
         public async Task AckBatchCompletion(long bid)
@@ -302,7 +292,7 @@ namespace Concurrency.Implementation.Coordinator
         async Task WaitGlobalBatchCommit(long globalBid)
         {
             if (highestCommittedGlobalBid >= globalBid) return;
-            if (globalBatchCommit.ContainsKey(globalBid) == false) 
+            if (globalBatchCommit.ContainsKey(globalBid) == false)
                 globalBatchCommit.Add(globalBid, new TaskCompletionSource<bool>());
             await globalBatchCommit[globalBid].Task;
         }
@@ -318,18 +308,13 @@ namespace Concurrency.Implementation.Coordinator
             return Task.CompletedTask;
         }
 
-        public Task SpawnLocalCoordGrain()
+        public Task SpawnLocalCoordGrain(ILocalCoordGrain neighbor)
         {
-            highestCommittedGlobalBid = -1;
-            detTxnProcessor.Init();
-            nonDetTxnProcessor.Init();
+            this.highestCommittedGlobalBid = -1;
+            this.detTxnProcessor.Init();
+            this.nonDetTxnProcessor.Init();
 
-            int neighborID;
-            if (Constants.multiSilo == false || Constants.hierarchicalCoord)
-                neighborID = LocalCoordGrainPlacementHelper.MapCoordIDToNeighborID(myID);
-            else neighborID = GlobalCoordGrainPlacementHelper.MapCoordIDToNeighborID(myID);
-            
-            neighborCoord = GrainFactory.GetGrain<ILocalCoordGrain>(neighborID);
+            this.neighborCoord = neighbor;
 
             Console.WriteLine($"Local coord {myID} initialize logging {Constants.loggingType}.");
 

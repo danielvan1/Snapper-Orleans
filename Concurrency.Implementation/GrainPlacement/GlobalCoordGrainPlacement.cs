@@ -1,8 +1,7 @@
 ﻿using System;
-using System.Linq;
-using Orleans.Runtime;
-using Orleans.Placement;
 using System.Threading.Tasks;
+using Orleans.Placement;
+using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 
 namespace Concurrency.Implementation.GrainPlacement

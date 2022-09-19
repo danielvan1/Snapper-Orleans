@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using Concurrency.Interface.Models;
 
-namespace GeoSnapperDeployment 
+namespace GeoSnapperDeployment
 {
     public class SiloInfoFactory : ISiloInfoFactory
     {

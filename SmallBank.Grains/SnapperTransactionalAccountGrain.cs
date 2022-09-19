@@ -13,7 +13,7 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
-        public SnapperTransactionalAccountGrain(ILogger logger, ICoordMap coordMap) : base(logger, coordMap, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
         }
 

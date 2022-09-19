@@ -52,7 +52,6 @@ namespace Concurrency.Implementation.TransactionExecution
             ILogger logger,
             int myID,
             int siloID, 
-            ICoordMap coordMap,
             int myLocalCoordID,
             ILocalCoordGrain myLocalCoord,
             IGlobalCoordGrain myGlobalCoord,
@@ -64,7 +63,6 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger = logger;
             this.myID = myID;
             this.siloID = siloID;
-            this.coordMap = coordMap;
             this.myLocalCoordID = myLocalCoordID;
             this.myLocalCoord = myLocalCoord;
             this.myGlobalCoord = myGlobalCoord;

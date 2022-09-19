@@ -3,6 +3,9 @@
     {
         "ClusterId": "Snapper",
         "ServiceId": "Snapper",
+        "ReplicaStartPort" : 25000,
+        "ReplicaStartGatewayPort" : 35000,
+        "ReplicaStartId" : 40000,
         "Silos": {
 
             "PrimarySilo" :

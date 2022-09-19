@@ -16,7 +16,7 @@ namespace Concurrency.Interface.Models
 
         public int GatewayPort {get; init;}
 
-        public string Region {get; set;} 
+        public string Region {get; set;}
 
         public string HomeRegion {get; set;}
 

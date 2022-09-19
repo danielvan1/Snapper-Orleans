@@ -3,7 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Orleans.Hosting;
 using Unity;
 
-namespace GeoSnapperDeployment 
+namespace GeoSnapperDeployment
 {
     public class Program
     {
@@ -48,8 +48,8 @@ namespace GeoSnapperDeployment
                 IList<ISiloHost> regionSiloHosts = await localSiloDeployer.DeployRegionalSilos(siloConfigurations);
                 siloHosts.AddRange(regionSiloHosts);
 
-                // IList<ISiloHost> localSiloHosts = await deployLocalDevelopmentEnvironment.DeploySilosAndReplicas(siloConfigurations);
-                // siloHosts.AddRange(localSiloHosts);
+                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeploySilosAndReplicas(siloConfigurations);
+                siloHosts.AddRange(localSiloHosts);
             }
             else
             {

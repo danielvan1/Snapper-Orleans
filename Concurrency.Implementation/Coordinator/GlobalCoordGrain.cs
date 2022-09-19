@@ -54,17 +54,15 @@ namespace Concurrency.Implementation.Coordinator
             nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
                 myID,
-                coordMap,
                 expectedAcksPerBatch,
                 bidToSubBatches,
                 coordPerBatchPerSilo);
             return base.OnActivateAsync();
         }
 
-        public GlobalCoordGrain(ILogger logger, ICoordMap coordMap)
+        public GlobalCoordGrain(ILogger logger)
         {
             this.logger = logger;
-            this.coordMap = coordMap;
         }
 
         // for PACT
@@ -112,7 +110,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID);
+                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
         }
@@ -133,7 +131,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID);
+                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
                 _ = dest.AckGlobalBatchCommit(bid);
             }
 
