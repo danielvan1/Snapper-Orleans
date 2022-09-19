@@ -166,7 +166,7 @@ namespace GeoSnapperDeployment
                                options.Port = 8080;
                                options.Host = "*";
                                options.HostSelf = true;
-                               options.CounterUpdateIntervalMs = 1000;
+                               options.CounterUpdateIntervalMs = 10000;
                            })
                            .Configure<EndpointOptions>(options =>
                            {
