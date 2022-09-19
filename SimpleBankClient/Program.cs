@@ -34,14 +34,12 @@ await localConfigGrainUS.InitializeLocalCoordinators("EU");
 
 // Spawn regional at each cluster
 
-//await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-//await globalConfigGrain.InitializeGlobalCoordinators();
 
-// var actorId1 = 1;
-// var actorId2 = 2;
+int actorId1 = 0;
+int actorId2 = 1;
 
-// var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, Constants.US);
-// var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, Constants.US);
+var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, "EU-EU-0");
+var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-1");
 
 
 // // Required for the Txs(All ISnapperTransactionalAccountGrain's TXs can reuse this): 

@@ -1,28 +1,42 @@
 ﻿using System;
-using Utilities;
 using System.Linq;
-using Orleans.Runtime;
-using Orleans.Placement;
 using System.Threading.Tasks;
+using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
+using Orleans.Placement;
+using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 
 namespace Concurrency.Implementation.GrainPlacement
 {
     public class TransactionExecutionGrainPlacement : IPlacementDirector
     {
+        private readonly ILogger logger;
+        private readonly LocalSiloPlacementInfo localSiloPlacementInfo;
+
+        public TransactionExecutionGrainPlacement(ILogger logger, LocalSiloPlacementInfo localSiloPlacementInfo)
+        {
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.localSiloPlacementInfo = localSiloPlacementInfo ?? throw new ArgumentNullException(nameof(localSiloPlacementInfo));
+        }
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            var silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
-            var silo = 0;
-            if (Constants.multiSilo)
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
-                var grainID = (int) target.GrainIdentity.GetPrimaryKeyLong(out _);
-                silo = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(grainID);
-                Console.WriteLine($"grainId = {grainID} ---- Silo {silo}");
+                SiloAddress siloAddress = context.GetCompatibleSilos(target)
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                                       siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
+                                                 .First();
+
+                return Task.FromResult(siloAddress);
             }
 
-            return Task.FromResult(silos[silo]);
+            // TODO: Handle this in a better way.
+            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
+            return Task.FromResult(silos[0]);
         }
     }
 

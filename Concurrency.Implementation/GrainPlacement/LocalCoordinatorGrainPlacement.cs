@@ -13,19 +13,19 @@ namespace Concurrency.Implementation.GrainPlacement
     public class LocalCoordinatorGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
-        private readonly LocalSiloPlacementInfo localSilos;
+        private readonly LocalSiloPlacementInfo localSiloPlacementInfo;
 
-        public LocalCoordinatorGrainPlacement(ILogger logger, LocalSiloPlacementInfo localSilos)
+        public LocalCoordinatorGrainPlacement(ILogger logger, LocalSiloPlacementInfo localSiloPlacementInfo)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.localSilos = localSilos ?? throw new ArgumentNullException(nameof(localSilos));
+            this.localSiloPlacementInfo = localSiloPlacementInfo ?? throw new ArgumentNullException(nameof(localSiloPlacementInfo));
         }
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
-            if (this.localSilos.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&

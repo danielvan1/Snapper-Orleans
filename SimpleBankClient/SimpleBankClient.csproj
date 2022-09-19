@@ -12,6 +12,7 @@
     <PackageReference Include="Microsoft.Orleans.Client" Version="3.6.2" />
     <PackageReference Include="Microsoft.Orleans.CodeGenerator" Version="3.6.2" />
     <PackageReference Include="Microsoft.Orleans.Server" Version="3.6.2" />
+		<PackageReference Include="Microsoft.Orleans.CodeGenerator.MSBuild" Version="3.6.2" />
   </ItemGroup>
 
 	<ItemGroup>
