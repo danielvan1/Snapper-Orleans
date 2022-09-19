@@ -41,7 +41,6 @@ namespace Concurrency.Implementation.Configuration
             }
 
             var initializeLocalCoordinatorsTasks = new List<Task>();
-            this.logger.LogInformation("Herpderp123123n12i3n12");
 
             foreach(string siloKey in siloKeys)
             {
@@ -49,7 +48,7 @@ namespace Concurrency.Implementation.Configuration
                 var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
                 initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
 
-                for(int i = 0; i < NumberOfLocalCoordinatorsPerSilo; i++)
+                for(int i = 0; i < NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
                     coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, siloKey);
                     nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, siloKey);
@@ -60,7 +59,7 @@ namespace Concurrency.Implementation.Configuration
 
             await Task.WhenAll(initializeLocalCoordinatorsTasks);
 
-            this.logger.LogInformation("Spawned all local coordinators");
+            this.logger.LogInformation($"Spawned all local coordinators in region {currentRegion}");
         }
     }
 }

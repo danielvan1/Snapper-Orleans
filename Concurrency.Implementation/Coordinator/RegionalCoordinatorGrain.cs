@@ -154,14 +154,9 @@ namespace Concurrency.Implementation.Coordinator
 
             this.neighborCoord = neighbor;
 
-            // this.loggerGroup.GetLoggingProtocol(myID, out log);
-
             this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
             for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
             this.timeOfBatchGeneration = DateTime.Now;
-
-            this.logger.LogInformation($"Regional coordinator {myID} initialize logging {Constants.loggingType}, batch size = {Helper.ChangeFormat(batchSizeInMSecs, 0)}ms");
-
 
             return Task.CompletedTask;
         }

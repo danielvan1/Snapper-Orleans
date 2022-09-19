@@ -31,7 +31,6 @@ namespace Concurrency.Implementation.GrainPlacement
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
-                this.logger.LogInformation($"Found the silo {siloAddress} for LocalCoordinatorGrain {configGrainId}-{region}");
 
                 return Task.FromResult(siloAddress);
             }

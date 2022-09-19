@@ -35,6 +35,7 @@ namespace Concurrency.Implementation.GrainPlacement
 
                 return Task.FromResult(siloAddress);
             }
+
             this.logger.LogWarning($"The string key of the grain {region} was not found in the RegionalSilos dictionary");
 
             // TODO: Handle this in a better way.

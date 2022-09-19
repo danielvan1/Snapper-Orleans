@@ -49,7 +49,7 @@ namespace Concurrency.Implementation.Configuration
             var nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
             initRegionalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
-            for (int i = 0; i < silos; i++)
+            for (int i = 0; i < silos - 1; i++)
             {
                 coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i, currentRegion);
                 nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i + 1, currentRegion);

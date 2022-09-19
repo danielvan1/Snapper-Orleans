@@ -40,14 +40,15 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeGlobalCoordinators()
         {
-            // initialize global coordinators
-            Console.WriteLine("Initializing global coordinators");
+            this.logger.LogInformation("Initializing global coordinators");
+
             IReadOnlyList<string> regions = this.globalConfiguration.Regions;
             string deploymentRegion = this.globalConfiguration.DeploymentRegion;
-            Console.WriteLine($"The given regions are: {string.Join(", ", regions)}");
+            this.logger.LogInformation($"The given regions are: {string.Join(", ", regions)}");
 
             var initGlobalCoordinatorTasks = new List<Task>();
 
+            this.logger.LogInformation($"Deploying the global coordinators in region: {deploymentRegion}");
             // Connecting last coordinator with the first, so making the ring of coordinators circular.
             var coordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(regions.Count - 1, deploymentRegion);
             var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(0, deploymentRegion);
@@ -65,7 +66,7 @@ namespace Concurrency.Implementation.Configuration
 
             await Task.WhenAll(initGlobalCoordinatorTasks);
 
-            Console.WriteLine("Initialized all global coordinators");
+            this.logger.LogInformation("Initialized all global coordinators");
 
             if (!this.tokenEnabled)
             {

@@ -159,8 +159,6 @@ namespace Concurrency.Implementation.Coordinator
             for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
             this.timeOfBatchGeneration = DateTime.Now;
 
-            Console.WriteLine($"Global coord {myID} initialize logging {Constants.loggingType}, batch size = {Helper.ChangeFormat(batchSizeInMSecs, 0)}ms");
-
             return Task.CompletedTask;
         }
     }

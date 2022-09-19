@@ -72,7 +72,7 @@ namespace Concurrency.Implementation.TransactionExecution
             highestCommittedLocalBid = -1;
 
             // grain basic info
-            myID = (int)this.GetPrimaryKeyLong();
+            myID = (int)this.GetPrimaryKeyLong(out string _);
             mySiloID = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(myID);
 
             // transaction execution

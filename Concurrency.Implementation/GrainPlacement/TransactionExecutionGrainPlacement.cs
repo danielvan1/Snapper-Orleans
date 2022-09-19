@@ -24,7 +24,6 @@ namespace Concurrency.Implementation.GrainPlacement
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
-            this.logger.LogInformation($"Trying to spawn grain with key {configGrainId}-{region}");
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {

@@ -316,8 +316,6 @@ namespace Concurrency.Implementation.Coordinator
 
             this.neighborCoord = neighbor;
 
-            Console.WriteLine($"Local coord {myID} initialize logging {Constants.loggingType}.");
-
             return Task.CompletedTask;
         }
     }
