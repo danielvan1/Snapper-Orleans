@@ -1,4 +1,3 @@
-using System.Collections.ObjectModel;
 using System.Net;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
