@@ -1,4 +1,5 @@
-﻿using GeoSnapperDeployment.Models;
+﻿using GeoSnapperDeployment.Factories;
+using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
 using Orleans.Hosting;
 using Unity;
@@ -21,9 +22,9 @@ namespace GeoSnapperDeployment
                 throw new ArgumentException("Deployment type needs to be specified");
             }
 
-
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
+            container.RegisterType<ISiloConfigurationFactory, SiloConfigurationFactory>(TypeLifetime.Singleton);
             container.RegisterType<LocalSiloDeployer>(TypeLifetime.Singleton);
 
             IConfiguration config = new ConfigurationBuilder()

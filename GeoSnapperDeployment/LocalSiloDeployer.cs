@@ -3,6 +3,7 @@ using System.Net;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
+using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -16,11 +17,11 @@ namespace GeoSnapperDeployment
 {
     public class LocalSiloDeployer
     {
-        private readonly ISiloInfoFactory siloInfoFactory;
+        private readonly ISiloConfigurationFactory siloConfigurationFactory;
 
-        public LocalSiloDeployer(ISiloInfoFactory siloInfoFactory)
+        public LocalSiloDeployer(ISiloConfigurationFactory siloConfigurationFactory)
         {
-            this.siloInfoFactory = siloInfoFactory ?? throw new ArgumentNullException(nameof(siloInfoFactory));
+            this.siloConfigurationFactory = siloConfigurationFactory ?? throw new ArgumentNullException(nameof(siloConfigurationFactory));
         }
 
         public async Task<ISiloHost> DeployPrimarySilo(SiloConfigurations siloConfigurations)
@@ -36,14 +37,14 @@ namespace GeoSnapperDeployment
 
 
             // Configure global silo
-            GlobalConfiguration globalConfiguration = this.CreateGlobalConfiguration(siloConfigurations);
+            GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalConfiguration(siloConfigurations);
             this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
 
             // Configure regional silos
-            RegionalSilosPlacementInfo regionalSilos = this.CreateRegionalSilos(siloConfigurations);
-            RegionalConfiguration regionalConfiguration = this.CreateRegionalConfiguration(siloConfigurations);
-            LocalConfiguration localConfiguration = this.CreateLocalConfiguration(siloConfigurations);
-            var localSiloInfo = CreateLocalSilosDictionary(siloConfigurations);
+            RegionalSilosPlacementInfo regionalSilos =this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
+            RegionalConfiguration regionalConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations);
+            LocalConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalConfiguration(siloConfigurations);
+            var localSiloInfo = this.siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
             this.ConfigureRegionalGrains(siloHostBuilder, regionalSilos, regionalConfiguration, localConfiguration, localSiloInfo);
 
             // Configure the local silos
@@ -65,7 +66,7 @@ namespace GeoSnapperDeployment
             this.ConfigureLocalDeploymentSiloHost(siloHostBuilder, siloConfigurations.ClusterId, siloConfigurations.ServiceId,
                                              primarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
 
-            GlobalConfiguration globalConfiguration = this.CreateGlobalConfiguration(siloConfigurations);
+            GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalConfiguration(siloConfigurations);
 
             this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
 
@@ -85,10 +86,10 @@ namespace GeoSnapperDeployment
             var startSiloTasks = new List<Task>();
             IReadOnlyList<SiloConfiguration> silos = siloConfigurations.Silos.RegionalSilos;
 
-            RegionalSilosPlacementInfo regionalSilos = this.CreateRegionalSilos(siloConfigurations);
-            RegionalConfiguration regionalConfiguration = this.CreateRegionalConfiguration(siloConfigurations);
-            LocalConfiguration localConfiguration = this.CreateLocalConfiguration(siloConfigurations);
-            LocalSiloPlacementInfo localSilos = this.CreateLocalSilosDictionary(siloConfigurations);
+            RegionalSilosPlacementInfo regionalSilos = this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
+            RegionalConfiguration regionalConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations);
+            LocalConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalConfiguration(siloConfigurations);
+            LocalSiloPlacementInfo localSilos = this.siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
 
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
@@ -120,8 +121,8 @@ namespace GeoSnapperDeployment
             var silos = siloConfigurations.Silos.LocalSilos;
 
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
-            LocalSiloPlacementInfo localSiloInfo = this.CreateLocalSilosDictionary(siloConfigurations);
-            RegionalSilosPlacementInfo regionalSilos = this.CreateRegionalSilos(siloConfigurations);
+            LocalSiloPlacementInfo localSiloInfo = this.siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
+            RegionalSilosPlacementInfo regionalSilos = this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
 
             foreach ((string siloRegion, SiloInfo siloInfo) in localSiloInfo.LocalSiloInfo)
             {
@@ -174,187 +175,6 @@ namespace GeoSnapperDeployment
                                options.ClusterId = clusterId;
                                options.ServiceId = serviceId;
                            });
-        }
-
-        private LocalConfiguration CreateLocalConfiguration(SiloConfigurations siloConfigurations)
-        {
-            var localSilos = siloConfigurations.Silos.LocalSilos;
-
-            var siloConfigurationBuckets = new Dictionary<string, List<SiloConfiguration>>();
-            var siloKeysPerRegion = new Dictionary<string, List<string>>();
-
-            // Put each siloconfiguration in buckets of same regions.
-            foreach (SiloConfiguration siloConfiguration in localSilos)
-            {
-                if (!siloConfigurationBuckets.TryGetValue(siloConfiguration.Region, out List<SiloConfiguration> configurations))
-                {
-                    siloConfigurationBuckets.Add(siloConfiguration.Region, configurations = new List<SiloConfiguration>());
-                }
-
-                configurations.Add(siloConfiguration);
-            }
-
-            foreach ((string homeRegion, _) in siloConfigurationBuckets)
-            {
-                foreach ((string deploymentRegion, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
-                {
-                    for (int i = 0; i < configurations.Count; i++)
-                    {
-                        string siloKey = $"{deploymentRegion}-{homeRegion}-{i}";
-
-                        if (!siloKeysPerRegion.TryGetValue(deploymentRegion, out List<string> siloKeys))
-                        {
-                            siloKeysPerRegion.Add(deploymentRegion, siloKeys = new List<string>());
-                        }
-
-                        siloKeys.Add(siloKey);
-                    }
-                }
-            }
-
-            return new LocalConfiguration()
-            {
-                SiloKeysPerRegion = siloKeysPerRegion
-            };
-        }
-
-        private LocalSiloPlacementInfo CreateLocalSilosDictionary(SiloConfigurations siloConfigurations)
-        {
-            var silos = new Dictionary<string, SiloInfo>();
-            var localSilos = siloConfigurations.Silos.LocalSilos;
-            string clusterId = siloConfigurations.ClusterId;
-            string serviceId = siloConfigurations.ServiceId;
-            Dictionary<string, List<SiloConfiguration>> siloConfigurationBuckets = new Dictionary<string, List<SiloConfiguration>>();
-
-            // Put each siloconfiguration in buckets of same regions.
-            foreach (SiloConfiguration siloConfiguration in localSilos)
-            {
-                if (!siloConfigurationBuckets.TryGetValue(siloConfiguration.Region, out List<SiloConfiguration> configurations))
-                {
-                    siloConfigurationBuckets.Add(siloConfiguration.Region, configurations = new List<SiloConfiguration>());
-                }
-
-                configurations.Add(siloConfiguration);
-            }
-
-            // main silos
-            foreach ((string region, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
-            {
-                for (int i = 0; i < configurations.Count; i++)
-                {
-                    var siloConfiguration = configurations[i];
-
-                    int siloId = siloConfiguration.SiloId;
-                    int siloPort = siloConfiguration.SiloPort;
-                    int gatewayPort = siloConfiguration.GatewayPort;
-                    bool isReplica = false;
-
-                    SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, clusterId, serviceId, siloId,
-                                                                    siloPort, gatewayPort, region, region, isReplica);
-
-                    string stringKey = $"{region}-{region}-{i}";
-
-                    silos.Add(stringKey, siloInfo);
-                }
-            }
-
-            var startPort = siloConfigurations.ReplicaStartPort;
-            var startGatewayPort = siloConfigurations.ReplicaStartGatewayPort;
-            int startId = siloConfigurations.ReplicaStartId;
-
-            // replica silos
-            foreach ((string deploymentRegion, _) in siloConfigurationBuckets)
-            {
-                foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
-                {
-                    if (deploymentRegion.Equals(homeRegion)) continue;
-
-                    for (int i = 0; i < configurations.Count; i++)
-                    {
-                        var configuration = configurations[i];
-
-                        int siloId = startId;
-                        int siloPort = startPort;
-                        int gatewayPort = startGatewayPort;
-                        bool isReplica = true;
-
-                        SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, clusterId, serviceId, siloId, siloPort,
-                                                                        gatewayPort, deploymentRegion, homeRegion, isReplica);
-
-                        string stringKey = $"{deploymentRegion}-{homeRegion}-{i}";
-
-                        silos.Add(stringKey, siloInfo);
-
-                        startPort++;
-                        startGatewayPort++;
-                        startId++;
-                    }
-                }
-            }
-
-            return new LocalSiloPlacementInfo()
-            {
-                LocalSiloInfo = silos
-            };
-        }
-
-        private GlobalConfiguration CreateGlobalConfiguration(SiloConfigurations siloConfigurations)
-        {
-            var regions = siloConfigurations.Silos.RegionalSilos.Select(regionalSilo => regionalSilo.Region)
-                                                                .Distinct()
-                                                                .ToList();
-
-            string deploymentRegion = siloConfigurations.Silos.GlobalSilo.Region;
-
-            return new GlobalConfiguration()
-            {
-                Regions = regions,
-                DeploymentRegion = deploymentRegion
-            };
-        }
-
-        private RegionalSilosPlacementInfo CreateRegionalSilos(SiloConfigurations siloConfigurations)
-        {
-            var regionalSilos = new Dictionary<string, SiloInfo>();
-
-            foreach (SiloConfiguration siloConfiguration in siloConfigurations.Silos.RegionalSilos)
-            {
-                bool isReplica = false;
-
-                SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloId,
-                                                                siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
-                                                                siloConfiguration.Region, isReplica);
-
-                string regionalKey = $"{siloConfiguration.Region}-Regional";
-                string localKey = $"{siloConfiguration.Region}-Local";
-                regionalSilos.Add(regionalKey, siloInfo);
-                regionalSilos.Add(localKey, siloInfo);
-            }
-
-            return new RegionalSilosPlacementInfo() { RegionsSiloInfo = regionalSilos };
-        }
-
-        private RegionalConfiguration CreateRegionalConfiguration(SiloConfigurations siloConfigurations)
-        {
-            Dictionary<string, int> numberOfSilosPerRegion = new Dictionary<string, int>();
-
-            foreach (var siloConfiguration in siloConfigurations.Silos.LocalSilos)
-            {
-                string region = siloConfiguration.Region;
-                if (numberOfSilosPerRegion.ContainsKey(region))
-                {
-                    numberOfSilosPerRegion[region]++;
-                }
-                else
-                {
-                    numberOfSilosPerRegion.Add(region, 1);
-                }
-            }
-
-            return new RegionalConfiguration()
-            {
-                NumberOfSilosInRegion = new ReadOnlyDictionary<string, int>(numberOfSilosPerRegion)
-            };
         }
 
         private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration)
