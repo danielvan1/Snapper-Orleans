@@ -20,9 +20,11 @@ namespace Concurrency.Implementation.GrainPlacement
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localSiloPlacementInfo = localSiloPlacementInfo ?? throw new ArgumentNullException(nameof(localSiloPlacementInfo));
         }
+
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
+            this.logger.LogInformation($"Trying to spawn grain with key {configGrainId}-{region}");
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {

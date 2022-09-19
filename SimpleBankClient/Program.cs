@@ -30,21 +30,25 @@ await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
 ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU-Local");
 ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US-Local");
 await localConfigGrainEU.InitializeLocalCoordinators("EU");
-await localConfigGrainUS.InitializeLocalCoordinators("EU");
-
-// Spawn regional at each cluster
+await localConfigGrainUS.InitializeLocalCoordinators("US");
 
 
+Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
+string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 int actorId1 = 0;
-int actorId2 = 1;
-
+var actorAccessInfo1 = new List<int>();
+actorAccessInfo1.Add(actorId1);
+var initialBalance = 100;
+var grainClassName = new List<string>();                                             // grainID, grainClassName
+grainClassName.Add(snapperTransactionalAccountGrainTypeName);
 var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, "EU-EU-0");
-var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-1");
+var PACT_balance1 = await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
+// int actorId2 = 1;
+
+// var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-0");
 
 
 // // Required for the Txs(All ISnapperTransactionalAccountGrain's TXs can reuse this): 
-// Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
-// string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 
 //API we want to call:
 //Task<TransactionResult> StartTransaction(string startFunc, 
@@ -65,7 +69,6 @@ var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US
 // var grainClassName = new List<string>();                                             // grainID, grainClassName
 // grainClassName.Add(snapperTransactionalAccountGrainTypeName);
 
-// var initialBalance = 100;
 
 // // Required setup for starting transactions that deposits funds between two actors
 // var actorAccessInfoForDeposit = new List<int>();
