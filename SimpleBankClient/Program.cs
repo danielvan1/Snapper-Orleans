@@ -32,6 +32,7 @@ ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US
 await localConfigGrainEU.InitializeLocalCoordinators("EU");
 await localConfigGrainUS.InitializeLocalCoordinators("US");
 
+// Herp derp
 
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
