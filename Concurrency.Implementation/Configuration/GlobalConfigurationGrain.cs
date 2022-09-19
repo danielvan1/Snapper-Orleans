@@ -49,16 +49,16 @@ namespace Concurrency.Implementation.Configuration
             var initGlobalCoordinatorTasks = new List<Task>();
 
             // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(regions.Count - 1, deploymentRegion);
-            var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(0, deploymentRegion);
+            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(regions.Count - 1, deploymentRegion);
+            var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(0, deploymentRegion);
             initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
             for (int i = 0; i < regions.Count - 1; i++)
             {
                 string nextRegion = regions[i + 1];
 
-                coordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i, deploymentRegion);
-                nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordGrain>(i + 1, deploymentRegion);
+                coordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(i, deploymentRegion);
+                nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(i + 1, deploymentRegion);
 
                 initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
             }
@@ -69,7 +69,7 @@ namespace Concurrency.Implementation.Configuration
 
             if (!this.tokenEnabled)
             {
-                var coordinator0 = GrainFactory.GetGrain<IGlobalCoordGrain>(0, deploymentRegion);
+                var coordinator0 = GrainFactory.GetGrain<IGlobalCoordinatorGrain>(0, deploymentRegion);
                 BasicToken token = new BasicToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;

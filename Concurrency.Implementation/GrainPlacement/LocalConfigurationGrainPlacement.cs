@@ -12,17 +12,17 @@ using Orleans.Runtime.Placement;
 
 namespace Concurrency.Implementation.GrainPlacement
 {
-    public class LocalConfigGrainPlacement : IPlacementDirector
+    public class LocalConfigurationGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
         private readonly RegionalSilosPlacementInfo regionalSilos;
 
         /// <summary>
-        /// Here we use the  <see cref="RegionalSilosPlacementInfo"/> since we want to spawn each <see cref="LocalConfigGrain"/>  in
+        /// Here we use the  <see cref="RegionalSilosPlacementInfo"/> since we want to spawn each <see cref="LocalConfigurationGrain"/>  in
         /// each of the regional silos. There is one regional silo per region and this should be sufficient for
-        /// spawning each <see cref="LocalCoordGrain"/> in every local silo for each region.
+        /// spawning each <see cref="LocalCoordinatorGrain"/> in every local silo for each region.
         /// </summary>
-        public LocalConfigGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
+        public LocalConfigurationGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -51,14 +51,14 @@ namespace Concurrency.Implementation.GrainPlacement
     }
 
     [Serializable]
-    public class LocalConfigGrainPlacementStrategy : PlacementStrategy
+    public class LocalConfigurationGrainPlacementStrategy : PlacementStrategy
     {
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public sealed class LocalConfigGrainPlacementStrategyAttribute : PlacementAttribute
+    public sealed class LocalConfigurationGrainPlacementStrategyAttribute : PlacementAttribute
     {
-        public LocalConfigGrainPlacementStrategyAttribute() : base(new LocalConfigGrainPlacementStrategy())
+        public LocalConfigurationGrainPlacementStrategyAttribute() : base(new LocalConfigurationGrainPlacementStrategy())
         {
         }
     }

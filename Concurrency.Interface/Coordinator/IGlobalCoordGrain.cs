@@ -7,9 +7,9 @@ using Utilities;
 
 namespace Concurrency.Interface.Coordinator
 {
-    public interface IGlobalCoordGrain : IGrainWithIntegerCompoundKey
+    public interface IGlobalCoordinatorGrain : IGrainWithIntegerCompoundKey
     {
-        Task SpawnGlobalCoordGrain(IGlobalCoordGrain neighbor);
+        Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor);
 
         Task PassToken(BasicToken token);
 

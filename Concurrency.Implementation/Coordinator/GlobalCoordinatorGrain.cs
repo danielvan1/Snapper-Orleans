@@ -13,14 +13,14 @@ using Utilities;
 namespace Concurrency.Implementation.Coordinator
 {
     [Reentrant]
-    [GlobalCoordGrainPlacementStrategy]
-    public class GlobalCoordGrain : Grain, IGlobalCoordGrain
+    [GlobalCoordinatorGrainPlacementStrategy]
+    public class GlobalCoordinatorGrain : Grain, IGlobalCoordinatorGrain
     {
         // coord basic info
         int myID;
         ICoordMap coordMap;
         private readonly ILogger logger;
-        IGlobalCoordGrain neighborCoord;
+        IGlobalCoordinatorGrain neighborCoord;
 
         // PACT
         DetTxnProcessor detTxnProcessor;
@@ -60,7 +60,7 @@ namespace Concurrency.Implementation.Coordinator
             return base.OnActivateAsync();
         }
 
-        public GlobalCoordGrain(ILogger logger)
+        public GlobalCoordinatorGrain(ILogger logger)
         {
             this.logger = logger;
         }
@@ -110,7 +110,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
         }
@@ -131,7 +131,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
                 _ = dest.AckGlobalBatchCommit(bid);
             }
 
@@ -146,7 +146,7 @@ namespace Concurrency.Implementation.Coordinator
             await detTxnProcessor.WaitBatchCommit(bid);
         }
 
-        public Task SpawnGlobalCoordGrain(IGlobalCoordGrain neighbor)
+        public Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor)
         {
             this.detTxnProcessor.Init();
             this.nonDetTxnProcessor.Init();

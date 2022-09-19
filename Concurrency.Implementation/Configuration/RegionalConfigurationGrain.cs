@@ -10,14 +10,14 @@ using Orleans;
 
 namespace Concurrency.Implementation.Configuration
 {
-    [RegionalConfigGrainPlacementStrategy]
-    public class RegionalConfigGrain : Grain, IRegionalConfigGrain
+    [RegionalConfigurationGrainPlacementStrategy]
+    public class RegionalConfigurationGrain : Grain, IRegionalConfigGrain
     {
         private readonly RegionalConfiguration regionalConfiguration;
         private readonly ILogger logger;
         private bool tokenEnabled;
 
-        public RegionalConfigGrain(ILogger logger, RegionalConfiguration regionalConfiguration)
+        public RegionalConfigurationGrain(ILogger logger, RegionalConfiguration regionalConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));

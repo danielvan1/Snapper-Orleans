@@ -111,7 +111,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
         }
@@ -132,7 +132,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordGrain>(localCoordID, "");
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
                 _ = dest.AckGlobalBatchCommit(bid);
             }
 

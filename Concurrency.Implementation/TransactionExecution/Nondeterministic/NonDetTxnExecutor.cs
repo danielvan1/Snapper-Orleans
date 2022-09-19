@@ -14,8 +14,8 @@ namespace Concurrency.Implementation.TransactionExecution
         readonly int mySiloID;
         readonly string myClassName;
         readonly Tuple<int, string> myFullID;
-        readonly ILocalCoordGrain myLocalCoord;
-        readonly IGlobalCoordGrain myGlobalCoord;
+        readonly ILocalCoordinatorGrain myLocalCoord;
+        readonly IGlobalCoordinatorGrain myGlobalCoord;
 
         ITransactionalState<TState> state;
         TransactionScheduler myScheduler;
@@ -41,8 +41,8 @@ namespace Concurrency.Implementation.TransactionExecution
             int myID,
             int mySiloID,
             string myClassName,
-            ILocalCoordGrain myLocalCoord,
-            IGlobalCoordGrain myGlobalCoord,
+            ILocalCoordinatorGrain myLocalCoord,
+            IGlobalCoordinatorGrain myGlobalCoord,
             TransactionScheduler myScheduler, 
             ITransactionalState<TState> state)
         {

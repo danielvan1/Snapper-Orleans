@@ -14,12 +14,12 @@ using Microsoft.Extensions.Logging;
 namespace Concurrency.Implementation.Coordinator
 {
     [Reentrant]
-    [LocalCoordGrainPlacementStrategy]
-    public class LocalCoordGrain : Grain, ILocalCoordGrain
+    [LocalCoordinatorGrainPlacementStrategy]
+    public class LocalCoordinatorGrain : Grain, ILocalCoordinatorGrain
     {
         // coord basic info
         int myID;
-        ILocalCoordGrain neighborCoord;
+        ILocalCoordinatorGrain neighborCoord;
         Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
         private readonly ILogger logger;
 
@@ -45,7 +45,7 @@ namespace Concurrency.Implementation.Coordinator
         NonDetTxnProcessor nonDetTxnProcessor;
         private readonly SiloInfo SiloInfo;
 
-        public LocalCoordGrain(ILogger logger)
+        public LocalCoordinatorGrain(ILogger logger)
         {
             this.logger = logger;
         }
@@ -308,7 +308,7 @@ namespace Concurrency.Implementation.Coordinator
             return Task.CompletedTask;
         }
 
-        public Task SpawnLocalCoordGrain(ILocalCoordGrain neighbor)
+        public Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor)
         {
             this.highestCommittedGlobalBid = -1;
             this.detTxnProcessor.Init();

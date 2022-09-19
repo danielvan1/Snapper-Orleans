@@ -11,12 +11,12 @@ using Orleans.Runtime.Placement;
 
 namespace Concurrency.Implementation.GrainPlacement
 {
-    public class RegionalConfigGrainPlacement : IPlacementDirector
+    public class RegionalConfigurationGrainPlacement : IPlacementDirector
     {
         private readonly ILogger logger;
         private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public RegionalConfigGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
+        public RegionalConfigurationGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -44,16 +44,16 @@ namespace Concurrency.Implementation.GrainPlacement
     }
 
     [Serializable]
-    public class RegionalConfigGrainPlacementStrategy : PlacementStrategy
+    public class RegionalConfigurationGrainPlacementStrategy : PlacementStrategy
     {
 
     }
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public sealed class RegionalConfigGrainPlacementStrategyAttribute : PlacementAttribute
+    public sealed class RegionalConfigurationGrainPlacementStrategyAttribute : PlacementAttribute
 
     {
-        public RegionalConfigGrainPlacementStrategyAttribute() : base(new RegionalConfigGrainPlacementStrategy())
+        public RegionalConfigurationGrainPlacementStrategyAttribute() : base(new RegionalConfigurationGrainPlacementStrategy())
         {
         }
     }

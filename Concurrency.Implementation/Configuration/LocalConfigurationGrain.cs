@@ -9,15 +9,15 @@ using Orleans;
 
 namespace Concurrency.Implementation.Configuration
 {
-    [LocalConfigGrainPlacementStrategy]
-    public class LocalConfigGrain : Grain, ILocalConfigGrain
+    [LocalConfigurationGrainPlacementStrategy]
+    public class LocalConfigurationGrain : Grain, ILocalConfigGrain
     {
         private const int NumberOfLocalCoordinatorsPerSilo = 4;
         private readonly ILogger logger;
         private readonly LocalConfiguration localConfiguration;
         private bool tokenEnabled;
 
-        public LocalConfigGrain(ILogger logger, LocalConfiguration localConfiguration)
+        public LocalConfigurationGrain(ILogger logger, LocalConfiguration localConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localConfiguration = localConfiguration ?? throw new ArgumentNullException(nameof(localConfiguration));
@@ -45,14 +45,14 @@ namespace Concurrency.Implementation.Configuration
 
             foreach(string siloKey in siloKeys)
             {
-                var coordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
-                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(0, siloKey);
+                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
+                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
                 initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
 
                 for(int i = 0; i < NumberOfLocalCoordinatorsPerSilo; i++)
                 {
-                    coordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(i, siloKey);
-                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordGrain>(i + 1, siloKey);
+                    coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, siloKey);
+                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, siloKey);
 
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
                 }

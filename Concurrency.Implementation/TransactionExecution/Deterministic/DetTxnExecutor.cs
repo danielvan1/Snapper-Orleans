@@ -27,8 +27,8 @@ namespace Concurrency.Implementation.TransactionExecution
         // local and global coordinators
         readonly int myLocalCoordID;
         readonly ICoordMap coordMap;
-        readonly ILocalCoordGrain myLocalCoord;
-        readonly IGlobalCoordGrain myGlobalCoord;                                // use this coord to get tid for global transactions
+        readonly ILocalCoordinatorGrain myLocalCoord;
+        readonly IGlobalCoordinatorGrain myGlobalCoord;                                // use this coord to get tid for global transactions
 
         // PACT execution
         Dictionary<long, TaskCompletionSource<bool>> localBtchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
@@ -53,8 +53,8 @@ namespace Concurrency.Implementation.TransactionExecution
             int myID,
             int siloID, 
             int myLocalCoordID,
-            ILocalCoordGrain myLocalCoord,
-            IGlobalCoordGrain myGlobalCoord,
+            ILocalCoordinatorGrain myLocalCoord,
+            IGlobalCoordinatorGrain myGlobalCoord,
             IGrainFactory myGrainFactory,
             TransactionScheduler myScheduler,
             ITransactionalState<TState> state
