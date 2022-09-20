@@ -233,7 +233,9 @@ namespace Concurrency.Implementation.Coordinator
 
             foreach (var item in curScheduleMap)
             {
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, this.SiloInfo.Region, grainClassName[item.Key]);
+                this.GetPrimaryKeyLong(out string region);
+                this.logger.Info($"LocalCoordinatorGrain calling EmitBatch on transaction execution grain: {item.Key} region: {region} ");
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, region, grainClassName[item.Key]);
                 var batch = item.Value;
 
                 var localSubBatch = new LocalSubBatch(globalBid, batch);

@@ -163,6 +163,7 @@ namespace Concurrency.Implementation.TransactionExecution
             myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
             this.logger.Info($"ReceiveBatchSchedule: batchArrive");
             detTxnExecutor.BatchArrive(batch);
+            this.logger.Info($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);");
             
             return Task.CompletedTask;
         }
