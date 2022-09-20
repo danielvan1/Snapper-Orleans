@@ -29,6 +29,7 @@ namespace Concurrency.Implementation.GrainPlacement
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
+                // TODO: Why is this sequence sometimes empty? Race condition?
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
