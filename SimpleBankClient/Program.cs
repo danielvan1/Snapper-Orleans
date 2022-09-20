@@ -1,10 +1,10 @@
-﻿using Orleans;
+﻿using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Coordinator;
+using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
-using Concurrency.Interface.Configuration;
 using Utilities;
-using Concurrency.Interface.Coordinator;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
@@ -20,15 +20,15 @@ await client.Connect();
 IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
 await globalConfigGrain.InitializeGlobalCoordinators();
 
-IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU-Regional");
-IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US-Regional");
+IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
+IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 //IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(0, "US");
 // await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
 await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
 await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
 
-ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU-Local");
-ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US-Local");
+ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
+ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
 await localConfigGrainEU.InitializeLocalCoordinators("EU");
 await localConfigGrainUS.InitializeLocalCoordinators("US");
 
@@ -43,7 +43,7 @@ var initialBalance = 100;
 var grainClassName = new List<string>();                                             // grainID, grainClassName
 grainClassName.Add(snapperTransactionalAccountGrainTypeName);
 var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, "EU-EU-0");
-var PACT_balance1 = await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
+await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
 // int actorId2 = 1;
 
 // var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-0");

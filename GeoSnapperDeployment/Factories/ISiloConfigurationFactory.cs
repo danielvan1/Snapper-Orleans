@@ -1,4 +1,5 @@
 using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Models;
 
 namespace GeoSnapperDeployment.Factories
@@ -14,5 +15,7 @@ namespace GeoSnapperDeployment.Factories
         LocalConfiguration CreateLocalConfiguration(SiloConfigurations siloConfigurations);
 
         LocalSiloPlacementInfo CreateLocalSilosDictionary(SiloConfigurations siloConfigurations);
+
+        SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations);
     }
 }

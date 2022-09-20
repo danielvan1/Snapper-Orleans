@@ -13,6 +13,7 @@ namespace Utilities
 
     public class Constants
     {
+        public const int NumberOfLocalCoordinatorsPerSilo = 4;
         public const bool RealScaleOut = false;
 
         public const bool LocalTest = true;
@@ -58,7 +59,8 @@ namespace Utilities
         public const int numLoggerPerSilo = numCPUPerSilo / numCPUBasic * 4;
         // global silo config
         public const double scaleSpeed = 1.75;
-        public const int batchSizeInMSecsBasic = RealScaleOut ? 30 : 20;
+        //public const int batchSizeInMSecsBasic = RealScaleOut ? 30 : 20;
+        public const int batchSizeInMSecsBasic = 200;
         public const int numCPUForGlobal = numSilo;
         public const int numGlobalCoord = numSilo;
         public const int numGlobalLogger = numSilo;

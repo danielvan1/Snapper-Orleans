@@ -1,17 +1,18 @@
 ﻿using System;
-using Orleans;
-using Utilities;
-using Orleans.Concurrency;
-using System.Diagnostics;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.Serialization;
+using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Interface.TransactionExecution;
+using Concurrency.Implementation.TransactionExecution.Nondeterministic;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
-using Concurrency.Implementation.TransactionExecution.Nondeterministic;
-using System.Runtime.Serialization;
+using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
+using Orleans;
+using Orleans.Concurrency;
+using Orleans.Runtime;
+using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
@@ -21,8 +22,8 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         private readonly ILogger logger;
 
+        private TransactionExecutionGrainId myId;
         // grain basic info
-        int myID;
         int mySiloID;
         readonly ICoordMap coordMap;
         readonly string myClassName;
@@ -50,7 +51,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public TransactionExecutionGrain(ILogger logger, string myClassName)
         {
-            this.logger = logger;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.myClassName = myClassName;
         }
 
@@ -63,7 +64,7 @@ namespace Concurrency.Implementation.TransactionExecution
             nonDetCommitter.CheckGC();
             if (batchCommit.Count != 0) Console.WriteLine($"TransactionExecutionGrain: batchCommit.Count = {batchCommit.Count}");
             if (coordinatorMap.Count != 0) Console.WriteLine($"TransactionExecutionGrain: coordinatorMap.Count = {coordinatorMap.Count}");
-             
+
             return Task.CompletedTask;
         }
 
@@ -71,44 +72,31 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             highestCommittedLocalBid = -1;
 
-            // grain basic info
-            myID = (int)this.GetPrimaryKeyLong(out string _);
-            mySiloID = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(myID);
+            this.myId = new TransactionExecutionGrainId()
+            {
+                IntId = (int)this.GetPrimaryKeyLong(out string localRegion),
+                StringId = localRegion
+            };
+
+            this.mySiloID = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
 
             // transaction execution
             // loggerGroup.GetLoggingProtocol(myID, out log);
-            myScheduler = new TransactionScheduler(myID);
-            state = new HybridState<TState>();
-            batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
-            coordinatorMap = new Dictionary<long, int>();
+            this.myScheduler = new TransactionScheduler(this.myId.IntId);
+            this.state = new HybridState<TState>();
+            this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.coordinatorMap = new Dictionary<long, int>();
 
-            // set up local and global coordinator info
-            if (Constants.multiSilo)
-            {
-                if (Constants.hierarchicalCoord)
-                {
-                    var localCoordIndex = Helper.MapGrainIDToServiceID(myID, Constants.numLocalCoordPerSilo);
-                    myLocalCoordID = LocalCoordGrainPlacementHelper.MapCoordIndexToCoordID(localCoordIndex, mySiloID);
-                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordinatorGrain>(myLocalCoordID, "HerpDerp");
+            myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
 
-                    // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
-                    // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
-                }
-                else   // all local coordinators are put in a separate silo
-                {
-                    myLocalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
-                    myLocalCoord = GrainFactory.GetGrain<ILocalCoordinatorGrain>(myLocalCoordID, "HerpDerp");
-                }
-            }
-            else   // single silo deployment
-            {
-                myLocalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numLocalCoordPerSilo);
-                myLocalCoord = GrainFactory.GetGrain<ILocalCoordinatorGrain>(myLocalCoordID, "HerpDerp");
-            }
+            // TODO: Need this later when we have multi server and multi home
+            // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
+            // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
 
             detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
-                myID,
+                this.myId,
+                this.myId.IntId,
                 mySiloID,
                 myLocalCoordID,
                 myLocalCoord,
@@ -117,38 +105,26 @@ namespace Concurrency.Implementation.TransactionExecution
                 myScheduler,
                 state);
 
-            nonDetTxnExecutor = new NonDetTxnExecutor<TState>(
-                myID,
-                mySiloID,
-                myClassName,
-                myLocalCoord,
-                myGlobalCoord,
-                myScheduler,
-                state);
-
-            nonDetCommitter = new NonDetCommitter<TState>(
-                this.logger,
-                myID,
-                coordinatorMap,
-                state,
-                GrainFactory);
-
             return Task.CompletedTask;
         }
 
         // Notice: the current implementation assumes each actor will be accessed at most once
+        // TODO: Change the grainAccessInfo to correspond to the current way we use ids.
         public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<int> grainAccessInfo, List<string> grainClassName)
         {
+            this.logger.Info("TransactionExecutionGrain: StartTransaction1");
             var receiveTxnTime = DateTime.Now;
             Tuple<long, TransactionContext> cxtInfo = await detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
             var cxt = cxtInfo.Item2;
 
+            // Only gets here in multi-server or multi-home transaction
             if (highestCommittedLocalBid < cxtInfo.Item1)
             {
                 highestCommittedLocalBid = cxtInfo.Item1;
                 myScheduler.AckBatchCommit(highestCommittedLocalBid);
             }
 
+            this.logger.Info("TransactionExecutionGrain: StartTransaction2");
             // execute PACT
             var call = new FunctionCall(startFunc, funcInput, GetType());
             var res = await ExecuteDet(call, cxt);
@@ -157,7 +133,9 @@ namespace Concurrency.Implementation.TransactionExecution
             var resultObj = res.Item1;
 
             // wait for this batch to commit
+            this.logger.Info("TransactionExecutionGrain: StartTransaction3");
             await WaitForBatchCommit(cxt.localBid);
+            this.logger.Info("TransactionExecutionGrain: StartTransaction4");
 
             var commitTime = DateTime.Now;
             var txnResult = new TransactionResult(resultObj);
@@ -165,71 +143,6 @@ namespace Concurrency.Implementation.TransactionExecution
             txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
             txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
             return txnResult;
-        }
-
-        public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput)
-        {
-            var receiveTxnTime = DateTime.Now;
-            var cxtInfo = await nonDetTxnExecutor.GetNonDetContext();
-            if (highestCommittedLocalBid < cxtInfo.Item1)
-            {
-                highestCommittedLocalBid = cxtInfo.Item1;
-                myScheduler.AckBatchCommit(highestCommittedLocalBid);
-            }
-            var cxt = cxtInfo.Item2;
-
-            // execute ACT
-            var call = new FunctionCall(startFunc, funcInput, GetType());
-            var res1 = await ExecuteNonDet(call, cxt);
-            var finishExeTime = DateTime.Now;
-            var startExeTime = res1.Item2;
-            var funcResult = res1.Item1;
-
-            // check serializability and do 2PC
-            var canCommit = !funcResult.exception;
-            var res = new TransactionResult(funcResult.resultObj);
-            var isPrepared = false;
-            if (canCommit)
-            {
-                var result = nonDetCommitter.CheckSerializability(funcResult.globalScheduleInfo, funcResult.scheduleInfoPerSilo);
-                canCommit = result.Item1;
-                if (canCommit)
-                {
-                    isPrepared = true;
-                    canCommit = await nonDetCommitter.CoordPrepare(cxt.globalTid, funcResult.grainOpInfo);
-                }
-                else
-                {
-                    if (result.Item2) res.Exp_Serializable = true;
-                    else res.Exp_NotSureSerializable = true;
-                }
-            }
-            else res.Exp_Deadlock |= funcResult.Exp_Deadlock;  // when deadlock = false, exception may from RW conflict
-
-            if (canCommit) await nonDetCommitter.CoordCommit(cxt.globalTid, funcResult);
-            else
-            {
-                res.exception = true;
-                await nonDetCommitter.CoordAbort(cxt.globalTid, funcResult.grainOpInfo, isPrepared);
-            }
-
-            // wait for maxBeforeLocalBid in each silo to commit
-            if (canCommit)
-            {
-                foreach (var siloInfo in funcResult.grainWithMaxBeforeLocalBidPerSilo)
-                {
-                    var siloID = siloInfo.Key;
-                    var grainID = siloInfo.Value;
-                    // TODO: Refactor the `this.siloInfo.Region` when we want to add multi-home
-                    var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID.Item1, this.siloInfo.Region, grainID.Item2);
-                    await grain.WaitForBatchCommit(funcResult.scheduleInfoPerSilo[siloID].maxBeforeBid);
-                }
-            }
-            var commitTime = DateTime.Now;
-            res.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            res.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            res.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
-            return res;
         }
 
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
@@ -281,10 +194,14 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
         {
+            this.logger.Info($"TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)");
             await detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
+            this.logger.Info($"TransactionExecutionGrain: await InvokeFunction(call, cxt)");
             var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
+            this.logger.Info($"TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);");
             await detTxnExecutor.FinishExecuteDetTxn(cxt);
+            this.logger.Info($"TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);");
             detTxnExecutor.CleanUp(cxt.localTid);
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }

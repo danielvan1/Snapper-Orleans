@@ -23,6 +23,7 @@ namespace SmallBank.Grains
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = int.MaxValue;
+            Console.WriteLine($"Balance {myState.balance}");
             return new TransactionResult();
         }
 

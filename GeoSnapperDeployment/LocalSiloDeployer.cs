@@ -37,7 +37,9 @@ namespace GeoSnapperDeployment
 
             // Configure global silo
             GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalConfiguration(siloConfigurations);
-            this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
+            var globalSiloInfo = this.siloConfigurationFactory.CreateGlobalSiloInfo(siloConfigurations);
+
+            this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration, globalSiloInfo);
 
             // Configure regional silos
             RegionalSilosPlacementInfo regionalSilos =this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
@@ -66,8 +68,9 @@ namespace GeoSnapperDeployment
                                              primarySiloEndpoint, globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort);
 
             GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalConfiguration(siloConfigurations);
+            var globalSiloInfo = this.siloConfigurationFactory.CreateGlobalSiloInfo(siloConfigurations);
 
-            this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration);
+            this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration, globalSiloInfo);
 
             var siloHost = siloHostBuilder.Build();
 
@@ -176,7 +179,7 @@ namespace GeoSnapperDeployment
                            });
         }
 
-        private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration)
+        private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, SiloInfo globalSiloInfo)
         {
 
             ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
@@ -184,6 +187,7 @@ namespace GeoSnapperDeployment
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
                 serviceCollection.AddSingleton(globalConfiguration);
+                serviceCollection.AddSingleton(globalSiloInfo);
                 serviceCollection.AddSingleton(logger);
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));
