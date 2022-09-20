@@ -143,6 +143,7 @@ namespace Concurrency.Implementation.TransactionExecution
             Tuple<long, TransactionContext> cxtInfo = await detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
             var cxt = cxtInfo.Item2;
 
+            // TODO: How can highestCommittedLocalBid ever be less than -1 when it starts at -1
             if (highestCommittedLocalBid < cxtInfo.Item1)
             {
                 highestCommittedLocalBid = cxtInfo.Item1;

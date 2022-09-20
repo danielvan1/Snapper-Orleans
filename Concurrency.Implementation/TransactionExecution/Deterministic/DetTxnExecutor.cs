@@ -101,6 +101,7 @@ namespace Concurrency.Implementation.TransactionExecution
                     grainNamePerSilo[siloID].Add(grainClassName[i]);
                 }
 
+                // For a simple example, make sure that only 1 silo is involved in the transaction
                 if (siloList.Count != 1)
                 {
                     // get global tid from global coordinator

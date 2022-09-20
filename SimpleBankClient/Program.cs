@@ -22,8 +22,10 @@ await globalConfigGrain.InitializeGlobalCoordinators();
 
 IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU-Regional");
 IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US-Regional");
+
 //IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(0, "US");
 // await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
+
 await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
 await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
 
@@ -32,18 +34,16 @@ ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US
 await localConfigGrainEU.InitializeLocalCoordinators("EU");
 await localConfigGrainUS.InitializeLocalCoordinators("US");
 
-// Herp derp
-
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 int actorId1 = 0;
 var actorAccessInfo1 = new List<int>();
 actorAccessInfo1.Add(actorId1);
 var initialBalance = 100;
-var grainClassName = new List<string>();                                             // grainID, grainClassName
+var grainClassName = new List<string>();
 grainClassName.Add(snapperTransactionalAccountGrainTypeName);
 var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, "EU-EU-0");
-var PACT_balance1 = await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
+var PACT_balance1 = await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName); // grainID, grainClassName
 // int actorId2 = 1;
 
 // var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-0");
