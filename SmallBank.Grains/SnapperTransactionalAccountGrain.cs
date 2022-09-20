@@ -22,8 +22,8 @@ namespace SmallBank.Grains
             var accountID = (int)funcInput;
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
-            myState.balance = int.MaxValue;
-            Console.WriteLine($"Balance {myState.balance}");
+            myState.balance = 100;
+            Console.WriteLine($"Balance {(int)myState.balance}");
             return new TransactionResult();
         }
 
@@ -45,6 +45,7 @@ namespace SmallBank.Grains
                     var t = CallGrain(context, accountID, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
                     task.Add(t);
                 }
+                // This logic is weird, one of the recipients could be it self
                 else task.Add(Deposit(context, money));
             }
             await Task.WhenAll(task);

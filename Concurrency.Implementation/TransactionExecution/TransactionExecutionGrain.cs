@@ -93,6 +93,7 @@ namespace Concurrency.Implementation.TransactionExecution
             // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
             // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
 
+            this.logger.Info("Init DetTxnExecutor");
             detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
                 this.myId,
@@ -104,6 +105,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 GrainFactory,
                 myScheduler,
                 state);
+            this.logger.Info("After Init of DetTxnExecutor");
 
             return Task.CompletedTask;
         }
@@ -114,7 +116,9 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.logger.Info("TransactionExecutionGrain: StartTransaction1");
             var receiveTxnTime = DateTime.Now;
-            Tuple<long, TransactionContext> cxtInfo = await detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
+
+            this.logger.Info("Going to call DetTxnExecutor.GetDetContext");
+            Tuple<long, TransactionContext> cxtInfo = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
             var cxt = cxtInfo.Item2;
 
             // Only gets here in multi-server or multi-home transaction
@@ -160,9 +164,9 @@ namespace Concurrency.Implementation.TransactionExecution
             // register the local SubBatch info
 
             this.logger.Info($"ReceiveBatchSchedule: registerBatch");
-            myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
-            this.logger.Info($"ReceiveBatchSchedule: batchArrive");
-            detTxnExecutor.BatchArrive(batch);
+            this.myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
+            this.logger.Info($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}");
+            this.detTxnExecutor.BatchArrive(batch);
             this.logger.Info($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);");
             
             return Task.CompletedTask;
@@ -172,12 +176,14 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task WaitForBatchCommit(long bid)
         {
             if (highestCommittedLocalBid >= bid) return;
+            this.logger.Info($"Waiting for batch id:{bid} to commit");
             await batchCommit[bid].Task;
         }
 
         /// <summary> A local coordinator calls this interface to notify the commitment of a local batch </summary>
         public Task AckBatchCommit(long bid)
         {
+            this.logger.Info($"DetTxnExecutor.AckBatchCommit is called on batch id:{bid} by local coordinator");
             if (highestCommittedLocalBid < bid)
             {
                 highestCommittedLocalBid = bid;
@@ -260,10 +266,9 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
         public Task<TransactionResult> CallGrain(TransactionContext cxt, int grainID, string grainNameSpace, FunctionCall call)
         {
-
-            // TODO: Refactor the `this.siloInfo.Region` when we want to add multi-home
-            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, this.siloInfo.Region, grainNameSpace);
-            var isDet = cxt.localBid != -1;
+            this.GetPrimaryKeyLong(out string region);
+            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, region, grainNameSpace);
+            var isDet = cxt.localBid != 1;
             if (isDet) return detTxnExecutor.CallGrain(cxt, call, grain);
             else return nonDetTxnExecutor.CallGrain(cxt, call, grain);
         }

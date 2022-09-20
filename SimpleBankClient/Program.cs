@@ -33,69 +33,62 @@ ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US
 await localConfigGrainEU.InitializeLocalCoordinators("EU");
 await localConfigGrainUS.InitializeLocalCoordinators("US");
 
+// Going to perform 2 init transactions on two accounts in the same region,
+// and then transfer 50$ from account id 0 to account id 1. They both
+// get initialized to 100$(hardcoded inside of Init)
+
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
-int actorId1 = 0;
+
+int actorId0 = 0;
+int actorId1 = 2; // Interesting: if this actorId1 is changed to 
+var regionAndServer = "EU-EU-0";
+
+var actorAccessInfo0 = new List<int>();
+actorAccessInfo0.Add(actorId0);
+
 var actorAccessInfo1 = new List<int>();
 actorAccessInfo1.Add(actorId1);
-var initialBalance = 100;
+
 var grainClassName = new List<string>();
 grainClassName.Add(snapperTransactionalAccountGrainTypeName);
-var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, "EU-EU-0");
-await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
-// int actorId2 = 1;
 
-// var actor2 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId2, "EU-US-0");
+var actor0 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId0, regionAndServer);
+var accountId = actorId1;
 
+var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, regionAndServer);
 
-// // Required for the Txs(All ISnapperTransactionalAccountGrain's TXs can reuse this): 
-
-//API we want to call:
-//Task<TransactionResult> StartTransaction(string startFunc, 
-//                                         object funcInput,
-//                                         List<int> grainAccessInfo,
-//                                         List<string> grainClassName);
-
-// Required setup for the Initial TXs giving both an initial balance of 100
-// Remember that we just assume that each actor is only called ONCE in a tx now
-// I don't think there is anyway to have TXs involving multiple calls to one
-// actor
-// var actorAccessInfo1 = new List<int>();
-// actorAccessInfo1.Add(actorId1);
-
-// var actorAccessInfo2 = new List<int>();
-// actorAccessInfo1.Add(actorId1);
-
-// var grainClassName = new List<string>();                                             // grainID, grainClassName
-// grainClassName.Add(snapperTransactionalAccountGrainTypeName);
+var grainClassNamesForMultiTransfer = new List<string>();                                             // grainID, grainClassName
+grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
+grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
 
-// // Required setup for starting transactions that deposits funds between two actors
-// var actorAccessInfoForDeposit = new List<int>();
-// actorAccessInfoForDeposit.Add(actorId1);
-// actorAccessInfoForDeposit.Add(actorId2);
+var actorAccessInfoForMultiTransfer = new List<int>();
+actorAccessInfoForMultiTransfer.Add(actorId0);
+actorAccessInfoForMultiTransfer.Add(actorId1);
 
-// var grainClassNamesForDeposit = new List<string>();                                             // grainID, grainClassName
-// grainClassNamesForDeposit.Add(snapperTransactionalAccountGrainTypeName);
-// grainClassNamesForDeposit.Add(snapperTransactionalAccountGrainTypeName);
+var amountToDeposit = 50;
 
-// var amountToDeposit = 50;
+try {
+    Console.WriteLine("Starting init txs(both accounts start with 100$)");
+    await actor0.StartTransaction("Init", actorId0, actorAccessInfo0, grainClassName);
+    await actor1.StartTransaction("Init", actorId1, actorAccessInfo1, grainClassName);
 
-// Console.WriteLine("Started deterministic tx");
-// try {
-//     var PACT_balance1 = await actor1.StartTransaction("Init", initialBalance, actorAccessInfo1, grainClassName);
-//     Console.WriteLine("The PACT balance in actor 1:"+PACT_balance1);
-//     var PACT_balance2 = await actor2.StartTransaction("Init", initialBalance, actorAccessInfo2, grainClassName);
-//     Console.WriteLine("The PACT balance in actor 2:"+PACT_balance2);
+    Console.WriteLine("Starting deposit txs");
 
-//     await actor1.StartTransaction("Deposit", amountToDeposit, actorAccessInfoForDeposit, grainClassNamesForDeposit);
-//     // TODO: Figure out if `null` is the correct argument for Balance
-//     var PACT_balance3 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
-//     Console.WriteLine("The PACT balance in actor 1 after deposit(Expected 50):"+PACT_balance3);
-//     var PACT_balance4 = await actor2.StartTransaction("Balance", null, actorAccessInfo2, grainClassName);
-//     Console.WriteLine("The PACT balance in actor 2 after deposit(Expected 150):"+PACT_balance4);
-// } catch (Exception e) {
-//     Console.WriteLine(e.Message);
-// }
+    var multiTransferInput = new Tuple<int, List<int>>(amountToDeposit, new List<int>() { actorId1 });  // money, List<to account>
+    await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
 
-// Console.WriteLine("Ended deterministic tx");
+    Console.WriteLine("Starting balance txs");
+
+    var PACT_balance3 = await actor0.StartTransaction("Balance", null, actorAccessInfo0, grainClassName);
+    Console.WriteLine($"The PACT balance in actor {actorId0} after giving money: Expected: 50, Actual:{PACT_balance3.resultObj}");
+
+    var PACT_balance4 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
+    Console.WriteLine($"The PACT balance in actor {actorId1} after receiving money: Expected: 150, Actual:{PACT_balance4.resultObj}");
+  } catch (Exception e) {
+     Console.WriteLine(e.Message);
+     Console.WriteLine(e.StackTrace);
+  }
+
+Console.WriteLine("Ended deterministic tx");

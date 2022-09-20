@@ -246,6 +246,7 @@ namespace Concurrency.Implementation.Coordinator
             }
         }
 
+        // TODO: Rename to AckRegionalCoordinator, and input RegionalBatchId ?
         void ACKGlobalCoord(long globalBid)
         {
             var globalCoordID = globalBidToGlobalCoordID[globalBid];
@@ -253,7 +254,10 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task AckBatchCompletion(long bid)
         {
+            this.logger.Info($"Expected acknowledgements for batch:{bid} before decrement: {expectedAcksPerBatch[bid]}");
             expectedAcksPerBatch[bid]--;
+            this.logger.Info($"Expected acknowledgements for batch:{bid} after decrement: {expectedAcksPerBatch[bid]}");
+
             if (expectedAcksPerBatch[bid] != 0) return;
 
             // the batch has been completed in this silo

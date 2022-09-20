@@ -163,7 +163,7 @@ namespace GeoSnapperDeployment
             siloHostBuilder.ConfigureEndpoints(IPAddress.Loopback, siloPort, gatewayPort)
                            .UseDashboard(options =>
                            {
-                               options.Port = 8080;
+                               options.Port = siloPort + 100; // e.g. 11211, TODO: Find something nicer
                                options.Host = "*";
                                options.HostSelf = true;
                                options.CounterUpdateIntervalMs = 10000;
@@ -177,6 +177,7 @@ namespace GeoSnapperDeployment
                                options.ClusterId = clusterId;
                                options.ServiceId = serviceId;
                            });
+                           //.ConfigureLogging(logging => logging.AddConsole());
         }
 
         private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, SiloInfo globalSiloInfo)

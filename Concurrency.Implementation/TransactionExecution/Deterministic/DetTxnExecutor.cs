@@ -173,13 +173,13 @@ namespace Concurrency.Implementation.TransactionExecution
             }
             else
             {
-                this.logger.Info("WaitForturn waiting here mother fucker");
+                this.logger.Info("DetTxExecutor:WaitForturn waiting");
                 // wait until the SubBatch has arrived this grain
                 if (localBtchInfoPromise.ContainsKey(cxt.localBid) == false)
                     localBtchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
                 await localBtchInfoPromise[cxt.localBid].Task;
                 
-                this.logger.Info("WaitForturn finito mother fucker");
+                this.logger.Info("DetTxExecutor:WaitForturn finished");
             }
 
             Debug.Assert(detFuncResults.ContainsKey(cxt.localTid) == false);
@@ -202,7 +202,10 @@ namespace Concurrency.Implementation.TransactionExecution
 
                 myScheduler.scheduleInfo.CompleteDetBatch(cxt.localBid);
 
-                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
+                var localCoordinatorId = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
+                var localCoordinatorRegion = this.myId.StringId;
+                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
+                this.logger.Info($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}");
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
         }
@@ -210,9 +213,10 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public void BatchArrive(LocalSubBatch batch)
         {
-            Console.WriteLine("Batch arrived mother fucker");
+            this.logger.Info($"Batch arrived mother fucker, batch: {batch}");
             if (localBtchInfoPromise.ContainsKey(batch.bid) == false)
                 localBtchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
+            this.logger.Info($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBtchInfoPromise[batch.bid]}");
             localBtchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary
