@@ -17,16 +17,16 @@ namespace Concurrency.Implementation.Coordinator
 
         // transaction processing
         List<List<int>> detRequests;
-        List<TaskCompletionSource<Tuple<long, long>>> detRequestPromise;                              // <local bid, local tid>
+        List<TaskCompletionSource<Tuple<long, long>>> detRequestPromise; // <local bid, local tid>
 
         // batch processing
         Dictionary<long, long> bidToLastBid;
-        Dictionary<long, int> bidToLastCoordID;                                                      // <bid, coordID who emit this bid's lastBid>
+        Dictionary<long, int> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
         Dictionary<long, int> expectedAcksPerBatch;
-        Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;                                 // <bid, Service ID, subBatch>
+        Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
         Dictionary<long, TaskCompletionSource<bool>> batchCommit;
         // only for global batch
-        Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo;                                 // global bid, silo ID, chosen local coord ID
+        Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo; // global bid, silo ID, chosen local coord ID
 
         public DetTxnProcessor(
             int myID,
