@@ -148,6 +148,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
+            this.logger.Info($"ReceiveBatchSchedule was called");
             // do garbage collection for committed local batches
             if (highestCommittedLocalBid < batch.highestCommittedBid)
             {
@@ -157,7 +158,10 @@ namespace Concurrency.Implementation.TransactionExecution
             batchCommit.Add(batch.bid, new TaskCompletionSource<bool>());
 
             // register the local SubBatch info
+
+            this.logger.Info($"ReceiveBatchSchedule: registerBatch");
             myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
+            this.logger.Info($"ReceiveBatchSchedule: batchArrive");
             detTxnExecutor.BatchArrive(batch);
             
             return Task.CompletedTask;

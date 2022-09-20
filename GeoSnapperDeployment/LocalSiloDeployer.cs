@@ -183,7 +183,7 @@ namespace GeoSnapperDeployment
         {
 
             ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
-            ILogger logger = loggerFactory.CreateLogger("smt");
+            ILogger logger = loggerFactory.CreateLogger("Global");
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
                 serviceCollection.AddSingleton(globalConfiguration);
@@ -205,7 +205,7 @@ namespace GeoSnapperDeployment
                                              LocalSiloPlacementInfo localSilos)
         {
             ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
-            ILogger logger = loggerFactory.CreateLogger("smt");
+            ILogger logger = loggerFactory.CreateLogger("Regional");
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
@@ -235,7 +235,7 @@ namespace GeoSnapperDeployment
         private void ConfigureLocalGrains(SiloHostBuilder siloHostBuilder, RegionalSilosPlacementInfo regionalSilos, LocalSiloPlacementInfo localSilos)
         {
             ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
-            ILogger logger = loggerFactory.CreateLogger("smt");
+            ILogger logger = loggerFactory.CreateLogger("Local");
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {

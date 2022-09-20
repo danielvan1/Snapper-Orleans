@@ -58,16 +58,20 @@ namespace Concurrency.Implementation.Configuration
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
                 }
 
-                if (!this.tokenEnabled)
-                {
-                    var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
-                    LocalToken token = new LocalToken();
-                    await coordinator0.PassToken(token);
-                    this.tokenEnabled = true;
-                }
             }
 
             await Task.WhenAll(initializeLocalCoordinatorsTasks);
+
+            // This logic has to be after we start the coordinators, otherwise the passToken method
+            // could be called before this chain is fully initialized and the <nextCoordinator> in
+            // nextCoordinator.passToken(<token>) will be null.
+            if (!this.tokenEnabled)
+            {
+                var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKeys[0]);
+                LocalToken token = new LocalToken();
+                await coordinator0.PassToken(token);
+                this.tokenEnabled = true;
+            }
 
             this.logger.LogInformation($"Spawned all local coordinators in region {currentRegion}");
         }

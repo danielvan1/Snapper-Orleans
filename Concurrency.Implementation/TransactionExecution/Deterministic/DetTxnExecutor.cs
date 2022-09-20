@@ -173,13 +173,13 @@ namespace Concurrency.Implementation.TransactionExecution
             }
             else
             {
-                Console.WriteLine("WaitForturn waiting here mother fucker");
+                this.logger.Info("WaitForturn waiting here mother fucker");
                 // wait until the SubBatch has arrived this grain
                 if (localBtchInfoPromise.ContainsKey(cxt.localBid) == false)
                     localBtchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
                 await localBtchInfoPromise[cxt.localBid].Task;
                 
-                Console.WriteLine("WaitForturn finito mother fucker");
+                this.logger.Info("WaitForturn finito mother fucker");
             }
 
             Debug.Assert(detFuncResults.ContainsKey(cxt.localTid) == false);

@@ -97,7 +97,7 @@ namespace Concurrency.Implementation.Coordinator
                 bidToSubBatches);
             this.GetPrimaryKeyLong(out string region);
             this.region = region;
-            this.logger.Info($"Local coordinator was activated in {region}");
+            this.logger.Info($"Local coordinator was activated in {this.region}");
             return base.OnActivateAsync();
         }
 
@@ -176,7 +176,7 @@ namespace Concurrency.Implementation.Coordinator
                 detTxnProcessor.GarbageCollectTokenInfo(token);
             else detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
 
-            _ = neighborCoord.PassToken(token);
+            _ = this.neighborCoord.PassToken(token);
             if (curBatchID != -1) await EmitBatch(curBatchID);
             if (curBatchIDs.Count != 0)
                 foreach (var bid in curBatchIDs) await EmitBatch(bid);
