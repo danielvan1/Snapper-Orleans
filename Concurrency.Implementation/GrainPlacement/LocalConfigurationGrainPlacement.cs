@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.Configuration;
 using Concurrency.Implementation.Coordinator;
+using Concurrency.Implementation.Exceptions;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -42,11 +43,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogWarning($"The string key of the grain {region} was not found in the RegionalSilos dictionary for the local config grain");
-            // TODO: Handle this in a better way.
-            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-
-            return Task.FromResult(silos[0]);
+            throw new GrainPlacementException($"Wrong placement of {nameof(LocalConfigurationGrain)}");
         }
     }
 

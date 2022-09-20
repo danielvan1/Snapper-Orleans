@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Coordinator;
+using Concurrency.Implementation.Exceptions;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -35,6 +37,10 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
+            this.logger.LogError($"Local coordinator ID: {region}");
+            this.logger.LogError(string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo));
+
+            throw new GrainPlacementException($"Wrong placement of {nameof(LocalCoordinatorGrain)}");
             // TODO: Handle this in a better way.
             SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
             return Task.FromResult(silos[0]);

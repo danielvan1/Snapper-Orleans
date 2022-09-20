@@ -1,20 +1,22 @@
 ﻿using System;
-using Utilities;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Interface.Coordinator;
-using Orleans;
-using System.Diagnostics;
-using Concurrency.Interface.TransactionExecution;
-using System.Runtime.Serialization;
 using Concurrency.Interface.Models;
+using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
+using Orleans;
+using Orleans.Runtime;
+using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
     public class DetTxnExecutor<TState> where TState : ICloneable, ISerializable
     {
         private readonly ILogger logger;
+        private readonly TransactionExecutionGrainId myId;
 
         // grain basic info
         readonly int myID;
@@ -29,6 +31,7 @@ namespace Concurrency.Implementation.TransactionExecution
         readonly ICoordMap coordMap;
         readonly ILocalCoordinatorGrain myLocalCoord;
         readonly IGlobalCoordinatorGrain myGlobalCoord;                                // use this coord to get tid for global transactions
+        private readonly IGrainFactory grainFactory;
 
         // PACT execution
         Dictionary<long, TaskCompletionSource<bool>> localBtchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
@@ -50,22 +53,25 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public DetTxnExecutor(
             ILogger logger,
+            TransactionExecutionGrainId myId,
             int myID,
-            int siloID, 
+            int siloID,
             int myLocalCoordID,
             ILocalCoordinatorGrain myLocalCoord,
             IGlobalCoordinatorGrain myGlobalCoord,
-            IGrainFactory myGrainFactory,
+            IGrainFactory grainFactory,
             TransactionScheduler myScheduler,
             ITransactionalState<TState> state
             )
         {
             this.logger = logger;
+            this.myId = myId;
             this.myID = myID;
             this.siloID = siloID;
             this.myLocalCoordID = myLocalCoordID;
             this.myLocalCoord = myLocalCoord;
             this.myGlobalCoord = myGlobalCoord;
+            this.grainFactory = grainFactory;
             this.myScheduler = myScheduler;
             this.state = state;
 
@@ -105,6 +111,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 if (siloList.Count != 1)
                 {
                     // get global tid from global coordinator
+                    // TODO: Should be our Regional Coordinators here.
                     Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myGlobalCoord.NewTransaction(siloList);
                     var globalTid = globalInfo.Item1.tid;
                     var globalBid = globalInfo.Item1.bid;
@@ -137,11 +144,14 @@ namespace Concurrency.Implementation.TransactionExecution
                     var localInfo = await task;
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, globalBid, globalTid);
 
+                    // TODO: What is this -1??
                     return new Tuple<long, TransactionContext>(-1, cxt1) ;
                 }
             }
 
+            this.logger.Info($"GetDetContext going to call myLocalCoord.NewTransaction");
             var info = await myLocalCoord.NewTransaction(grainList, grainClassName);
+            this.logger.Info($"GetDetContext after call to myLocalCoord.NewTransaction");
             var cxt2 = new TransactionContext(info.tid, info.bid);
 
             return new Tuple<long, TransactionContext>(info.highestCommittedBid, cxt2);
@@ -163,12 +173,15 @@ namespace Concurrency.Implementation.TransactionExecution
             }
             else
             {
+                Console.WriteLine("WaitForturn waiting here mother fucker");
                 // wait until the SubBatch has arrived this grain
                 if (localBtchInfoPromise.ContainsKey(cxt.localBid) == false)
                     localBtchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
                 await localBtchInfoPromise[cxt.localBid].Task;
+                
+                Console.WriteLine("WaitForturn finito mother fucker");
             }
-            
+
             Debug.Assert(detFuncResults.ContainsKey(cxt.localTid) == false);
             detFuncResults.Add(cxt.localTid, new BasicFuncResult());
             await myScheduler.WaitForTurn(cxt.localBid, cxt.localTid);
@@ -189,7 +202,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
                 myScheduler.scheduleInfo.CompleteDetBatch(cxt.localBid);
 
-                var coord = coordMap.GetLocalCoord(coordID);
+                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
         }
@@ -197,6 +210,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public void BatchArrive(LocalSubBatch batch)
         {
+            Console.WriteLine("Batch arrived mother fucker");
             if (localBtchInfoPromise.ContainsKey(batch.bid) == false)
                 localBtchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
             localBtchInfoPromise[batch.bid].SetResult(true);
@@ -231,7 +245,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<TransactionResult> CallGrain(TransactionContext cxt, FunctionCall call, ITransactionExecutionGrain grain)
         {
+            this.logger.Info("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))");
             var resultObj = (await grain.ExecuteDet(call, cxt)).Item1;
+            this.logger.Info("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))");
             return new TransactionResult(resultObj);
         }
 

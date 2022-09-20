@@ -1,9 +1,9 @@
-﻿using Concurrency.Interface.Models;
-using Concurrency.Interface.Coordinator;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Models;
 using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
@@ -73,7 +73,9 @@ namespace Concurrency.Implementation.Coordinator
             detRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
             detRequestPromise.Add(promise);
+            Console.WriteLine("Waiting in NewDet");
             await promise.Task;
+            Console.WriteLine("finished NewDet");
             return new Tuple<long, long>(promise.Task.Result.Item1, promise.Task.Result.Item2);
         }
 

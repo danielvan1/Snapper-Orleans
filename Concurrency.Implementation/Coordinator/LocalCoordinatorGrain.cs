@@ -1,15 +1,16 @@
 ﻿using System;
-using Orleans;
-using Utilities;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using Concurrency.Interface.Coordinator;
-using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Interface.TransactionExecution;
-using Concurrency.Interface.Models;
-using Orleans.Concurrency;
 using System.Linq;
+using System.Threading.Tasks;
+using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Models;
+using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
+using Orleans;
+using Orleans.Concurrency;
+using Orleans.Runtime;
+using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
 {
@@ -17,6 +18,8 @@ namespace Concurrency.Implementation.Coordinator
     [LocalCoordinatorGrainPlacementStrategy]
     public class LocalCoordinatorGrain : Grain, ILocalCoordinatorGrain
     {
+        private string region;
+
         // coord basic info
         int myID;
         ILocalCoordinatorGrain neighborCoord;
@@ -92,6 +95,9 @@ namespace Concurrency.Implementation.Coordinator
                 myID,
                 expectedAcksPerBatch,
                 bidToSubBatches);
+            this.GetPrimaryKeyLong(out string region);
+            this.region = region;
+            this.logger.Info($"Local coordinator was activated in {region}");
             return base.OnActivateAsync();
         }
 
@@ -114,11 +120,11 @@ namespace Concurrency.Implementation.Coordinator
                 if (this.grainClassName.ContainsKey(grainID) == false)
                     this.grainClassName.Add(grainID, grainClassName[i]);
             }
-                
+
             if (globalTransactionInfo.ContainsKey(globalBid) == false)
                 globalTransactionInfo.Add(globalBid, new Dictionary<long, List<int>>());
             globalTransactionInfo[globalBid].Add(globalTid, grainAccessInfo);
-            
+
             var promise = new TaskCompletionSource<Tuple<long, long>>();
             globalDetRequestPromise.Add(globalTid, promise);
             await promise.Task;
@@ -128,6 +134,8 @@ namespace Concurrency.Implementation.Coordinator
         // for PACT
         public async Task<TransactionRegistInfo> NewTransaction(List<int> grainAccessInfo, List<string> grainClassName)
         {
+            this.GetPrimaryKeyLong(out string region);
+            this.logger.Info($"NewTransaction is called on local coordinator: {region}");
             var task = detTxnProcessor.NewDet(grainAccessInfo);
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
@@ -136,6 +144,7 @@ namespace Concurrency.Implementation.Coordinator
                     this.grainClassName.Add(grain, grainClassName[i]);
             }
             var id = await task;
+            this.logger.Info($"NewTransaction is going to return tid: {id.Item1} and {id.Item2}");
             return new TransactionRegistInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);
         }
 
@@ -160,7 +169,7 @@ namespace Concurrency.Implementation.Coordinator
                 curBatchID = detTxnProcessor.GenerateBatch(token);
                 ProcessGlobalBatch(token, curBatchIDs);
             }
-            
+
             nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
@@ -179,7 +188,7 @@ namespace Concurrency.Implementation.Coordinator
             {
                 var batch = globalBatchInfo.First();
                 var globalBid = batch.Key;
-               
+
                 if (batch.Value.lastBid != token.lastEmitGlobalBid) return;
                 if (batch.Value.txnList.Count != globalTransactionInfo[globalBid].Count) return;
 
@@ -230,7 +239,7 @@ namespace Concurrency.Implementation.Coordinator
                 var localSubBatch = new LocalSubBatch(globalBid, batch);
                 localSubBatch.highestCommittedBid = detTxnProcessor.highestCommittedBid;
                 localSubBatch.globalTidToLocalTid = globalTidToLocalTid;
-                
+
                 _ = dest.ReceiveBatchSchedule(localSubBatch);
             }
         }
@@ -249,7 +258,7 @@ namespace Concurrency.Implementation.Coordinator
             long globalBid = -1;
             var isPrevGlobal = false;
             var isGlobal = localBidToGlobalBid.ContainsKey(bid);
-            
+
             if (isGlobal)
             {
                 // ACK the global coordinator
@@ -269,14 +278,16 @@ namespace Concurrency.Implementation.Coordinator
                 localBidToGlobalBid.Remove(bid);
                 globalBidToGlobalCoordID.Remove(globalBid);
                 globalBidToIsPrevBatchGlobal.Remove(globalBid);
-            } 
+            }
 
             detTxnProcessor.AckBatchCommit(bid);
 
-            var curScheduleMap = bidToSubBatches[bid];
-            foreach (var item in curScheduleMap)
+            var currentScheduleMap = bidToSubBatches[bid];
+            foreach (var item in currentScheduleMap)
             {
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, this.SiloInfo.Region, grainClassName[item.Key]);
+                this.GetPrimaryKeyLong(out string region);
+                this.logger.Info($"{region}:LocalCoordinator calls commit on actors");
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, region, grainClassName[item.Key]);
                 _ = dest.AckBatchCommit(bid);
             }
 

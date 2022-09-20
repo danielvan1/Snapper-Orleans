@@ -164,10 +164,7 @@ namespace GeoSnapperDeployment.Factories
                                                                 siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
                                                                 siloConfiguration.Region, isReplica);
 
-                string regionalKey = $"{siloConfiguration.Region}-Regional";
-                string localKey = $"{siloConfiguration.Region}-Local";
-                regionalSilos.Add(regionalKey, siloInfo);
-                regionalSilos.Add(localKey, siloInfo);
+                regionalSilos.Add(siloConfiguration.Region, siloInfo);
             }
 
             return new RegionalSilosPlacementInfo() { RegionsSiloInfo = regionalSilos };
@@ -194,6 +191,14 @@ namespace GeoSnapperDeployment.Factories
             {
                 NumberOfSilosInRegion = new ReadOnlyDictionary<string, int>(numberOfSilosPerRegion)
             };
+        }
+
+        public SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations)
+        {
+            SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
+
+            return this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloId,
+                                               globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort, globalSiloConfiguration.Region, globalSiloConfiguration.Region, false);
         }
     }
 }

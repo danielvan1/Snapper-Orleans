@@ -4,15 +4,16 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
+using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Implementation.Configuration
 {
     [LocalConfigurationGrainPlacementStrategy]
     public class LocalConfigurationGrain : Grain, ILocalConfigGrain
     {
-        private const int NumberOfLocalCoordinatorsPerSilo = 4;
         private readonly ILogger logger;
         private readonly LocalConfiguration localConfiguration;
         private bool tokenEnabled;
@@ -42,18 +43,27 @@ namespace Concurrency.Implementation.Configuration
 
             var initializeLocalCoordinatorsTasks = new List<Task>();
 
+            // SiloKey should be similar to EU-EU-x
             foreach(string siloKey in siloKeys)
             {
-                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
+                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(Constants.NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
                 var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
                 initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
 
-                for(int i = 0; i < NumberOfLocalCoordinatorsPerSilo - 1; i++)
+                for(int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
                     coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, siloKey);
                     nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, siloKey);
 
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
+                }
+
+                if (!this.tokenEnabled)
+                {
+                    var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
+                    LocalToken token = new LocalToken();
+                    await coordinator0.PassToken(token);
+                    this.tokenEnabled = true;
                 }
             }
 

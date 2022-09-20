@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Exceptions;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -35,9 +36,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            // TODO: Handle this in a better way.
-            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-            return Task.FromResult(silos[0]);
+            throw new GrainPlacementException($"Wrong placement of grain");
         }
     }
 
