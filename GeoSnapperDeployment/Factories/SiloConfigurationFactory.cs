@@ -33,6 +33,7 @@ namespace GeoSnapperDeployment.Factories
                 configurations.Add(siloConfiguration);
             }
 
+            Console.WriteLine("The silo keys we generate:");
             foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
             {
                 foreach ((string deploymentRegion, _) in siloConfigurationBuckets)
