@@ -88,13 +88,16 @@ namespace Concurrency.Implementation.Coordinator
         }
 
 
+        // Going to be called by our Regional Coordinator
         public Task ReceiveBatchSchedule(SubBatch batch)
         {
             var globalBid = batch.bid;
             this.globalBatchInfo.Add(globalBid, batch);
             this.globalBidToGlobalCoordID.Add(globalBid, batch.coordID);
-            if (this.globalTransactionInfo.ContainsKey(globalBid) == false)
+            if (!this.globalTransactionInfo.ContainsKey(globalBid))
+            {
                 this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
+            }
             return Task.CompletedTask;
         }
 
@@ -247,6 +250,8 @@ namespace Concurrency.Implementation.Coordinator
         void ACKGlobalCoord(long globalBid)
         {
             var globalCoordID = globalBidToGlobalCoordID[globalBid];
+             var globalCoord = coordMap.GetGlobalCoord(globalCoordID);
+            _ = globalCoord.AckBatchCompletion(globalBid);
         }
 
         public async Task AckBatchCompletion(long bid)

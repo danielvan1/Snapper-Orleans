@@ -148,7 +148,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
 
                     Debug.Assert(task != null);
-                    var localInfo = await task;
+                    TransactionRegistInfo localInfo = await task;
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, regionalBid, regionalTid);
 
                     // TODO: What is this -1??
