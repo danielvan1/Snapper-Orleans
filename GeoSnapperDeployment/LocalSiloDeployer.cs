@@ -216,9 +216,9 @@ namespace GeoSnapperDeployment
                                                                         options.SingleLine = true;
                                                                         options.IncludeScopes = true;
                                                                         options.UseUtcTimestamp = true;
-                                                                        options.TimestampFormat = "[hh:mm:ss] ";
+                                                                        options.TimestampFormat = "[hh:mm:ss:ffff] ";
                                                                     }));
-            ILogger logger = loggerFactory.CreateLogger("Regional");
+            ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
@@ -251,12 +251,12 @@ namespace GeoSnapperDeployment
                                                                     Logger.AddSimpleConsole(options =>
                                                                     {
                                                                         options.SingleLine = true;
-                                                                        options.IncludeScopes = true;
+                                                                        options.IncludeScopes = false;
                                                                         options.UseUtcTimestamp = true;
-                                                                        options.TimestampFormat = "[hh:mm:ss] ";
+                                                                        options.TimestampFormat = "[hh:mm:ss:ffff] ";
 
                                                                     }));
-            ILogger logger = loggerFactory.CreateLogger("Local");
+            ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {

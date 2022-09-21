@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.Nondeterministic;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -11,7 +12,6 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
-using Orleans.Runtime;
 using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
@@ -97,9 +97,10 @@ namespace Concurrency.Implementation.TransactionExecution
             var regionalCoordinatorID = 0;
             var regionalCoordinator = GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, "EU");
 
-            this.logger.Info("Init DetTxnExecutor");
+            this.logger.LogInformation("Init DetTxnExecutor", this.GrainReference);
             this.detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
+                this.GrainReference,
                 this.myId,
                 this.myId.IntId,
                 mySiloID,
@@ -109,7 +110,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 GrainFactory,
                 myScheduler,
                 state);
-            this.logger.Info("After Init of DetTxnExecutor");
+            this.logger.LogInformation("After Init of DetTxnExecutor", this.GrainReference);
 
             return Task.CompletedTask;
         }
@@ -118,10 +119,10 @@ namespace Concurrency.Implementation.TransactionExecution
         // TODO: Change the grainAccessInfo to correspond to the current way we use ids.
         public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
-            this.logger.Info("TransactionExecutionGrain: StartTransaction1");
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction1", this.GrainReference);
             var receiveTxnTime = DateTime.Now;
 
-            this.logger.Info("Going to call DetTxnExecutor.GetDetContext");
+            this.logger.LogInformation("Going to call DetTxnExecutor.GetDetContext", this.GrainReference);
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
@@ -135,7 +136,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 myScheduler.AckBatchCommit(highestCommittedLocalBid);
             }
 
-            this.logger.Info("TransactionExecutionGrain: StartTransaction2");
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
             // execute PACT
             var call = new FunctionCall(startFunc, funcInput, GetType());
             var res = await ExecuteDet(call, cxt);
@@ -144,9 +145,9 @@ namespace Concurrency.Implementation.TransactionExecution
             var resultObj = res.Item1;
 
             // wait for this batch to commit
-            this.logger.Info("TransactionExecutionGrain: StartTransaction3");
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
             await WaitForBatchCommit(cxt.localBid);
-            this.logger.Info("TransactionExecutionGrain: StartTransaction4");
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
 
             var commitTime = DateTime.Now;
             var txnResult = new TransactionResult(resultObj);
@@ -159,7 +160,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
-            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} ReceiveBatchSchedule was called with bid: {batch.bid}");
+            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} ReceiveBatchSchedule was called with bid: {batch.bid}", this.GrainReference);
             // do garbage collection for committed local batches
             if (highestCommittedLocalBid < batch.highestCommittedBid)
             {
@@ -170,11 +171,11 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // register the local SubBatch info
 
-            this.logger.Info($"ReceiveBatchSchedule: registerBatch");
+            this.logger.LogInformation($"ReceiveBatchSchedule: registerBatch", this.GrainReference);
             this.myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
-            this.logger.Info($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}");
+            this.logger.LogInformation($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}", this.GrainReference);
             this.detTxnExecutor.BatchArrive(batch);
-            this.logger.Info($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);");
+            this.logger.LogInformation($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);", this.GrainReference);
 
             return Task.CompletedTask;
         }
@@ -183,14 +184,14 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task WaitForBatchCommit(long bid)
         {
             if (highestCommittedLocalBid >= bid) return;
-            this.logger.Info($"Waiting for batch id:{bid} to commit");
+            this.logger.LogInformation($"Waiting for batch id:{bid} to commit", this.GrainReference);
             await batchCommit[bid].Task;
         }
 
         /// <summary> A local coordinator calls this interface to notify the commitment of a local batch </summary>
         public Task AckBatchCommit(long bid)
         {
-            this.logger.Info($"DetTxnExecutor.AckBatchCommit is called on batch id:{bid} by local coordinator");
+            this.logger.LogInformation($"DetTxnExecutor.AckBatchCommit is called on batch id:{bid} by local coordinator", this.GrainReference);
             if (highestCommittedLocalBid < bid)
             {
                 highestCommittedLocalBid = bid;
@@ -219,7 +220,8 @@ namespace Concurrency.Implementation.TransactionExecution
             if (isDeterministic)
             {
                 return detTxnExecutor.GetState(cxt.localTid, mode);
-            } else
+            }
+            else
             {
                 // TODO: Rename to context.regionalTransactionId if
                 // we find out we need to run this(Which I think we do)
@@ -229,14 +231,14 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
         {
-            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)");
+            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
             await this.detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
-            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await InvokeFunction(call, cxt)");
+            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await InvokeFunction(call, cxt)", this.GrainReference);
             var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
-            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);");
+            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             await this.detTxnExecutor.FinishExecuteDetTxn(cxt);
-            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);");
+            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             this.detTxnExecutor.CleanUp(cxt.localTid);
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }
@@ -326,7 +328,7 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // only writer grain needs 2nd phase of 2PC
-        public async Task Commit(long tid, long maxBeforeLocalBid, long maxBeforeGlobalBid) 
+        public async Task Commit(long tid, long maxBeforeLocalBid, long maxBeforeGlobalBid)
         {
             nonDetTxnExecutor.Commit(maxBeforeLocalBid, maxBeforeGlobalBid);
             await nonDetCommitter.Commit(tid);

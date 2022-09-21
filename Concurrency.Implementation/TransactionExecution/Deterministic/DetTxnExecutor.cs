@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
@@ -16,6 +17,7 @@ namespace Concurrency.Implementation.TransactionExecution
     public class DetTxnExecutor<TState> where TState : ICloneable, ISerializable
     {
         private readonly ILogger logger;
+        private readonly GrainReference grainReference;
         private readonly TransactionExecutionGrainId myId;
 
         // grain basic info
@@ -53,6 +55,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public DetTxnExecutor(
             ILogger logger,
+            GrainReference grainReference,
             TransactionExecutionGrainId myId,
             int myID,
             string siloID,
@@ -65,6 +68,7 @@ namespace Concurrency.Implementation.TransactionExecution
             )
         {
             this.logger = logger;
+            this.grainReference = grainReference;
             this.myId = myId;
             this.myID = myID;
             this.siloID = siloID;
@@ -108,9 +112,11 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
-                this.logger.Info($"Silolist count: {siloList.Count}");
+                this.logger.LogInformation($"Silolist count: {siloList.Count}", this.grainReference);
                 if (siloList.Count != 1)
                 {
+                    this.logger.LogError("Should not go this path", this.grainReference);
+
                     // get regional tid from regional coordinator
                     // TODO: Should be our Regional Coordinators here.
                     // Note the Dictionary<string, Tuple<int, string>> part of the
@@ -158,9 +164,9 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
             }
 
-            this.logger.Info($"GetDetContext going to call myLocalCoord.NewTransaction");
+            this.logger.LogInformation($"GetDetContext going to call myLocalCoord.NewTransaction", this.grainReference);
             var info = await myLocalCoord.NewTransaction(grainList, grainClassName);
-            this.logger.Info($"GetDetContext after call to myLocalCoord.NewTransaction");
+            this.logger.LogInformation($"GetDetContext after call to myLocalCoord.NewTransaction", this.grainReference);
             var cxt2 = new TransactionContext(info.tid, info.bid);
 
             return new Tuple<long, TransactionContext>(info.highestCommittedBid, cxt2);
@@ -182,13 +188,13 @@ namespace Concurrency.Implementation.TransactionExecution
             }
             else
             {
-                this.logger.Info("DetTxExecutor:WaitForturn waiting");
+                this.logger.LogInformation("WaitForturn waiting", this.grainReference);
                 // wait until the SubBatch has arrived this grain
                 if (localBatchInfoPromise.ContainsKey(cxt.localBid) == false)
                     localBatchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
                 await localBatchInfoPromise[cxt.localBid].Task;
 
-                this.logger.Info("DetTxExecutor:WaitForturn finished");
+                this.logger.LogInformation("WaitForturn finished", this.grainReference);
             }
 
             Debug.Assert(detFuncResults.ContainsKey(cxt.localTid) == false);
@@ -215,7 +221,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 var localCoordinatorRegion = this.myId.StringId;
                 // TODO: This coordinator should be the one that sent the batch
                 var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
-                this.logger.Info($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}");
+                this.logger.LogInformation($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}", this.grainReference);
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
         }
@@ -223,10 +229,10 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public void BatchArrive(LocalSubBatch batch)
         {
-            this.logger.Info($"Batch arrived, batch: {batch}");
+            this.logger.LogInformation($"Batch arrived, batch: {batch}", this.grainReference);
             if (localBatchInfoPromise.ContainsKey(batch.bid) == false)
                 localBatchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
-            this.logger.Info($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}");
+            this.logger.LogInformation($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}", this.grainReference);
             localBatchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary
@@ -259,10 +265,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<TransactionResult> CallGrain(TransactionContext cxt, FunctionCall call, ITransactionExecutionGrain grain)
         {
-            var id = grain.GetPrimaryKeyLong(out string region);
-            this.logger.Info($"Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt)) on grain: region:{region},id:{id}");
+            this.logger.LogInformation("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))", this.grainReference);
             var resultObj = (await grain.ExecuteDet(call, cxt)).Item1;
-            this.logger.Info("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))");
+            this.logger.LogInformation("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))", this.grainReference);
             return new TransactionResult(resultObj);
         }
 

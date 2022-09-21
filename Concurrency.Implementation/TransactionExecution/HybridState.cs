@@ -11,7 +11,7 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         private TState committedState;
         private INonDetTransactionalState<TState> nonDetStateManager;
-        
+
         // when execution grain is initialized, its hybrid state is initialized
         public HybridState() : this(new TState())
         {
