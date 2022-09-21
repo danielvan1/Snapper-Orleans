@@ -258,7 +258,7 @@ namespace Concurrency.Implementation.Coordinator
             var globalCoordID = globalBidToGlobalCoordID[globalBid];
             // Just try to get the regional silo somehow to see if it works
             var regionalCoordinatorRegion = region.Substring(0, 2);
-            this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
+            //this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
              var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(globalCoordID, regionalCoordinatorRegion);
             _ = regionalCoordinator.AckBatchCompletion(globalBid);
         }

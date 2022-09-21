@@ -280,20 +280,20 @@ namespace Concurrency.Implementation.TransactionExecution
         async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)
         {
             var id = this.GetPrimaryKeyLong(out string region);
-            this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
+            //this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
             if (cxt.localBid == -1)
             {
-                this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
+                //this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
                 Debug.Assert(!coordinatorMap.ContainsKey(cxt.globalTid));
                 coordinatorMap.Add(cxt.globalTid, cxt.nonDetCoordID);
             }
             var mi = call.grainClassName.GetMethod(call.funcName);
-            this.logger.Info($"[{id}-{region}] going to call mi.Invoke for method {call.funcName} on {this}, {cxt}, {call.funcInput} ");
+            //this.logger.Info($"[{id}-{region}] going to call mi.Invoke for method {call.funcName} on {this}, {cxt}, {call.funcInput} ");
             var t = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
-            this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
-            this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
             var result = await t;
-            this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
             return result;
         }
 
