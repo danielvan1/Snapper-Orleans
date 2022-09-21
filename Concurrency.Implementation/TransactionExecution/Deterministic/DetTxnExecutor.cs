@@ -108,6 +108,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
+                this.logger.Info($"Silolist count: {siloList.Count}");
                 if (siloList.Count != 1)
                 {
                     // get global tid from global coordinator
@@ -213,7 +214,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public void BatchArrive(LocalSubBatch batch)
         {
-            this.logger.Info($"Batch arrived mother fucker, batch: {batch}");
+            this.logger.Info($"Batch arrived, batch: {batch}");
             if (localBtchInfoPromise.ContainsKey(batch.bid) == false)
                 localBtchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
             this.logger.Info($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBtchInfoPromise[batch.bid]}");

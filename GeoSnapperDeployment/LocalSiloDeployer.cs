@@ -183,7 +183,12 @@ namespace GeoSnapperDeployment
         private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, SiloInfo globalSiloInfo)
         {
 
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
+                                                                    Logger.AddSimpleConsole(options =>
+                                                                    {
+                                                                        options.SingleLine = true;
+                                                                        options.IncludeScopes = true;
+                                                                    }));
             ILogger logger = loggerFactory.CreateLogger("Global");
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
@@ -205,7 +210,14 @@ namespace GeoSnapperDeployment
                                              LocalConfiguration localConfiguration,
                                              LocalSiloPlacementInfo localSilos)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
+                                                                    Logger.AddSimpleConsole(options =>
+                                                                    {
+                                                                        options.SingleLine = true;
+                                                                        options.IncludeScopes = true;
+                                                                        options.UseUtcTimestamp = true;
+                                                                        options.TimestampFormat = "[hh:mm:ss] ";
+                                                                    }));
             ILogger logger = loggerFactory.CreateLogger("Regional");
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
@@ -235,7 +247,15 @@ namespace GeoSnapperDeployment
 
         private void ConfigureLocalGrains(SiloHostBuilder siloHostBuilder, RegionalSilosPlacementInfo regionalSilos, LocalSiloPlacementInfo localSilos)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger => Logger.AddConsole());
+            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
+                                                                    Logger.AddSimpleConsole(options =>
+                                                                    {
+                                                                        options.SingleLine = true;
+                                                                        options.IncludeScopes = true;
+                                                                        options.UseUtcTimestamp = true;
+                                                                        options.TimestampFormat = "[hh:mm:ss] ";
+
+                                                                    }));
             ILogger logger = loggerFactory.CreateLogger("Local");
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
