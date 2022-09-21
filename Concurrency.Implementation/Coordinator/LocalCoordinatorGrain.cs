@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
@@ -78,12 +79,13 @@ namespace Concurrency.Implementation.Coordinator
             this.nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             this.detTxnProcessor = new DetTxnProcessor(
                 this.logger,
+                this.GrainReference,
                 this.myID,
                 this.expectedAcksPerBatch,
                 this.bidToSubBatches);
             this.GetPrimaryKeyLong(out string region);
             this.region = region;
-            this.logger.Info($"Local coordinator was activated in {this.region}");
+            this.logger.LogInformation($"Local coordinator was activated in {this.region}", this.GrainReference);
             return base.OnActivateAsync();
         }
 
@@ -121,7 +123,7 @@ namespace Concurrency.Implementation.Coordinator
         public async Task<TransactionRegistInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
             this.GetPrimaryKeyLong(out string region);
-            this.logger.Info($"NewTransaction is called on local coordinator: {region}");
+            this.logger.LogInformation($"NewTransaction is called on local coordinator: {region}", this.GrainReference);
             var task = this.detTxnProcessor.NewDet(grainAccessInfo);
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
@@ -130,7 +132,7 @@ namespace Concurrency.Implementation.Coordinator
                     this.grainClassName.Add(grain, grainClassName[i]);
             }
             var id = await task;
-            this.logger.Info($"NewTransaction is going to return tid: {id.Item1} and {id.Item2}");
+            this.logger.LogInformation($"NewTransaction is going to return tid: {id.Item1} and {id.Item2}", this.GrainReference);
             return new TransactionRegistInfo(id.Item1, id.Item2, this.detTxnProcessor.highestCommittedBid);
         }
 
@@ -230,7 +232,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 this.GetPrimaryKeyLong(out string region);
-                this.logger.Info($"LocalCoordinatorGrain calling EmitBatch on transaction execution grain: {item.Key} region: {region} ");
+                this.logger.LogInformation($"LocalCoordinatorGrain calling EmitBatch on transaction execution grain: {item.Key} region: {region} ", this.GrainReference);
                 Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
                 var dest = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
                 var batch = item.Value;
@@ -251,9 +253,9 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task AckBatchCompletion(long bid)
         {
-            this.logger.Info($"Expected acknowledgements for batch:{bid} before decrement: {this.expectedAcksPerBatch[bid]}");
+            this.logger.LogInformation($"Expected acknowledgements for batch:{bid} before decrement: {this.expectedAcksPerBatch[bid]}", this.GrainReference);
             this.expectedAcksPerBatch[bid]--;
-            this.logger.Info($"Expected acknowledgements for batch:{bid} after decrement: {this.expectedAcksPerBatch[bid]}");
+            this.logger.LogInformation($"Expected acknowledgements for batch:{bid} after decrement: {this.expectedAcksPerBatch[bid]}", this.GrainReference);
 
             if (expectedAcksPerBatch[bid] != 0) return;
 
@@ -289,7 +291,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in currentScheduleMap)
             {
                 this.GetPrimaryKeyLong(out string region);
-                this.logger.Info($"{region}:LocalCoordinator calls commit on actors");
+                this.logger.LogInformation($"LocalCoordinator calls commit on actors", this.GrainReference);
                 Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
                 var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
                 _ = dest.AckBatchCommit(bid);

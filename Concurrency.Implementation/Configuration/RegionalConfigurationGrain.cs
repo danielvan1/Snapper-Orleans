@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -33,11 +34,11 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation($"InitializeRegionalCoordinators in region {currentRegion}");
+            this.logger.LogInformation($"InitializeRegionalCoordinators in region {currentRegion}", this.GrainReference);
 
             if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
             {
-                this.logger.LogError($"Could not find number of silos in the region {currentRegion}");
+                this.logger.LogError($"Could not find number of silos in the region {currentRegion}", this.GrainReference);
 
                 return;
             }
@@ -59,7 +60,7 @@ namespace Concurrency.Implementation.Configuration
 
             await Task.WhenAll(initRegionalCoordinatorTasks);
 
-            this.logger.LogInformation($"Initialized all regional coordinators in region {currentRegion}");
+            this.logger.LogInformation($"Initialized all regional coordinators in region {currentRegion}", this.GrainReference);
 
             if (!this.tokenEnabled)
             {

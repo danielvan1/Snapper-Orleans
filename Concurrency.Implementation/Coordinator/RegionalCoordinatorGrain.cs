@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -59,6 +60,7 @@ namespace Concurrency.Implementation.Coordinator
             this.nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
                 this.logger,
+                this.GrainReference,
                 this.myID,
                 this.expectedAcksPerBatch,
                 this.bidToSubBatches,

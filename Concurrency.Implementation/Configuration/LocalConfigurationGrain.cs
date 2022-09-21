@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -16,6 +17,8 @@ namespace Concurrency.Implementation.Configuration
     {
         private readonly ILogger logger;
         private readonly LocalConfiguration localConfiguration;
+        private string region;
+        private long id;
 
         public LocalConfigurationGrain(ILogger logger, LocalConfiguration localConfiguration)
         {
@@ -23,12 +26,21 @@ namespace Concurrency.Implementation.Configuration
             this.localConfiguration = localConfiguration ?? throw new ArgumentNullException(nameof(localConfiguration));
         }
 
+        public override Task OnActivateAsync()
+        {
+            this.id = this.GetPrimaryKeyLong(out string region);
+            this.region = region;
+
+            return base.OnActivateAsync();
+        }
+
         public async Task InitializeLocalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation($"Initializing configuration in local config grain in region: {currentRegion}");
+            this.logger.LogInformation($"Initializing configuration in local config grain in region: {currentRegion}", this.GrainReference);
+
             if (!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
             {
-                this.logger.LogError($"Currentregion: {currentRegion} does not exist in the dictionary");
+                this.logger.LogError($"Currentregion: {currentRegion} does not exist in the dictionary", this.GrainReference);
 
                 return;
             }
@@ -54,26 +66,23 @@ namespace Concurrency.Implementation.Configuration
 
             await Task.WhenAll(initializeLocalCoordinatorsTasks);
 
-            this.logger.LogInformation($"Spawned all local coordinators in region {currentRegion}");
+            this.logger.LogInformation($"Spawned all local coordinators in region {currentRegion}", this.GrainReference);
 
-            var passInitialTokenTasks = new List<Task>();
             // Wait until all of the local coordinators has started
             // Then pass the first coordinator in the chain the first token
             foreach (string regionAndServerKey in siloKeys)
             {
-                passInitialTokenTasks.Add(this.PassInitialToken(regionAndServerKey));
+                this.PassInitialToken(regionAndServerKey);
             }
 
-            await Task.WhenAll(passInitialTokenTasks);
-
-            this.logger.LogInformation($"Passed the initial token for local coordinators in region {currentRegion}");
+            this.logger.LogInformation($"Passed the initial token for local coordinators in region {currentRegion}", this.GrainReference);
         }
 
         // Start the circular token passing by sending the initial token to
         // the first coordinator in the chain, the first coordinator
         // will then pass it to the second until it wraps around to the
         // first again and it will continue forever
-        private Task PassInitialToken(string regionAndServer)
+        private void PassInitialToken(string regionAndServer)
         {
             int firstCoordinatorInChain = 0;
             var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(
@@ -81,7 +90,7 @@ namespace Concurrency.Implementation.Configuration
                 regionAndServer);
             LocalToken token = new LocalToken();
 
-            return coordinator0.PassToken(token);
+            coordinator0.PassToken(token);
         }
     }
 }

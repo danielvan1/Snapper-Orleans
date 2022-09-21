@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
 using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
@@ -12,6 +14,7 @@ namespace Concurrency.Implementation.Coordinator
     public class DetTxnProcessor
     {
         private readonly ILogger logger;
+        private readonly GrainReference grainReference;
         private readonly Random random;
         readonly int myID;
         private readonly bool isRegionalCoordinator;
@@ -33,12 +36,14 @@ namespace Concurrency.Implementation.Coordinator
 
         public DetTxnProcessor(
             ILogger logger,
+            GrainReference grainReference,
             int myID,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches,
             Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch = null)
         {
             this.logger = logger;
+            this.grainReference = grainReference;
             this.random = new Random();
             this.myID = myID;
             this.coordMap = coordMap;
@@ -48,7 +53,7 @@ namespace Concurrency.Implementation.Coordinator
             this.bidToSubBatches = bidToSubBatches;
 
             // TODO: Consider if this following two lines are equivalent
-            // to the previous code, I think it is. 
+            // to the previous code, I think it is.
             this.isRegionalCoordinator = localCoordinatorPerSiloPerBatch != null;
             this.localCoordinatorPerSiloPerBatch = localCoordinatorPerSiloPerBatch;
 
@@ -78,10 +83,10 @@ namespace Concurrency.Implementation.Coordinator
             this.deterministicRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
             this.detRequestPromise.Add(promise);
-            this.logger.LogInformation("Waiting in NewDet");
+            this.logger.LogInformation("Waiting in NewDet", this.grainReference);
             // Waits for this.GenerateBatch(..) to give it a batchId and transactionId
             await promise.Task;
-            this.logger.LogInformation("finished NewDet");
+            this.logger.LogInformation("finished NewDet", this.grainReference);
             return new Tuple<long, long>(promise.Task.Result.Item1, promise.Task.Result.Item2);
         }
 
@@ -91,7 +96,7 @@ namespace Concurrency.Implementation.Coordinator
             {
                 return -1;
             }
-             
+
             // assign bid and tid to waited PACTs
             var currentBatchID = token.lastEmitTid + 1;
 
@@ -123,7 +128,7 @@ namespace Concurrency.Implementation.Coordinator
                 {
                     // Maps: currentbatchID => <region, <local coordinator Tuple(id, region)>>
                     this.localCoordinatorPerSiloPerBatch.Add(curBatchID, new Dictionary<Tuple<int, string>, Tuple<int, string>>());
-                } 
+                }
             }
 
             var serviceIDToSubBatch = this.bidToSubBatches[curBatchID];
@@ -166,25 +171,25 @@ namespace Concurrency.Implementation.Coordinator
                     subBatch.lastBid = token.lastBidPerService[serviceID];
                     // TODO: Consider this: token.lastGlobalBidPerGrain[new Tuple<int, string>(this.myID, serviceID)];
                     // the old code just used token.lastGlobalBidPerGrain[serviceID];
-                    if (!this.isRegionalCoordinator) 
+                    if (!this.isRegionalCoordinator)
                     {
                         subBatch.lastGlobalBid = token.lastGlobalBidPerGrain[serviceID];
-                    } 
+                    }
                 }
                 // else, the default value is -1
 
                 Debug.Assert(subBatch.bid > subBatch.lastBid);
                 token.lastBidPerService[serviceID] = subBatch.bid;
-                if (!this.isRegionalCoordinator) 
+                if (!this.isRegionalCoordinator)
                 {
                     token.lastGlobalBidPerGrain[serviceID] = globalBid;
-                } 
+                }
             }
             bidToLastBid.Add(curBatchID, token.lastEmitBid);
             if (token.lastEmitBid != -1)
             {
                 bidToLastCoordID.Add(curBatchID, token.lastCoordID);
-            } 
+            }
             token.lastEmitBid = curBatchID;
             token.isLastEmitBidGlobal = globalBid != -1;
             token.lastCoordID = myID;
@@ -196,19 +201,19 @@ namespace Concurrency.Implementation.Coordinator
             var expiredGrains = new HashSet<Tuple<int, string>>();
 
             // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.lastBidPerService) 
+            foreach (var item in token.lastBidPerService)
             {
                 if (item.Value <= highestCommittedBid)
-                { 
+                {
                      expiredGrains.Add(item.Key);
                 }
             }
-                
+
             foreach (var item in expiredGrains)
             {
                 token.lastBidPerService.Remove(item);
                 token.lastGlobalBidPerGrain.Remove(item);
-            } 
+            }
 
             token.highestCommittedBid = highestCommittedBid;
         }
@@ -224,7 +229,7 @@ namespace Concurrency.Implementation.Coordinator
                 if (coord == myID)
                 {
                     await WaitBatchCommit(lastBid);
-                } 
+                }
                 else
                 {
                     if (this.isRegionalCoordinator)
@@ -239,7 +244,7 @@ namespace Concurrency.Implementation.Coordinator
                     }
                 }
             }
-            else 
+            else
             {
                 Debug.Assert(highestCommittedBid == lastBid);
             }

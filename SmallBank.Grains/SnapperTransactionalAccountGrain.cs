@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using SmallBank.Interfaces;
@@ -25,7 +26,7 @@ namespace SmallBank.Grains
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 100;
-            this.logger.LogInformation($"Balance {(int)myState.balance}");
+            this.logger.LogInformation($"Balance {(int)myState.balance}", this.GrainReference);
             return new TransactionResult();
         }
 
