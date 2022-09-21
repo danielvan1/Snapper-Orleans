@@ -202,6 +202,15 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction on the grain, call this interface to read / write grain state </summary>
         public async Task<TState> GetState(TransactionContext cxt, AccessMode mode)
         {
+            // TODO: I think that for multi-server we should actually
+            // run the nonDetTxnExecutor path of this code, but why is multi-server
+            // considered non-det ? Right now I think that the RegionalBankClient
+            // works because we always run the deterministic, which will just create
+            // the actors it need locally (I think).
+            // Question: How do we detect when our transactions just create
+            // new actors locally because our silo key is not being used as
+            // intended?
+
             //var isDet = cxt.localBid != -1;
             var isDeterministic = true;
             if (isDeterministic)
@@ -209,6 +218,8 @@ namespace Concurrency.Implementation.TransactionExecution
                 return detTxnExecutor.GetState(cxt.localTid, mode);
             } else
             {
+                // TODO: Rename to context.regionalTransactionId if
+                // we find out we need to run this(Which I think we do)
                 return await nonDetTxnExecutor.GetState(cxt.globalTid, mode);
             }
         }
@@ -278,6 +289,17 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.GetPrimaryKeyLong(out string region);
             var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, region, grainNameSpace);
+
+
+            // TODO: I think that for multi-server we should actually
+            // run the nonDetTxnExecutor path of this code, but why is multi-server
+            // considered non-det ? Right now I think that the RegionalBankClient
+            // works because we always run the deterministic, which will just create
+            // the actors it need locally (I think).
+            // Question: How do we detect when our transactions just create
+            // new actors locally because our silo key is not being used as
+            // intended?
+
             //var isDet = cxt.localBid != 1;
             var isDeterministic = true;
             if (isDeterministic)
