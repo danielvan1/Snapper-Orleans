@@ -20,7 +20,5 @@ namespace Concurrency.Interface.Coordinator
         Task AckBatchCompletion(long bid);
 
         Task WaitBatchCommit(long bid);
-
-        Task CheckGC();
     }
 }

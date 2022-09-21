@@ -25,7 +25,5 @@ namespace Concurrency.Interface.Coordinator
         // for global transactions (hierarchical architecture)
         Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<int> grainAccessInfo, List<string> grainClassName);
         Task ReceiveBatchSchedule(SubBatch batch);
-
-        Task CheckGC();
     }
 }

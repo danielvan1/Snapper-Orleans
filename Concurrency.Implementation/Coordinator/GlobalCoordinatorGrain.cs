@@ -35,16 +35,6 @@ namespace Concurrency.Implementation.Coordinator
         DateTime timeOfBatchGeneration;
         double batchSizeInMSecs;
 
-        public Task CheckGC()
-        {
-            detTxnProcessor.CheckGC();
-            nonDetTxnProcessor.CheckGC();
-            if (expectedAcksPerBatch.Count != 0) Console.WriteLine($"GlobalCoord {myID}: expectedAcksPerBatch.Count = {expectedAcksPerBatch.Count}");
-            if (bidToSubBatches.Count != 0) Console.WriteLine($"GlobalCoord {myID}: batchSchedulePerSilo.Count = {bidToSubBatches.Count}");
-            if (coordPerBatchPerSilo.Count != 0) Console.WriteLine($"GlobalCoord {myID}: coordPerBatchPerSilo.Count = {coordPerBatchPerSilo.Count}");
-            return Task.CompletedTask;
-        }
-
         public override Task OnActivateAsync()
         {
             myID = (int)this.GetPrimaryKeyLong(out string _);
