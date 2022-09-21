@@ -234,7 +234,10 @@ namespace Concurrency.Implementation.Coordinator
             {
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.Info($"LocalCoordinatorGrain calling EmitBatch on transaction execution grain: {item.Key} region: {region} ");
-                Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
+                // I think this should be true, we just have the same info multiple places now
+                // The problem is if this is not true, then the local coordinator is talking to
+                // grains in other servers
+                Debug.Assert(region == item.Key.Item2); 
                 var dest = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
                 var batch = item.Value;
 
@@ -247,11 +250,15 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // TODO: Rename to AckRegionalCoordinator, and input RegionalBatchId ?
-        void ACKGlobalCoord(long globalBid)
+        public void ACKRegionalCoordinator(long globalBid)
         {
+            this.GetPrimaryKeyLong(out string region);
             var globalCoordID = globalBidToGlobalCoordID[globalBid];
-             var globalCoord = coordMap.GetGlobalCoord(globalCoordID);
-            _ = globalCoord.AckBatchCompletion(globalBid);
+            // Just try to get the regional silo somehow to see if it works
+            var regionalCoordinatorRegion = region.Substring(0, 2);
+            this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
+             var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(globalCoordID, regionalCoordinatorRegion);
+            _ = regionalCoordinator.AckBatchCompletion(globalBid);
         }
 
         public async Task AckBatchCompletion(long bid)
@@ -269,18 +276,23 @@ namespace Concurrency.Implementation.Coordinator
 
             if (isGlobal)
             {
-                // ACK the global coordinator
+                // ACK the regional coordinator
                 globalBid = localBidToGlobalBid[bid];
                 isPrevGlobal = globalBidToIsPrevBatchGlobal[globalBid];
-
-                if (isPrevGlobal) this.ACKGlobalCoord(globalBid);
+                if (isPrevGlobal)
+                {
+                    this.ACKRegionalCoordinator(globalBid);
+                }
             }
 
             await this.detTxnProcessor.WaitPrevBatchToCommit(bid);
 
             if (isGlobal)
             {
-                if (isPrevGlobal == false) this.ACKGlobalCoord(globalBid);
+                if (!isPrevGlobal) 
+                {
+                    this.ACKRegionalCoordinator(globalBid);
+                } 
                 await WaitGlobalBatchCommit(globalBid);
 
                 this.localBidToGlobalBid.Remove(bid);
@@ -311,9 +323,15 @@ namespace Concurrency.Implementation.Coordinator
 
         async Task WaitGlobalBatchCommit(long globalBid)
         {
-            if (this.highestCommittedGlobalBid >= globalBid) return;
-            if (this.globalBatchCommit.ContainsKey(globalBid) == false)
+            if (this.highestCommittedGlobalBid >= globalBid) 
+            {
+                return;
+            }
+            if (!this.globalBatchCommit.ContainsKey(globalBid)) 
+            {
                 this.globalBatchCommit.Add(globalBid, new TaskCompletionSource<bool>());
+            }
+                
             await this.globalBatchCommit[globalBid].Task;
         }
 

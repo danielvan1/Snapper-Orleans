@@ -277,33 +277,34 @@ namespace Concurrency.Implementation.TransactionExecution
 
         async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)
         {
+            var id = this.GetPrimaryKeyLong(out string region);
+            this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
             if (cxt.localBid == -1)
             {
-                Debug.Assert(coordinatorMap.ContainsKey(cxt.globalTid) == false);
+                this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
+                Debug.Assert(!coordinatorMap.ContainsKey(cxt.globalTid));
                 coordinatorMap.Add(cxt.globalTid, cxt.nonDetCoordID);
             }
             var mi = call.grainClassName.GetMethod(call.funcName);
+            this.logger.Info($"[{id}-{region}] going to call mi.Invoke for method {call.funcName} on {this}, {cxt}, {call.funcInput} ");
             var t = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
-
-            return await t;
+            this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
+            this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
+            var result = await t;
+            this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
+            return result;
         }
 
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
-        public Task<TransactionResult> CallGrain(TransactionContext cxt, int grainID, string grainNameSpace, FunctionCall call)
+        public Task<TransactionResult> CallGrain(TransactionContext cxt, Tuple<int, string> grainID, string grainNameSpace, FunctionCall call)
         {
-            this.GetPrimaryKeyLong(out string region);
+            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID.Item1, grainID.Item2, grainNameSpace);
 
-            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, region, grainNameSpace);
-
-
-            // TODO: I think that for multi-server we should actually
-            // run the nonDetTxnExecutor path of this code, but why is multi-server
-            // considered non-det ? Right now I think that the RegionalBankClient
-            // works because we always run the deterministic, which will just create
-            // the actors it need locally (I think).
             // Question: How do we detect when our transactions just create
             // new actors locally because our silo key is not being used as
             // intended?
+            // Question: do we need this old check isDet = cxt.localBid != 1
+            // if we only run PACTs ?
 
             //var isDet = cxt.localBid != 1;
             var isDeterministic = true;

@@ -111,8 +111,6 @@ namespace Concurrency.Implementation.TransactionExecution
                 this.logger.Info($"Silolist count: {siloList.Count}");
                 if (siloList.Count != 1)
                 {
-                    this.logger.LogError("Should not go this path");
-
                     // get regional tid from regional coordinator
                     // TODO: Should be our Regional Coordinators here.
                     // Note the Dictionary<string, Tuple<int, string>> part of the
@@ -138,17 +136,21 @@ namespace Concurrency.Implementation.TransactionExecution
                         // get local tid, bid from local coordinator
                         if (coordID.Item2 == this.siloID)
                         {
+                            this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is calling NewGlobalTransaction w/ task");
                             task = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                         else
                         {
+                            this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is calling NewGlobalTransaction w/o task");
                             _ = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                     }
 
 
                     Debug.Assert(task != null);
+                    this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is just waiting for task in GetDetContext");
                     TransactionRegistInfo localInfo = await task;
+                    this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is DONE waiting for task in GetDetContext, going to return tx context");
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, regionalBid, regionalTid);
 
                     // TODO: What is this -1??
@@ -211,7 +213,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
                 var localCoordinatorId = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
                 var localCoordinatorRegion = this.myId.StringId;
-                // TODO: This coordinator should be the that sent the batch
+                // TODO: This coordinator should be the one that sent the batch
                 var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
                 this.logger.Info($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}");
                 _ = coord.AckBatchCompletion(cxt.localBid);
@@ -257,7 +259,8 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<TransactionResult> CallGrain(TransactionContext cxt, FunctionCall call, ITransactionExecutionGrain grain)
         {
-            this.logger.Info("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))");
+            var id = grain.GetPrimaryKeyLong(out string region);
+            this.logger.Info($"Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt)) on grain: region:{region},id:{id}");
             var resultObj = (await grain.ExecuteDet(call, cxt)).Item1;
             this.logger.Info("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))");
             return new TransactionResult(resultObj);

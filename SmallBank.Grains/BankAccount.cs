@@ -8,7 +8,7 @@ namespace SmallBank.Grains
     public class BankAccount : ICloneable, ISerializable
     {
         [Key(0)]
-        public int accountID = -1;
+        public Tuple<int, string> accountID = null;
         [Key(1)]
         public float balance = 0;
 
@@ -19,7 +19,7 @@ namespace SmallBank.Grains
         /// <summary> This constructor is used to deserialize values. </summary>
         public BankAccount(SerializationInfo info, StreamingContext context)
         {
-            accountID = (int) info.GetValue("ID", typeof(int));
+            accountID = (Tuple<int, string>) info.GetValue("ID", typeof(Tuple<int, string>));
             balance = (float)info.GetValue("balance", typeof(float));
         }
 

@@ -14,5 +14,7 @@ namespace Concurrency.Interface.Coordinator
         Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor);
 
         Task<Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList);
+
+        Task AckBatchCompletion(long bid);
     }
 }

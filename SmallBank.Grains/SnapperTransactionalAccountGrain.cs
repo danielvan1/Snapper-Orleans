@@ -8,7 +8,7 @@ using Utilities;
 
 namespace SmallBank.Grains
 {
-    using MultiTransferInput = Tuple<int, List<int>>;  // money, List<to account>
+    using MultiTransferInput = Tuple<int, List<Tuple<int, string>>>;  // money, List<to account>
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
@@ -21,7 +21,7 @@ namespace SmallBank.Grains
 
         public async Task<TransactionResult> Init(TransactionContext context, object funcInput)
         {
-            var accountID = (int)funcInput;
+            var accountID = (Tuple<int, string>)funcInput;
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 100;

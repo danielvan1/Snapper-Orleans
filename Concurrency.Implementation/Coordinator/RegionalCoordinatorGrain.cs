@@ -70,8 +70,11 @@ namespace Concurrency.Implementation.Coordinator
         // for PACT
         public async Task<Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList)
         {
+            this.GetPrimaryKeyLong(out string region);
+            this.logger.LogInformation($"[{region}] calling detTxnProcessor.NewDet(siloList)");
             var id = await detTxnProcessor.NewDet(siloList);
             Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(id.Item1));
+            this.logger.LogInformation($"[{region}] returning transaction registration info");
             var info = new TransactionRegistInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
             return new Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[id.Item1]);
         }
@@ -106,6 +109,8 @@ namespace Concurrency.Implementation.Coordinator
 
         async Task EmitBatch(long bid)
         {
+            var id = this.GetPrimaryKeyLong(out string region);
+            this.logger.LogInformation($"[{region}] regional coordinator with id:[{id}] is going to emit batch");
             var curScheduleMap = this.bidToSubBatches[bid];
 
             var coords = this.localCoordinatorPerSiloPerBatch[bid];
@@ -114,6 +119,7 @@ namespace Concurrency.Implementation.Coordinator
                 var localCoordID = coords[item.Key];
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
+                this.logger.LogInformation($"[{region}] regional coordinator trying to emit batch to {localCoordinatorRegionAndServer} with id: {localCoordinatorID}");
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
