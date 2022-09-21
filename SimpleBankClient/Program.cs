@@ -84,7 +84,9 @@ try {
 
     var PACT_balance4 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
     Console.WriteLine($"The PACT balance in actor {actorId1} after receiving money: Expected: 150, Actual:{PACT_balance4.resultObj}");
-  } catch (Exception e) {
+  }
+  catch (Exception e)
+  {
      Console.WriteLine(e.Message);
      Console.WriteLine(e.StackTrace);
   }

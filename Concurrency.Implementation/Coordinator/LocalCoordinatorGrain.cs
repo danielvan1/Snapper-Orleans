@@ -21,31 +21,32 @@ namespace Concurrency.Implementation.Coordinator
         private string region;
 
         // coord basic info
-        int myID;
-        ILocalCoordinatorGrain neighborCoord;
-        Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
+        private int myID;
+        private ILocalCoordinatorGrain neighborCoord;
+        private Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
         private readonly ILogger logger;
 
         // PACT
-        DetTxnProcessor detTxnProcessor;
-        Dictionary<long, int> expectedAcksPerBatch;
-        Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;
+        private DetTxnProcessor detTxnProcessor;
+        private Dictionary<long, int> expectedAcksPerBatch;
+        private Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;
 
         // Hierarchical Architecture
         // for global batches sent from global coordinators
-        SortedDictionary<long, SubBatch> globalBatchInfo;                                   // key: global bid
-        Dictionary<long, Dictionary<long, List<int>>> globalTransactionInfo;                // <global bid, <global tid, grainAccessInfo>>
-        Dictionary<long, TaskCompletionSource<Tuple<long, long>>> globalDetRequestPromise;  // <global tid, <local bid, local tid>>
-        Dictionary<long, long> localBidToGlobalBid;
-        Dictionary<long, Dictionary<long, long>> globalTidToLocalTidPerBatch;               // local bid, <global tid, local tid>
+        private SortedDictionary<long, SubBatch> globalBatchInfo;                                   // key: global bid
+        private Dictionary<long, Dictionary<long, List<int>>> globalTransactionInfo;                // <global bid, <global tid, grainAccessInfo>>
+        private Dictionary<long, TaskCompletionSource<Tuple<long, long>>> globalDetRequestPromise;  // <global tid, <local bid, local tid>>
+        private Dictionary<long, long> localBidToGlobalBid;
+        private Dictionary<long, Dictionary<long, long>> globalTidToLocalTidPerBatch;               // local bid, <global tid, local tid>
+
         // for global batch commitment
-        long highestCommittedGlobalBid;
-        Dictionary<long, int> globalBidToGlobalCoordID;
-        Dictionary<long, bool> globalBidToIsPrevBatchGlobal;                                // global bid, if this batch's previous one is also a global batch
-        Dictionary<long, TaskCompletionSource<bool>> globalBatchCommit;                     // global bid, commit promise
+        private long highestCommittedGlobalBid;
+        private Dictionary<long, int> globalBidToGlobalCoordID;
+        private Dictionary<long, bool> globalBidToIsPrevBatchGlobal;                                // global bid, if this batch's previous one is also a global batch
+        private Dictionary<long, TaskCompletionSource<bool>> globalBatchCommit;                     // global bid, commit promise
 
         // ACT
-        NonDetTxnProcessor nonDetTxnProcessor;
+        private NonDetTxnProcessor nonDetTxnProcessor;
         private readonly SiloInfo SiloInfo;
 
         public LocalCoordinatorGrain(ILogger logger)
@@ -158,7 +159,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(LocalToken token)
         {
-            /*if (this.region.Equals("EU-EU-1")) 
+            /*if (this.region.Equals("EU-EU-1"))
             {
                 this.logger.Info($"PassToken is called on region:{this.region}");
             }*/
@@ -171,7 +172,7 @@ namespace Concurrency.Implementation.Coordinator
             }
             else
             {
-                /*if (this.region.Equals("EU-EU-1")) 
+                /*if (this.region.Equals("EU-EU-1"))
                 {
                     this.logger.Info($"LocalCoordinator in region {this.region} is going to call GenerateBatch");
                 }*/

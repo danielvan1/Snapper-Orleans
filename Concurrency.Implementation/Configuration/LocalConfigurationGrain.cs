@@ -26,7 +26,7 @@ namespace Concurrency.Implementation.Configuration
         public async Task InitializeLocalCoordinators(string currentRegion)
         {
             this.logger.LogInformation($"Initializing configuration in local config grain in region: {currentRegion}");
-            if(!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
+            if (!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
             {
                 this.logger.LogError($"Currentregion: {currentRegion} does not exist in the dictionary");
 
@@ -37,14 +37,14 @@ namespace Concurrency.Implementation.Configuration
 
             // regionAndServerKey should be similar to EU-EU-1
             // which indicate: <deployed region>-<home region>-<server id>
-            foreach(string regionAndServerKey in siloKeys)
+            foreach (string regionAndServerKey in siloKeys)
             {
                 var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(
                     Constants.NumberOfLocalCoordinatorsPerSilo - 1, regionAndServerKey);
                 var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, regionAndServerKey);
                 initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
 
-                for(int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
+                for (int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
                     coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, regionAndServerKey);
                     nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, regionAndServerKey);
@@ -59,7 +59,7 @@ namespace Concurrency.Implementation.Configuration
             var passInitialTokenTasks = new List<Task>();
             // Wait until all of the local coordinators has started
             // Then pass the first coordinator in the chain the first token
-            foreach(string regionAndServerKey in siloKeys)
+            foreach (string regionAndServerKey in siloKeys)
             {
                 passInitialTokenTasks.Add(this.PassInitialToken(regionAndServerKey));
             }
