@@ -150,7 +150,7 @@ namespace Concurrency.Implementation.Coordinator
             var curBatchIDs = new List<long>();
             if (token.isLastEmitBidGlobal)
             {
-                ProcessGlobalBatch(token, curBatchIDs);
+                this.ProcessGlobalBatch(token, curBatchIDs);
                 curBatchID = this.detTxnProcessor.GenerateBatch(token);
             }
             else
@@ -160,10 +160,10 @@ namespace Concurrency.Implementation.Coordinator
                     this.logger.Info($"LocalCoordinator in region {this.region} is going to call GenerateBatch");
                 }*/
                 curBatchID = this.detTxnProcessor.GenerateBatch(token);
-                ProcessGlobalBatch(token, curBatchIDs);
+                this.ProcessGlobalBatch(token, curBatchIDs);
             }
 
-            nonDetTxnProcessor.EmitNonDetTransactions(token);
+            this.nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (this.detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
                 this.detTxnProcessor.GarbageCollectTokenInfo(token);
@@ -264,22 +264,22 @@ namespace Concurrency.Implementation.Coordinator
                 globalBid = localBidToGlobalBid[bid];
                 isPrevGlobal = globalBidToIsPrevBatchGlobal[globalBid];
 
-                if (isPrevGlobal) ACKGlobalCoord(globalBid);
+                if (isPrevGlobal) this.ACKGlobalCoord(globalBid);
             }
 
-            await detTxnProcessor.WaitPrevBatchToCommit(bid);
+            await this.detTxnProcessor.WaitPrevBatchToCommit(bid);
 
             if (isGlobal)
             {
-                if (isPrevGlobal == false) ACKGlobalCoord(globalBid);
+                if (isPrevGlobal == false) this.ACKGlobalCoord(globalBid);
                 await WaitGlobalBatchCommit(globalBid);
 
-                localBidToGlobalBid.Remove(bid);
-                globalBidToGlobalCoordID.Remove(globalBid);
-                globalBidToIsPrevBatchGlobal.Remove(globalBid);
+                this.localBidToGlobalBid.Remove(bid);
+                this.globalBidToGlobalCoordID.Remove(globalBid);
+                this.globalBidToIsPrevBatchGlobal.Remove(globalBid);
             }
 
-            detTxnProcessor.AckBatchCommit(bid);
+            this.detTxnProcessor.AckBatchCommit(bid);
 
             var currentScheduleMap = bidToSubBatches[bid];
             foreach (var item in currentScheduleMap)
