@@ -79,7 +79,7 @@ namespace Concurrency.Implementation.Coordinator
             this.detRequestPromise.Add(promise);
             this.logger.LogInformation("Waiting in NewDet");
             await promise.Task;
-            Console.WriteLine("finished NewDet");
+            this.logger.LogInformation("finished NewDet");
             return new Tuple<long, long>(promise.Task.Result.Item1, promise.Task.Result.Item2);
         }
 

@@ -281,6 +281,7 @@ namespace Concurrency.Implementation.TransactionExecution
             }
             var mi = call.grainClassName.GetMethod(call.funcName);
             var t = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
+
             return await t;
         }
 
