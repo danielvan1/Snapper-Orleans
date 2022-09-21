@@ -24,7 +24,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private TransactionExecutionGrainId myId;
         // grain basic info
-        int mySiloID;
+        private string mySiloID;
         readonly ICoordMap coordMap;
         readonly string myClassName;
         static int myLocalCoordID;
@@ -78,7 +78,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 StringId = localRegion
             };
 
-            this.mySiloID = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
+            this.mySiloID = localRegion;
 
             // transaction execution
             // loggerGroup.GetLoggingProtocol(myID, out log);
@@ -116,19 +116,22 @@ namespace Concurrency.Implementation.TransactionExecution
 
         // Notice: the current implementation assumes each actor will be accessed at most once
         // TODO: Change the grainAccessInfo to correspond to the current way we use ids.
-        public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<int> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
             this.logger.Info("TransactionExecutionGrain: StartTransaction1");
             var receiveTxnTime = DateTime.Now;
 
             this.logger.Info("Going to call DetTxnExecutor.GetDetContext");
-            Tuple<long, TransactionContext> cxtInfo = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
-            var cxt = cxtInfo.Item2;
+            // This is where we get the Tuple<Tid, TransactionContext>
+            // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
+            // to decide the locality of the transaction
+            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
+            var cxt = transactionContext.Item2;
 
             // Only gets here in multi-server or multi-home transaction
-            if (highestCommittedLocalBid < cxtInfo.Item1)
+            if (highestCommittedLocalBid < transactionContext.Item1)
             {
-                highestCommittedLocalBid = cxtInfo.Item1;
+                highestCommittedLocalBid = transactionContext.Item1;
                 myScheduler.AckBatchCommit(highestCommittedLocalBid);
             }
 

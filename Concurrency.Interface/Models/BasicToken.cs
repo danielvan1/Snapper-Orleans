@@ -13,10 +13,14 @@ namespace Concurrency.Interface.Models
         public bool isLastEmitBidGlobal;
         // for local coordinator: <grainID, latest local bid emitted to this grain>
         // for global coordinator: <siloID, latest global bid emitted to this silo>
-        public Dictionary<int, long> lastBidPerService;
+        public Dictionary<Tuple<int, string>, long> lastBidPerService;
 
         // this info is only used for local coordinators
-        public Dictionary<int, long> lastGlobalBidPerGrain;   // grainID, the global bid of the latest emitted local batch
+        // TODO: This might need to be using the key: Tuple<int, string>
+        // instead of just the string part. But currently the code
+        // in DetTxnProcessor is just using 'serviceId' which is the siloID
+        // as the index
+        public Dictionary<Tuple<int, string>, long> lastGlobalBidPerGrain;   // grainID, the global bid of the latest emitted local batch
 
         public BasicToken()
         {
@@ -25,8 +29,8 @@ namespace Concurrency.Interface.Models
             lastCoordID = -1;
             highestCommittedBid = -1;
             isLastEmitBidGlobal = false;
-            lastBidPerService = new Dictionary<int, long>();
-            lastGlobalBidPerGrain = new Dictionary<int, long>();
+            lastBidPerService = new Dictionary<Tuple<int, string>, long>();
+            lastGlobalBidPerGrain = new Dictionary<Tuple<int, string>, long>();
         }
     }
 }

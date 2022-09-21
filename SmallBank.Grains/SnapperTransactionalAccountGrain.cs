@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.TransactionExecution;
-using Concurrency.Interface.Coordinator;
 using Microsoft.Extensions.Logging;
 using SmallBank.Interfaces;
 using Utilities;
@@ -13,8 +12,11 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
+        private readonly ILogger logger;
+
         public SnapperTransactionalAccountGrain(ILogger logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
+            this.logger = logger;
         }
 
         public async Task<TransactionResult> Init(TransactionContext context, object funcInput)
@@ -23,7 +25,7 @@ namespace SmallBank.Grains
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 100;
-            Console.WriteLine($"Balance {(int)myState.balance}");
+            this.logger.LogInformation($"Balance {(int)myState.balance}");
             return new TransactionResult();
         }
 

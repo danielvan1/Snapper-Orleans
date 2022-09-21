@@ -3,6 +3,7 @@ using Utilities;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using Concurrency.Interface.Models;
+using System;
 
 namespace Concurrency.Interface.Coordinator
 {
@@ -10,7 +11,7 @@ namespace Concurrency.Interface.Coordinator
     {
         Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor);
 
-        Task<TransactionRegistInfo> NewTransaction(List<int> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegistInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
 
         Task<TransactionRegistInfo> NewTransaction();
 
@@ -23,7 +24,7 @@ namespace Concurrency.Interface.Coordinator
         Task AckGlobalBatchCommit(long globalBid);
 
         // for global transactions (hierarchical architecture)
-        Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<int> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
         Task ReceiveBatchSchedule(SubBatch batch);
     }
 }

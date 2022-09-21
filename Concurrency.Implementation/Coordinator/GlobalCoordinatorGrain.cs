@@ -25,9 +25,9 @@ namespace Concurrency.Implementation.Coordinator
         // PACT
         DetTxnProcessor detTxnProcessor;
         Dictionary<long, int> expectedAcksPerBatch;
-        Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;
+        Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches;
         // only for global batches (Hierarchical Architecture)
-        Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo;        // <global bid, siloID, chosen local Coord ID>
+        Dictionary<long, Dictionary<string, int>> coordPerBatchPerSilo;        // <global bid, siloID, chosen local Coord ID>
 
         // ACT
         NonDetTxnProcessor nonDetTxnProcessor;
@@ -39,15 +39,9 @@ namespace Concurrency.Implementation.Coordinator
         {
             myID = (int)this.GetPrimaryKeyLong(out string _);
             expectedAcksPerBatch = new Dictionary<long, int>();
-            bidToSubBatches = new Dictionary<long, Dictionary<int, SubBatch>>();
-            coordPerBatchPerSilo = new Dictionary<long, Dictionary<int, int>>();
+            bidToSubBatches = new Dictionary<long, Dictionary<string, SubBatch>>();
+            coordPerBatchPerSilo = new Dictionary<long, Dictionary<string, int>>();
             nonDetTxnProcessor = new NonDetTxnProcessor(myID);
-            detTxnProcessor = new DetTxnProcessor(
-                this.logger,
-                myID,
-                expectedAcksPerBatch,
-                bidToSubBatches,
-                coordPerBatchPerSilo);
             return base.OnActivateAsync();
         }
 
@@ -57,12 +51,12 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // for PACT
-        public async Task<Tuple<TransactionRegistInfo, Dictionary<int, int>>> NewTransaction(List<int> siloList)
+        public async Task<Tuple<TransactionRegistInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList)
         {
             var id = await detTxnProcessor.NewDet(siloList);
             Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
             var info = new TransactionRegistInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
-            return new Tuple<TransactionRegistInfo, Dictionary<int, int>>(info, coordPerBatchPerSilo[id.Item1]);
+            return new Tuple<TransactionRegistInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
         }
 
         // for ACT

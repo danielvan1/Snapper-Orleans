@@ -25,9 +25,9 @@ namespace Concurrency.Implementation.Coordinator
         // PACT
         DetTxnProcessor detTxnProcessor;
         Dictionary<long, int> expectedAcksPerBatch;
-        Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;
+        Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches;
         // only for global batches (Hierarchical Architecture)
-        Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo;        // <global bid, siloID, chosen local Coord ID>
+        Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch;        // <global bid, siloID, chosen local Coord ID>
 
         // ACT
         NonDetTxnProcessor nonDetTxnProcessor;
@@ -44,36 +44,36 @@ namespace Concurrency.Implementation.Coordinator
         {
             detTxnProcessor.CheckGC();
             nonDetTxnProcessor.CheckGC();
-            if (expectedAcksPerBatch.Count != 0) Console.WriteLine($"GlobalCoord {myID}: expectedAcksPerBatch.Count = {expectedAcksPerBatch.Count}");
-            if (bidToSubBatches.Count != 0) Console.WriteLine($"GlobalCoord {myID}: batchSchedulePerSilo.Count = {bidToSubBatches.Count}");
-            if (coordPerBatchPerSilo.Count != 0) Console.WriteLine($"GlobalCoord {myID}: coordPerBatchPerSilo.Count = {coordPerBatchPerSilo.Count}");
+            if (expectedAcksPerBatch.Count != 0) this.logger.LogInformation($"Regional Coordinator {myID}: expectedAcksPerBatch.Count = {expectedAcksPerBatch.Count}");
+            if (bidToSubBatches.Count != 0) this.logger.LogInformation($"Regional Coordinator {myID}: batchSchedulePerSilo.Count = {bidToSubBatches.Count}");
+            if (localCoordinatorPerSiloPerBatch.Count != 0) this.logger.LogInformation($"Regional Coordinator {myID}: {localCoordinatorPerSiloPerBatch.Count}");
             return Task.CompletedTask;
         }
 
         public override Task OnActivateAsync()
         {
-            myID = (int)this.GetPrimaryKeyLong(out string _);
-            expectedAcksPerBatch = new Dictionary<long, int>();
-            bidToSubBatches = new Dictionary<long, Dictionary<int, SubBatch>>();
-            coordPerBatchPerSilo = new Dictionary<long, Dictionary<int, int>>();
-            nonDetTxnProcessor = new NonDetTxnProcessor(myID);
+            this.myID = (int)this.GetPrimaryKeyLong(out string _);
+            this.expectedAcksPerBatch = new Dictionary<long, int>();
+            this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
+            this.localCoordinatorPerSiloPerBatch = new Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>>();
+            this.nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
                 this.logger,
-                myID,
-                expectedAcksPerBatch,
-                bidToSubBatches,
-                coordPerBatchPerSilo);
+                this.myID,
+                this.expectedAcksPerBatch,
+                this.bidToSubBatches,
+                this.localCoordinatorPerSiloPerBatch);
             return base.OnActivateAsync();
         }
 
 
         // for PACT
-        public async Task<Tuple<TransactionRegistInfo, Dictionary<int, int>>> NewTransaction(List<int> siloList)
+        public async Task<Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList)
         {
             var id = await detTxnProcessor.NewDet(siloList);
-            Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
+            Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(id.Item1));
             var info = new TransactionRegistInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
-            return new Tuple<TransactionRegistInfo, Dictionary<int, int>>(info, coordPerBatchPerSilo[id.Item1]);
+            return new Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[id.Item1]);
         }
 
         // for ACT
@@ -106,13 +106,15 @@ namespace Concurrency.Implementation.Coordinator
 
         async Task EmitBatch(long bid)
         {
-            var curScheduleMap = bidToSubBatches[bid];
+            var curScheduleMap = this.bidToSubBatches[bid];
 
-            var coords = coordPerBatchPerSilo[bid];
+            var coords = this.localCoordinatorPerSiloPerBatch[bid];
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
+                var localCoordinatorID = localCoordID.Item1;
+                var localCoordinatorRegionAndServer = localCoordID.Item2;
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
         }
@@ -120,27 +122,34 @@ namespace Concurrency.Implementation.Coordinator
         public async Task AckBatchCompletion(long bid)
         {
             // count down the number of expected ACKs from different silos
-            expectedAcksPerBatch[bid]--;
-            if (expectedAcksPerBatch[bid] != 0) return;
+            this.expectedAcksPerBatch[bid]--;
+            if (this.expectedAcksPerBatch[bid] != 0) 
+            {
+                return;
+            }
 
             // commit the batch
             await detTxnProcessor.WaitPrevBatchToCommit(bid);
             detTxnProcessor.AckBatchCommit(bid);
 
             // send ACKs to local coordinators
-            var curScheduleMap = bidToSubBatches[bid];
-            var coords = coordPerBatchPerSilo[bid];
+            var curScheduleMap = this.bidToSubBatches[bid];
+            var coords = this.localCoordinatorPerSiloPerBatch[bid];
             foreach (var item in curScheduleMap)
             {
                 var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
+
+                var localCoordinatorID = localCoordID.Item1;
+                var localCoordinatorRegionAndServer = localCoordID.Item2;
+
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.AckGlobalBatchCommit(bid);
             }
 
             // garbage collection
-            bidToSubBatches.Remove(bid);
-            coordPerBatchPerSilo.Remove(bid);
-            expectedAcksPerBatch.Remove(bid);
+            this.bidToSubBatches.Remove(bid);
+            this.localCoordinatorPerSiloPerBatch.Remove(bid);
+            this.expectedAcksPerBatch.Remove(bid);
         }
 
         public async Task WaitBatchCommit(long bid)

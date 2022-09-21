@@ -19,8 +19,8 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly TransactionExecutionGrainId myId;
 
         // grain basic info
-        readonly int myID;
-        readonly int siloID;
+        private readonly int myID;
+        private readonly string siloID;
 
         // transaction execution
         TransactionScheduler myScheduler;
@@ -55,7 +55,7 @@ namespace Concurrency.Implementation.TransactionExecution
             ILogger logger,
             TransactionExecutionGrainId myId,
             int myID,
-            int siloID,
+            string siloID,
             int myLocalCoordID,
             ILocalCoordinatorGrain myLocalCoord,
             IRegionalCoordinatorGrain myRegionalCoordinator,
@@ -83,28 +83,28 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // int: the highestCommittedBid get from local coordinator
-        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<int> grainList, List<string> grainClassName)
+        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<Tuple<int, string>> grainList, List<string> grainClassName)
         {
             if (Constants.multiSilo && Constants.hierarchicalCoord)
             {
                 // check if the transaction will access multiple silos
-                var siloList = new List<int>();
-                var grainListPerSilo = new Dictionary<int, List<int>>();
-                var grainNamePerSilo = new Dictionary<int, List<string>>();
+                var siloList = new List<Tuple<int, string>>();
+                var grainListPerSilo = new Dictionary<string, List<Tuple<int, string>>>();
+                var grainNamePerSilo = new Dictionary<string, List<string>>();
 
+                // This is the placement manager(PM) code described in the paper
                 for (int i = 0; i < grainList.Count; i++)
                 {
                     var grainID = grainList[i];
-                    var siloID = TransactionExecutionGrainPlacementHelper.MapGrainIDToSilo(grainID);
-                    if (grainListPerSilo.ContainsKey(siloID) == false)
+                    if (grainListPerSilo.ContainsKey(grainID.Item2) == false)
                     {
-                        siloList.Add(siloID);
-                        grainListPerSilo.Add(siloID, new List<int>());
-                        grainNamePerSilo.Add(siloID, new List<string>());
+                        siloList.Add(grainID);
+                        grainListPerSilo.Add(grainID.Item2, new List<Tuple<int, string>>());
+                        grainNamePerSilo.Add(grainID.Item2, new List<string>());
                     }
 
-                    grainListPerSilo[siloID].Add(grainID);
-                    grainNamePerSilo[siloID].Add(grainClassName[i]);
+                    grainListPerSilo[grainID.Item2].Add(grainID);
+                    grainNamePerSilo[grainID.Item2].Add(grainClassName[i]);
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
@@ -112,12 +112,16 @@ namespace Concurrency.Implementation.TransactionExecution
                 if (siloList.Count != 1)
                 {
                     this.logger.LogError("Should not go this path");
-                    // get global tid from global coordinator
+
+                    // get regional tid from regional coordinator
                     // TODO: Should be our Regional Coordinators here.
-                    Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myRegionalCoordinator.NewTransaction(siloList);
-                    var globalTid = globalInfo.Item1.tid;
-                    var globalBid = globalInfo.Item1.bid;
-                    var siloIDToLocalCoordID = globalInfo.Item2;
+                    // Note the Dictionary<string, Tuple<int, string>> part of the
+                    // return type of NewTransaction(..) is a map between the region
+                    // and which local coordinators
+                    Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>> regionalInfo = await myRegionalCoordinator.NewTransaction(siloList);
+                    var regionalTid = regionalInfo.Item1.tid;
+                    var regionalBid = regionalInfo.Item1.bid;
+                    var siloIDToLocalCoordID = regionalInfo.Item2;
 
                     // send corresponding grainAccessInfo to local coordinators in different silos
                     Debug.Assert(grainListPerSilo.ContainsKey(siloID));
@@ -126,26 +130,26 @@ namespace Concurrency.Implementation.TransactionExecution
                     {
                         var siloID = siloList[i];
                         Debug.Assert(siloIDToLocalCoordID.ContainsKey(siloID));
+
+                        // TODO: Need a map from coordinator to local coordinator
                         var coordID = siloIDToLocalCoordID[siloID];
+                        var localCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordID.Item1, coordID.Item2);
 
                         // get local tid, bid from local coordinator
-                        var localCoord = coordMap.GetLocalCoord(coordID);
-                        if (siloID == this.siloID)
+                        if (coordID.Item2 == this.siloID)
                         {
-                            task = localCoord.NewGlobalTransaction(globalBid, globalTid,
-                                                                   grainListPerSilo[siloID], grainNamePerSilo[siloID]);
+                            task = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                         else
                         {
-                            _ = localCoord.NewGlobalTransaction(globalBid, globalTid,
-                                                                grainListPerSilo[siloID], grainNamePerSilo[siloID]);
+                            _ = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                     }
 
 
                     Debug.Assert(task != null);
                     var localInfo = await task;
-                    var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, globalBid, globalTid);
+                    var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, regionalBid, regionalTid);
 
                     // TODO: What is this -1??
                     return new Tuple<long, TransactionContext>(-1, cxt1) ;

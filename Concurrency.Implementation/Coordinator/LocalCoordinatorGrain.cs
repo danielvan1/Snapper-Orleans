@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
@@ -23,18 +24,18 @@ namespace Concurrency.Implementation.Coordinator
         // coord basic info
         private int myID;
         private ILocalCoordinatorGrain neighborCoord;
-        private Dictionary<int, string> grainClassName;                                             // grainID, grainClassName
+        private Dictionary<Tuple<int, string>, string> grainClassName;                                             // grainID, grainClassName
         private readonly ILogger logger;
 
         // PACT
         private DetTxnProcessor detTxnProcessor;
         private Dictionary<long, int> expectedAcksPerBatch;
-        private Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches;
+        private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches;
 
         // Hierarchical Architecture
         // for global batches sent from global coordinators
         private SortedDictionary<long, SubBatch> globalBatchInfo;                                   // key: global bid
-        private Dictionary<long, Dictionary<long, List<int>>> globalTransactionInfo;                // <global bid, <global tid, grainAccessInfo>>
+        private Dictionary<long, Dictionary<long, List<Tuple<int, string>>>> globalTransactionInfo;                // <global bid, <global tid, grainAccessInfo>>
         private Dictionary<long, TaskCompletionSource<Tuple<long, long>>> globalDetRequestPromise;  // <global tid, <local bid, local tid>>
         private Dictionary<long, long> localBidToGlobalBid;
         private Dictionary<long, Dictionary<long, long>> globalTidToLocalTidPerBatch;               // local bid, <global tid, local tid>
@@ -57,11 +58,11 @@ namespace Concurrency.Implementation.Coordinator
         void Init()
         {
             this.highestCommittedGlobalBid = -1;
-            this.grainClassName = new Dictionary<int, string>();
+            this.grainClassName = new Dictionary<Tuple<int, string>, string>();
             this.expectedAcksPerBatch = new Dictionary<long, int>();
-            this.bidToSubBatches = new Dictionary<long, Dictionary<int, SubBatch>>();
+            this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
             this.globalBatchInfo = new SortedDictionary<long, SubBatch>();
-            this.globalTransactionInfo = new Dictionary<long, Dictionary<long, List<int>>>();
+            this.globalTransactionInfo = new Dictionary<long, Dictionary<long, List<Tuple<int, string>>>>();
             this.globalDetRequestPromise = new Dictionary<long, TaskCompletionSource<Tuple<long, long>>>();
             this.localBidToGlobalBid = new Dictionary<long, long>();
             this.globalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
@@ -93,11 +94,11 @@ namespace Concurrency.Implementation.Coordinator
             this.globalBatchInfo.Add(globalBid, batch);
             this.globalBidToGlobalCoordID.Add(globalBid, batch.coordID);
             if (this.globalTransactionInfo.ContainsKey(globalBid) == false)
-                this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<int>>());
+                this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
             return Task.CompletedTask;
         }
 
-        public async Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<int> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
@@ -107,7 +108,7 @@ namespace Concurrency.Implementation.Coordinator
             }
 
             if (this.globalTransactionInfo.ContainsKey(globalBid) == false)
-                this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<int>>());
+                this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
             this.globalTransactionInfo[globalBid].Add(globalTid, grainAccessInfo);
 
             var promise = new TaskCompletionSource<Tuple<long, long>>();
@@ -117,7 +118,7 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // for PACT
-        public async Task<TransactionRegistInfo> NewTransaction(List<int> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionRegistInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
             this.GetPrimaryKeyLong(out string region);
             this.logger.Info($"NewTransaction is called on local coordinator: {region}");
@@ -215,7 +216,9 @@ namespace Concurrency.Implementation.Coordinator
 
             long globalBid = -1;
             if (this.localBidToGlobalBid.ContainsKey(bid))
+            {
                 globalBid = this.localBidToGlobalBid[bid];
+            }
 
             var globalTidToLocalTid = new Dictionary<long, long>();
             if (this.globalTidToLocalTidPerBatch.ContainsKey(bid))
@@ -228,7 +231,8 @@ namespace Concurrency.Implementation.Coordinator
             {
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.Info($"LocalCoordinatorGrain calling EmitBatch on transaction execution grain: {item.Key} region: {region} ");
-                var dest = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, region, this.grainClassName[item.Key]);
+                Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
+                var dest = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
                 var batch = item.Value;
 
                 var localSubBatch = new LocalSubBatch(globalBid, batch);
@@ -286,7 +290,8 @@ namespace Concurrency.Implementation.Coordinator
             {
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.Info($"{region}:LocalCoordinator calls commit on actors");
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key, region, this.grainClassName[item.Key]);
+                Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
                 _ = dest.AckBatchCommit(bid);
             }
 

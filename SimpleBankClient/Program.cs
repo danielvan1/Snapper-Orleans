@@ -15,8 +15,8 @@ var client = new ClientBuilder()
 
 await client.Connect();
 
-IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
-await globalConfigGrain.InitializeGlobalCoordinators();
+/*IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
+await globalConfigGrain.InitializeGlobalCoordinators();*/
 
 IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
 IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
@@ -42,11 +42,15 @@ int actorId0 = 0;
 int actorId1 = 1;
 var regionAndServer = "EU-EU-0";
 
-var actorAccessInfo0 = new List<int>();
-actorAccessInfo0.Add(actorId0);
+var actorAccessInfo0 = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId0, regionAndServer),
+};
 
-var actorAccessInfo1 = new List<int>();
-actorAccessInfo1.Add(actorId1);
+var actorAccessInfo1 = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId1, regionAndServer),
+};
 
 var grainClassName = new List<string>();
 grainClassName.Add(snapperTransactionalAccountGrainTypeName);
@@ -60,10 +64,11 @@ var grainClassNamesForMultiTransfer = new List<string>();                       
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-
-var actorAccessInfoForMultiTransfer = new List<int>();
-actorAccessInfoForMultiTransfer.Add(actorId0);
-actorAccessInfoForMultiTransfer.Add(actorId1);
+var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId0, regionAndServer),
+    new Tuple<int, string>(actorId1, regionAndServer),
+};
 
 var amountToDeposit = 50;
 

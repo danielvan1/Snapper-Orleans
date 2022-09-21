@@ -1,10 +1,8 @@
 using Concurrency.Interface.Configuration;
-using Concurrency.Interface.Coordinator;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
-using Utilities;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
@@ -19,8 +17,8 @@ await client.Connect();
 
 Console.WriteLine("Regional Bank Client is ready");
 
-IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
-await globalConfigGrain.InitializeGlobalCoordinators();
+/*IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
+await globalConfigGrain.InitializeGlobalCoordinators();*/
 
 IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
 IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
@@ -52,11 +50,15 @@ var regionAndServer0 = $"{deployedRegion}-{homeRegion}-{server0}";
 var regionAndServer1 = $"{deployedRegion}-{homeRegion}-{server1}";
 
 
-var actorAccessInfo0 = new List<int>();
-actorAccessInfo0.Add(actorId0);
+var actorAccessInfo0 = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId0, regionAndServer0),
+};
 
-var actorAccessInfo1 = new List<int>();
-actorAccessInfo1.Add(actorId1);
+var actorAccessInfo1 = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId1, regionAndServer1),
+};
 
 var grainClassName = new List<string>();
 grainClassName.Add(snapperTransactionalAccountGrainTypeName);
@@ -70,10 +72,11 @@ var grainClassNamesForMultiTransfer = new List<string>();                       
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-
-var actorAccessInfoForMultiTransfer = new List<int>();
-actorAccessInfoForMultiTransfer.Add(actorId0);
-actorAccessInfoForMultiTransfer.Add(actorId1);
+var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>() 
+{
+    new Tuple<int, string>(actorId0, regionAndServer0),
+    new Tuple<int, string>(actorId1, regionAndServer1),
+};
 
 var amountToDeposit = 50;
 
