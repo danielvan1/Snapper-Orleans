@@ -39,7 +39,7 @@ Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTrans
 string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 
 int actorId0 = 0;
-int actorId1 = 4;
+int actorId1 = 1;
 var regionAndServer = "EU-EU-0";
 
 var actorAccessInfo0 = new List<int>();

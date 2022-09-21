@@ -87,7 +87,9 @@ namespace Concurrency.Implementation.TransactionExecution
                 coordID = batchInfo[bid].coordID;
                 batchInfo.Remove(bid);
             }
+
             else detExecutionPromise[tid].SetResult(true);
+
             return coordID;
         }
 

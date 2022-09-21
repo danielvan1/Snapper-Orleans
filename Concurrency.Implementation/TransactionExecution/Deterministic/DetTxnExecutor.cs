@@ -34,7 +34,7 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly IGrainFactory grainFactory;
 
         // PACT execution
-        Dictionary<long, TaskCompletionSource<bool>> localBtchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
+        Dictionary<long, TaskCompletionSource<bool>> localBatchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
         Dictionary<long, BasicFuncResult> detFuncResults;                        // key: local PACT tid, this can only work when a transaction do not concurrently access one grain multiple times
 
         // only for global PACT
@@ -44,7 +44,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public void CheckGC()
         {
-            if (localBtchInfoPromise.Count != 0) Console.WriteLine($"DetTxnExecutor: localBtchInfoPromise.Count = {localBtchInfoPromise.Count}");
+            if (localBatchInfoPromise.Count != 0) Console.WriteLine($"DetTxnExecutor: localBtchInfoPromise.Count = {localBatchInfoPromise.Count}");
             if (detFuncResults.Count != 0) Console.WriteLine($"DetTxnExecutor: detFuncResults.Count = {detFuncResults.Count}");
             if (globalBidToLocalBid.Count != 0) Console.WriteLine($"DetTxnExecutor: globalBidToLocalBid.Count = {globalBidToLocalBid.Count}");
             if (globalTidToLocalTidPerBatch.Count != 0) Console.WriteLine($"DetTxnExecutor: globalTidToLocalTidPerBatch.Count = {globalTidToLocalTidPerBatch.Count}");
@@ -75,7 +75,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.myScheduler = myScheduler;
             this.state = state;
 
-            localBtchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
+            localBatchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
             detFuncResults = new Dictionary<long, BasicFuncResult>();
             globalBidToLocalBid = new Dictionary<long, long>();
             globalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
@@ -111,6 +111,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 this.logger.Info($"Silolist count: {siloList.Count}");
                 if (siloList.Count != 1)
                 {
+                    this.logger.LogError("Should not go this path");
                     // get global tid from global coordinator
                     // TODO: Should be our Regional Coordinators here.
                     Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myRegionalCoordinator.NewTransaction(siloList);
@@ -140,6 +141,7 @@ namespace Concurrency.Implementation.TransactionExecution
                                                                 grainListPerSilo[siloID], grainNamePerSilo[siloID]);
                         }
                     }
+
 
                     Debug.Assert(task != null);
                     var localInfo = await task;
@@ -176,9 +178,9 @@ namespace Concurrency.Implementation.TransactionExecution
             {
                 this.logger.Info("DetTxExecutor:WaitForturn waiting");
                 // wait until the SubBatch has arrived this grain
-                if (localBtchInfoPromise.ContainsKey(cxt.localBid) == false)
-                    localBtchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
-                await localBtchInfoPromise[cxt.localBid].Task;
+                if (localBatchInfoPromise.ContainsKey(cxt.localBid) == false)
+                    localBatchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
+                await localBatchInfoPromise[cxt.localBid].Task;
 
                 this.logger.Info("DetTxExecutor:WaitForturn finished");
             }
@@ -190,10 +192,10 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task FinishExecuteDetTxn(TransactionContext cxt)
         {
-            var coordID = myScheduler.AckComplete(cxt.localBid, cxt.localTid);
-            if (coordID != -1)   // the current batch has completed on this grain
+            var coordId = myScheduler.AckComplete(cxt.localBid, cxt.localTid);
+            if (coordId != -1)   // the current batch has completed on this grain
             {
-                localBtchInfoPromise.Remove(cxt.localBid);
+                localBatchInfoPromise.Remove(cxt.localBid);
                 if (cxt.globalBid != -1)
                 {
                     globalBidToLocalBid.Remove(cxt.globalBid);
@@ -205,7 +207,8 @@ namespace Concurrency.Implementation.TransactionExecution
 
                 var localCoordinatorId = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
                 var localCoordinatorRegion = this.myId.StringId;
-                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
+                // TODO: This coordinator should be the that sent the batch
+                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
                 this.logger.Info($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}");
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
@@ -215,10 +218,10 @@ namespace Concurrency.Implementation.TransactionExecution
         public void BatchArrive(LocalSubBatch batch)
         {
             this.logger.Info($"Batch arrived, batch: {batch}");
-            if (localBtchInfoPromise.ContainsKey(batch.bid) == false)
-                localBtchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
-            this.logger.Info($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBtchInfoPromise[batch.bid]}");
-            localBtchInfoPromise[batch.bid].SetResult(true);
+            if (localBatchInfoPromise.ContainsKey(batch.bid) == false)
+                localBatchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
+            this.logger.Info($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}");
+            localBatchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary
             if (batch.globalBid != -1)

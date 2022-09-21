@@ -156,7 +156,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
-            this.logger.Info($"ReceiveBatchSchedule was called");
+            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} ReceiveBatchSchedule was called with bid: {batch.bid}");
             // do garbage collection for committed local batches
             if (highestCommittedLocalBid < batch.highestCommittedBid)
             {
@@ -226,14 +226,14 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
         {
-            this.logger.Info($"TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)");
+            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)");
             await this.detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
-            this.logger.Info($"TransactionExecutionGrain: await InvokeFunction(call, cxt)");
+            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await InvokeFunction(call, cxt)");
             var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
-            this.logger.Info($"TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);");
+            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);");
             await this.detTxnExecutor.FinishExecuteDetTxn(cxt);
-            this.logger.Info($"TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);");
+            this.logger.Info($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);");
             this.detTxnExecutor.CleanUp(cxt.localTid);
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }
@@ -288,6 +288,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public Task<TransactionResult> CallGrain(TransactionContext cxt, int grainID, string grainNameSpace, FunctionCall call)
         {
             this.GetPrimaryKeyLong(out string region);
+
             var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, region, grainNameSpace);
 
 
