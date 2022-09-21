@@ -30,7 +30,7 @@ namespace Concurrency.Implementation.TransactionExecution
         readonly int myLocalCoordID;
         readonly ICoordMap coordMap;
         readonly ILocalCoordinatorGrain myLocalCoord;
-        readonly IGlobalCoordinatorGrain myGlobalCoord;                                // use this coord to get tid for global transactions
+        readonly IRegionalCoordinatorGrain myRegionalCoordinator;                                // use this coord to get tid for global transactions
         private readonly IGrainFactory grainFactory;
 
         // PACT execution
@@ -58,7 +58,7 @@ namespace Concurrency.Implementation.TransactionExecution
             int siloID,
             int myLocalCoordID,
             ILocalCoordinatorGrain myLocalCoord,
-            IGlobalCoordinatorGrain myGlobalCoord,
+            IRegionalCoordinatorGrain myRegionalCoordinator,
             IGrainFactory grainFactory,
             TransactionScheduler myScheduler,
             ITransactionalState<TState> state
@@ -70,7 +70,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.siloID = siloID;
             this.myLocalCoordID = myLocalCoordID;
             this.myLocalCoord = myLocalCoord;
-            this.myGlobalCoord = myGlobalCoord;
+            this.myRegionalCoordinator = myRegionalCoordinator;
             this.grainFactory = grainFactory;
             this.myScheduler = myScheduler;
             this.state = state;
@@ -112,7 +112,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 {
                     // get global tid from global coordinator
                     // TODO: Should be our Regional Coordinators here.
-                    Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myGlobalCoord.NewTransaction(siloList);
+                    Tuple<TransactionRegistInfo, Dictionary<int, int>> globalInfo = await myRegionalCoordinator.NewTransaction(siloList);
                     var globalTid = globalInfo.Item1.tid;
                     var globalBid = globalInfo.Item1.bid;
                     var siloIDToLocalCoordID = globalInfo.Item2;

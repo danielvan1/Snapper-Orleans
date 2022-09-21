@@ -33,13 +33,14 @@ namespace GeoSnapperDeployment.Factories
                 configurations.Add(siloConfiguration);
             }
 
-            foreach ((string homeRegion, _) in siloConfigurationBuckets)
+            foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
             {
-                foreach ((string deploymentRegion, List<SiloConfiguration> configurations) in siloConfigurationBuckets)
+                foreach ((string deploymentRegion, _) in siloConfigurationBuckets)
                 {
                     for (int i = 0; i < configurations.Count; i++)
                     {
                         string siloKey = $"{deploymentRegion}-{homeRegion}-{i}";
+                        Console.WriteLine(siloKey);
 
                         if (!siloKeysPerRegion.TryGetValue(deploymentRegion, out List<string> siloKeys))
                         {

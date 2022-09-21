@@ -93,15 +93,19 @@ namespace Concurrency.Implementation.TransactionExecution
             // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
             // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
 
+            // TODO: Consider this logic for how regional coordinators are chosen
+            var regionalCoordinatorID = 0;
+            var regionalCoordinator = GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, "EU");
+
             this.logger.Info("Init DetTxnExecutor");
-            detTxnExecutor = new DetTxnExecutor<TState>(
+            this.detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
                 this.myId,
                 this.myId.IntId,
                 mySiloID,
                 myLocalCoordID,
                 myLocalCoord,
-                myGlobalCoord,
+                regionalCoordinator,
                 GrainFactory,
                 myScheduler,
                 state);
@@ -198,22 +202,28 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction on the grain, call this interface to read / write grain state </summary>
         public async Task<TState> GetState(TransactionContext cxt, AccessMode mode)
         {
-            var isDet = cxt.localBid != -1;
-            if (isDet) return detTxnExecutor.GetState(cxt.localTid, mode);
-            else return await nonDetTxnExecutor.GetState(cxt.globalTid, mode);
+            //var isDet = cxt.localBid != -1;
+            var isDeterministic = true;
+            if (isDeterministic)
+            {
+                return detTxnExecutor.GetState(cxt.localTid, mode);
+            } else
+            {
+                return await nonDetTxnExecutor.GetState(cxt.globalTid, mode);
+            }
         }
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
         {
             this.logger.Info($"TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)");
-            await detTxnExecutor.WaitForTurn(cxt);
+            await this.detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
             this.logger.Info($"TransactionExecutionGrain: await InvokeFunction(call, cxt)");
             var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
             this.logger.Info($"TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);");
-            await detTxnExecutor.FinishExecuteDetTxn(cxt);
+            await this.detTxnExecutor.FinishExecuteDetTxn(cxt);
             this.logger.Info($"TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);");
-            detTxnExecutor.CleanUp(cxt.localTid);
+            this.detTxnExecutor.CleanUp(cxt.localTid);
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }
 
@@ -268,9 +278,16 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.GetPrimaryKeyLong(out string region);
             var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID, region, grainNameSpace);
-            var isDet = cxt.localBid != 1;
-            if (isDet) return detTxnExecutor.CallGrain(cxt, call, grain);
-            else return nonDetTxnExecutor.CallGrain(cxt, call, grain);
+            //var isDet = cxt.localBid != 1;
+            var isDeterministic = true;
+            if (isDeterministic)
+            { 
+                return this.detTxnExecutor.CallGrain(cxt, call, grain);
+            }
+            else 
+            {
+                return this.nonDetTxnExecutor.CallGrain(cxt, call, grain);
+            }
         }
 
         public async Task<bool> Prepare(long tid, bool isReader)

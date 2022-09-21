@@ -1,10 +1,8 @@
 ﻿using Concurrency.Interface.Configuration;
-using Concurrency.Interface.Coordinator;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
-using Utilities;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()

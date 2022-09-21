@@ -53,9 +53,16 @@
                 {
                     "IPAddress" : "127.0.0.1",
                     "SiloId": 1,
-                    "Region": "US",
+                    "Region": "EU",
                     "SiloPort": 20001,
                     "GatewayPort": 30005
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 2,
+                    "Region": "US",
+                    "SiloPort": 20002,
+                    "GatewayPort": 30006
                 }
             ]
         }

@@ -1,6 +1,9 @@
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Interface.Coordinator
 {
@@ -9,5 +12,7 @@ namespace Concurrency.Interface.Coordinator
         Task PassToken(BasicToken token);
 
         Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor);
+
+        Task<Tuple<TransactionRegistInfo, Dictionary<int, int>>> NewTransaction(List<int> siloList);
     }
 }

@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmallBank.Grains", "SmallBa
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnapperGeoReplication.Tests", "SnapperGeoReplication.Tests\SnapperGeoReplication.Tests.csproj", "{C659521E-74AB-47F1-B941-4A9CDDD8ACE2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RegionalBankClient", "RegionalBankClient\RegionalBankClient.csproj", "{305D51F7-0CC4-49FA-BD2B-2BDF09363158}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{C659521E-74AB-47F1-B941-4A9CDDD8ACE2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C659521E-74AB-47F1-B941-4A9CDDD8ACE2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C659521E-74AB-47F1-B941-4A9CDDD8ACE2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{305D51F7-0CC4-49FA-BD2B-2BDF09363158}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{305D51F7-0CC4-49FA-BD2B-2BDF09363158}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{305D51F7-0CC4-49FA-BD2B-2BDF09363158}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{305D51F7-0CC4-49FA-BD2B-2BDF09363158}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

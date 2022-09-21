@@ -4,12 +4,14 @@ using System.Diagnostics;
 using System.Threading.Tasks;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
 using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
 {
     public class DetTxnProcessor
     {
+        private readonly ILogger logger;
         readonly int myID;
         readonly bool isGlobalCoord;
         public long highestCommittedBid;
@@ -29,11 +31,13 @@ namespace Concurrency.Implementation.Coordinator
         Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo; // global bid, silo ID, chosen local coord ID
 
         public DetTxnProcessor(
+            ILogger logger,
             int myID,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<int, SubBatch>> bidToSubBatches,
             Dictionary<long, Dictionary<int, int>> coordPerBatchPerSilo = null)
         {
+            this.logger = logger;
             this.myID = myID;
             this.coordMap = coordMap;
             bidToLastBid = new Dictionary<long, long>();
@@ -52,28 +56,28 @@ namespace Concurrency.Implementation.Coordinator
 
         public void CheckGC()
         {
-            if (detRequests.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequests.Count = {detRequests.Count}");
-            if (detRequestPromise.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequestPromise.Count = {detRequestPromise.Count}");
-            if (batchCommit.Count != 0) Console.WriteLine($"DetTxnProcessor: batchCommit.Count = {batchCommit.Count}");
-            if (bidToLastCoordID.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastCoordID.Count = {bidToLastCoordID.Count}");
-            if (bidToLastBid.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastBid.Count = {bidToLastBid.Count}");
+            if (this.detRequests.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequests.Count = {detRequests.Count}");
+            if (this.detRequestPromise.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequestPromise.Count = {detRequestPromise.Count}");
+            if (this.batchCommit.Count != 0) Console.WriteLine($"DetTxnProcessor: batchCommit.Count = {batchCommit.Count}");
+            if (this.bidToLastCoordID.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastCoordID.Count = {bidToLastCoordID.Count}");
+            if (this.bidToLastBid.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastBid.Count = {bidToLastBid.Count}");
         }
 
         public void Init()
         {
-            highestCommittedBid = -1;
-            detRequests = new List<List<int>>();
-            detRequestPromise = new List<TaskCompletionSource<Tuple<long, long>>>();
-            batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.highestCommittedBid = -1;
+            this.detRequests = new List<List<int>>();
+            this.detRequestPromise = new List<TaskCompletionSource<Tuple<long, long>>>();
+            this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
         }
 
         // for PACT
         public async Task<Tuple<long, long>> NewDet(List<int> serviceList)   // <bid, tid>
         {
-            detRequests.Add(serviceList);
+            this.detRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
-            detRequestPromise.Add(promise);
-            Console.WriteLine("Waiting in NewDet");
+            this.detRequestPromise.Add(promise);
+            this.logger.LogInformation("Waiting in NewDet");
             await promise.Task;
             Console.WriteLine("finished NewDet");
             return new Tuple<long, long>(promise.Task.Result.Item1, promise.Task.Result.Item2);

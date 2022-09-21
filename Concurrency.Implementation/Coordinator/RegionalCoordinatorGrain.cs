@@ -58,6 +58,7 @@ namespace Concurrency.Implementation.Coordinator
             coordPerBatchPerSilo = new Dictionary<long, Dictionary<int, int>>();
             nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
+                this.logger,
                 myID,
                 expectedAcksPerBatch,
                 bidToSubBatches,

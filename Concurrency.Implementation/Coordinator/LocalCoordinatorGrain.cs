@@ -92,6 +92,7 @@ namespace Concurrency.Implementation.Coordinator
             myID = (int)this.GetPrimaryKeyLong(out _);
             nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             detTxnProcessor = new DetTxnProcessor(
+                this.logger,
                 myID,
                 expectedAcksPerBatch,
                 bidToSubBatches);
@@ -157,6 +158,10 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(LocalToken token)
         {
+            /*if (this.region.Equals("EU-EU-1")) 
+            {
+                this.logger.Info($"PassToken is called on region:{this.region}");
+            }*/
             long curBatchID;
             var curBatchIDs = new List<long>();
             if (token.isLastEmitBidGlobal)
@@ -166,6 +171,10 @@ namespace Concurrency.Implementation.Coordinator
             }
             else
             {
+                /*if (this.region.Equals("EU-EU-1")) 
+                {
+                    this.logger.Info($"LocalCoordinator in region {this.region} is going to call GenerateBatch");
+                }*/
                 curBatchID = detTxnProcessor.GenerateBatch(token);
                 ProcessGlobalBatch(token, curBatchIDs);
             }

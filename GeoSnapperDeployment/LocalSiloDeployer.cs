@@ -42,7 +42,7 @@ namespace GeoSnapperDeployment
             this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration, globalSiloInfo);
 
             // Configure regional silos
-            RegionalSilosPlacementInfo regionalSilos =this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
+            RegionalSilosPlacementInfo regionalSilos = this.siloConfigurationFactory.CreateRegionalSilos(siloConfigurations);
             RegionalConfiguration regionalConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations);
             LocalConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalConfiguration(siloConfigurations);
             var localSiloInfo = this.siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);

@@ -16,19 +16,11 @@ namespace Concurrency.Implementation.Configuration
     {
         private readonly ILogger logger;
         private readonly LocalConfiguration localConfiguration;
-        private bool tokenEnabled;
 
         public LocalConfigurationGrain(ILogger logger, LocalConfiguration localConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localConfiguration = localConfiguration ?? throw new ArgumentNullException(nameof(localConfiguration));
-        }
-
-        public override Task OnActivateAsync()
-        {
-            this.tokenEnabled = false;
-
-            return base.OnActivateAsync();
         }
 
         public async Task InitializeLocalCoordinators(string currentRegion)
@@ -41,39 +33,45 @@ namespace Concurrency.Implementation.Configuration
                 return;
             }
 
-            var initializeLocalCoordinatorsTasks = new List<Task>();
 
-            // SiloKey should be similar to EU-EU-x
-            foreach(string siloKey in siloKeys)
+            // regionAndServerKey should be similar to EU-EU-1
+            // which indicate: <deployed region>-<home region>-<server id>
+            foreach(string regionAndServerKey in siloKeys)
             {
-                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(Constants.NumberOfLocalCoordinatorsPerSilo - 1, siloKey);
-                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKey);
-                initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
+                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(
+                    Constants.NumberOfLocalCoordinatorsPerSilo - 1, regionAndServerKey);
+                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, regionAndServerKey);
+                var initializeLocalCoordinatorsTasks = new List<Task>()
+                {
+                    coordinator.SpawnLocalCoordGrain(nextCoordinator)
+                };
 
                 for(int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
-                    coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, siloKey);
-                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, siloKey);
-
+                    coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, regionAndServerKey);
+                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, regionAndServerKey);
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
                 }
-
+                // Wait until all of the local coordinators has started
+                await Task.WhenAll(initializeLocalCoordinatorsTasks);
+                // Then pass the first coordinator in the chain the first token
+                await this.PassInitialToken(regionAndServerKey);
             }
-
-            await Task.WhenAll(initializeLocalCoordinatorsTasks);
-
-            // This logic has to be after we start the coordinators, otherwise the passToken method
-            // could be called before this chain is fully initialized and the <nextCoordinator> in
-            // nextCoordinator.passToken(<token>) will be null.
-            if (!this.tokenEnabled)
-            {
-                var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloKeys[0]);
-                LocalToken token = new LocalToken();
-                await coordinator0.PassToken(token);
-                this.tokenEnabled = true;
-            }
-
             this.logger.LogInformation($"Spawned all local coordinators in region {currentRegion}");
+        }
+
+        // Start the circular token passing by sending the initial token to
+        // the first coordinator in the chain, the first coordinator
+        // will then pass it to the second until it wraps around to the
+        // first again and it will continue forever
+        private Task PassInitialToken(string regionAndServer) 
+        {
+            int firstCoordinatorInChain = 0;
+            var coordinator0 = GrainFactory.GetGrain<ILocalCoordinatorGrain>(
+                firstCoordinatorInChain,
+                regionAndServer);
+            LocalToken token = new LocalToken();
+            return coordinator0.PassToken(token);
         }
     }
 }
