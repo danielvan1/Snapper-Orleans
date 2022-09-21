@@ -46,7 +46,10 @@ namespace SmallBank.Grains
                     task.Add(t);
                 }
                 // This logic is weird, one of the recipients could be it self
-                else task.Add(Deposit(context, money));
+                else
+                {
+                    task.Add(Deposit(context, money));
+                }
             }
             await Task.WhenAll(task);
             return new TransactionResult();
