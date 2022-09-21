@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.TransactionExecution
         // grain basic info
         readonly int myID;
         readonly int siloID;
-        
+
         // transaction execution
         TransactionScheduler myScheduler;
         ITransactionalState<TState> state;
@@ -36,7 +36,7 @@ namespace Concurrency.Implementation.TransactionExecution
         // PACT execution
         Dictionary<long, TaskCompletionSource<bool>> localBtchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
         Dictionary<long, BasicFuncResult> detFuncResults;                        // key: local PACT tid, this can only work when a transaction do not concurrently access one grain multiple times
-        
+
         // only for global PACT
         Dictionary<long, long> globalBidToLocalBid;
         Dictionary<long, Dictionary<long, long>> globalTidToLocalTidPerBatch;    // key: global bid, <global tid, local tid>
@@ -117,7 +117,7 @@ namespace Concurrency.Implementation.TransactionExecution
                     var globalTid = globalInfo.Item1.tid;
                     var globalBid = globalInfo.Item1.bid;
                     var siloIDToLocalCoordID = globalInfo.Item2;
-                    
+
                     // send corresponding grainAccessInfo to local coordinators in different silos
                     Debug.Assert(grainListPerSilo.ContainsKey(siloID));
                     Task<TransactionRegistInfo> task = null;
@@ -131,14 +131,14 @@ namespace Concurrency.Implementation.TransactionExecution
                         var localCoord = coordMap.GetLocalCoord(coordID);
                         if (siloID == this.siloID)
                         {
-                            task = localCoord.NewGlobalTransaction(globalBid, globalTid, 
+                            task = localCoord.NewGlobalTransaction(globalBid, globalTid,
                                                                    grainListPerSilo[siloID], grainNamePerSilo[siloID]);
-                        } 
+                        }
                         else
                         {
-                            _ = localCoord.NewGlobalTransaction(globalBid, globalTid, 
+                            _ = localCoord.NewGlobalTransaction(globalBid, globalTid,
                                                                 grainListPerSilo[siloID], grainNamePerSilo[siloID]);
-                        } 
+                        }
                     }
 
                     Debug.Assert(task != null);
@@ -179,7 +179,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 if (localBtchInfoPromise.ContainsKey(cxt.localBid) == false)
                     localBtchInfoPromise.Add(cxt.localBid, new TaskCompletionSource<bool>());
                 await localBtchInfoPromise[cxt.localBid].Task;
-                
+
                 this.logger.Info("DetTxExecutor:WaitForturn finished");
             }
 

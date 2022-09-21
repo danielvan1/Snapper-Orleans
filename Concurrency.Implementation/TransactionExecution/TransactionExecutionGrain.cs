@@ -172,7 +172,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.Info($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}");
             this.detTxnExecutor.BatchArrive(batch);
             this.logger.Info($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);");
-            
+
             return Task.CompletedTask;
         }
 
@@ -303,10 +303,10 @@ namespace Concurrency.Implementation.TransactionExecution
             //var isDet = cxt.localBid != 1;
             var isDeterministic = true;
             if (isDeterministic)
-            { 
+            {
                 return this.detTxnExecutor.CallGrain(cxt, call, grain);
             }
-            else 
+            else
             {
                 return this.nonDetTxnExecutor.CallGrain(cxt, call, grain);
             }
@@ -320,7 +320,7 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // only writer grain needs 2nd phase of 2PC
-        public async Task Commit(long tid, long maxBeforeLocalBid, long maxBeforeGlobalBid)   
+        public async Task Commit(long tid, long maxBeforeLocalBid, long maxBeforeGlobalBid) 
         {
             nonDetTxnExecutor.Commit(maxBeforeLocalBid, maxBeforeGlobalBid);
             await nonDetCommitter.Commit(tid);
