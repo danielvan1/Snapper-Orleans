@@ -22,9 +22,8 @@ namespace Concurrency.Implementation.Coordinator
         private string region;
 
         // coord basic info
-        private int myID;
         private ILocalCoordinatorGrain neighborCoord;
-        private Dictionary<Tuple<int, string>, string> grainClassName;                                             // grainID, grainClassName
+        private Dictionary<Tuple<int, string>, string> grainClassName;  // grainID, grainClassName
         private readonly ILogger logger;
 
         // PACT
@@ -35,20 +34,16 @@ namespace Concurrency.Implementation.Coordinator
         // Hierarchical Architecture
         // for global batches sent from global coordinators
         private SortedDictionary<long, SubBatch> globalBatchInfo;                                   // key: global bid
-        private Dictionary<long, Dictionary<long, List<Tuple<int, string>>>> globalTransactionInfo;                // <global bid, <global tid, grainAccessInfo>>
+        private Dictionary<long, Dictionary<long, List<Tuple<int, string>>>> globalTransactionInfo; // <global bid, <global tid, grainAccessInfo>>
         private Dictionary<long, TaskCompletionSource<Tuple<long, long>>> globalDetRequestPromise;  // <global tid, <local bid, local tid>>
         private Dictionary<long, long> localBidToGlobalBid;
         private Dictionary<long, Dictionary<long, long>> globalTidToLocalTidPerBatch;               // local bid, <global tid, local tid>
 
         // for global batch commitment
         private long highestCommittedGlobalBid;
-        private Dictionary<long, int> globalBidToGlobalCoordID;
+        private Dictionary<long, long> globalBidToGlobalCoordID;
         private Dictionary<long, bool> globalBidToIsPrevBatchGlobal;                                // global bid, if this batch's previous one is also a global batch
         private Dictionary<long, TaskCompletionSource<bool>> globalBatchCommit;                     // global bid, commit promise
-
-        // ACT
-        private NonDetTxnProcessor nonDetTxnProcessor;
-        private readonly SiloInfo SiloInfo;
 
         public LocalCoordinatorGrain(ILogger<LocalCoordinatorGrain> logger)
         {
@@ -68,20 +63,20 @@ namespace Concurrency.Implementation.Coordinator
             this.globalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
             this.globalBidToIsPrevBatchGlobal = new Dictionary<long, bool>();
             this.globalBatchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.globalBidToGlobalCoordID = new Dictionary<long, int>();
+            this.globalBidToGlobalCoordID = new Dictionary<long, long>();
         }
 
         public override Task OnActivateAsync()
         {
             this.Init();
-            this.myID = (int)this.GetPrimaryKeyLong(out _);
-            this.nonDetTxnProcessor = new NonDetTxnProcessor(myID);
+
             this.detTxnProcessor = new DetTxnProcessor(
                 this.logger,
                 this.GrainReference,
-                this.myID,
+                this.GetPrimaryKeyLong(out _),
                 this.expectedAcksPerBatch,
                 this.bidToSubBatches);
+
             this.GetPrimaryKeyLong(out string region);
             this.region = region;
 
@@ -179,7 +174,6 @@ namespace Concurrency.Implementation.Coordinator
                 this.ProcessGlobalBatch(token, curBatchIDs);
             }
 
-            this.nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (this.detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
                 this.detTxnProcessor.GarbageCollectTokenInfo(token);
@@ -278,7 +272,6 @@ namespace Concurrency.Implementation.Coordinator
         {
             this.highestCommittedGlobalBid = -1;
             this.detTxnProcessor.Init();
-            this.nonDetTxnProcessor.Init();
 
             this.neighborCoord = neighbor;
 

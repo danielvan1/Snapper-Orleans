@@ -18,7 +18,6 @@ namespace Concurrency.Implementation.Coordinator
     public class RegionalCoordinatorGrain : Grain, IRegionalCoordinatorGrain
     {
         // coord basic info
-        private int myID;
         private IRegionalCoordinatorGrain neighborCoord;
         private readonly ILogger<RegionalCoordinatorGrain> logger;
 
@@ -28,9 +27,6 @@ namespace Concurrency.Implementation.Coordinator
         private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches;
         // only for global batches (Hierarchical Architecture)
         private Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch;        // <global bid, siloID, chosen local Coord ID>
-
-        // ACT
-        private NonDetTxnProcessor nonDetTxnProcessor;
 
         private DateTime timeOfBatchGeneration;
         private double batchSizeInMSecs;
@@ -42,15 +38,13 @@ namespace Concurrency.Implementation.Coordinator
 
         public override Task OnActivateAsync()
         {
-            this.myID = (int)this.GetPrimaryKeyLong(out string _);
             this.expectedAcksPerBatch = new Dictionary<long, int>();
             this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
             this.localCoordinatorPerSiloPerBatch = new Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>>();
-            this.nonDetTxnProcessor = new NonDetTxnProcessor(myID);
-            detTxnProcessor = new DetTxnProcessor(
+            this.detTxnProcessor = new DetTxnProcessor(
                 this.logger,
                 this.GrainReference,
-                this.myID,
+                this.GetPrimaryKeyLong(out string _),
                 this.expectedAcksPerBatch,
                 this.bidToSubBatches,
                 this.localCoordinatorPerSiloPerBatch);
@@ -83,8 +77,6 @@ namespace Concurrency.Implementation.Coordinator
                 curBatchID = detTxnProcessor.GenerateBatch(token);
                 if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
             }
-
-            nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
                 token.highestCommittedBid = detTxnProcessor.highestCommittedBid;
@@ -155,7 +147,6 @@ namespace Concurrency.Implementation.Coordinator
         public Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor)
         {
             this.detTxnProcessor.Init();
-            this.nonDetTxnProcessor.Init();
 
             this.neighborCoord = neighbor;
 

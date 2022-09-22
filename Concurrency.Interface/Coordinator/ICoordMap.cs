@@ -6,8 +6,8 @@ namespace Concurrency.Interface.Coordinator
     {
         void Init(IGrainFactory myGrainFactory);
 
-        ILocalCoordinatorGrain GetLocalCoord(int localCoordID);
+        ILocalCoordinatorGrain GetLocalCoord(long localCoordID);
 
-        IGlobalCoordinatorGrain GetGlobalCoord(int globalCoordID);
+        IGlobalCoordinatorGrain GetGlobalCoord(long globalCoordID);
     }
 }

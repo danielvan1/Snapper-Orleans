@@ -16,7 +16,7 @@ namespace Concurrency.Implementation.Coordinator
         private readonly ILogger logger;
         private readonly GrainReference grainReference;
         private readonly Random random;
-        readonly int myID;
+        private readonly long myID;
         private readonly bool isRegionalCoordinator;
         public long highestCommittedBid;
         readonly ICoordMap coordMap;
@@ -27,7 +27,7 @@ namespace Concurrency.Implementation.Coordinator
 
         // batch processing
         Dictionary<long, long> bidToLastBid;
-        Dictionary<long, int> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
+        Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
         Dictionary<long, int> expectedAcksPerBatch;
         Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
         Dictionary<long, TaskCompletionSource<bool>> batchCommit;
@@ -37,7 +37,7 @@ namespace Concurrency.Implementation.Coordinator
         public DetTxnProcessor(
             ILogger logger,
             GrainReference grainReference,
-            int myID,
+            long myID,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches,
             Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch = null)
@@ -48,7 +48,7 @@ namespace Concurrency.Implementation.Coordinator
             this.myID = myID;
             this.coordMap = coordMap;
             bidToLastBid = new Dictionary<long, long>();
-            bidToLastCoordID = new Dictionary<long, int>();
+            bidToLastCoordID = new Dictionary<long, long>();
             this.expectedAcksPerBatch = expectedAcksPerBatch;
             this.bidToSubBatches = bidToSubBatches;
 
@@ -57,16 +57,7 @@ namespace Concurrency.Implementation.Coordinator
             this.isRegionalCoordinator = localCoordinatorPerSiloPerBatch != null;
             this.localCoordinatorPerSiloPerBatch = localCoordinatorPerSiloPerBatch;
 
-            Init();
-        }
-
-        public void CheckGC()
-        {
-            if (this.deterministicRequests.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequests.Count = {this.deterministicRequests.Count}");
-            if (this.detRequestPromise.Count != 0) Console.WriteLine($"DetTxnProcessor: detRequestPromise.Count = {detRequestPromise.Count}");
-            if (this.batchCommit.Count != 0) Console.WriteLine($"DetTxnProcessor: batchCommit.Count = {batchCommit.Count}");
-            if (this.bidToLastCoordID.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastCoordID.Count = {bidToLastCoordID.Count}");
-            if (this.bidToLastBid.Count != 0) Console.WriteLine($"DetTxnProcessor {myID}: bidToLastBid.Count = {bidToLastBid.Count}");
+            this.Init();
         }
 
         public void Init()
@@ -190,6 +181,7 @@ namespace Concurrency.Implementation.Coordinator
             {
                 bidToLastCoordID.Add(curBatchID, token.lastCoordID);
             }
+
             token.lastEmitBid = curBatchID;
             token.isLastEmitBidGlobal = globalBid != -1;
             token.lastCoordID = myID;
