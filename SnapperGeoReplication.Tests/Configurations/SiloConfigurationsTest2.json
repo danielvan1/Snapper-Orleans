@@ -1,0 +1,91 @@
+{
+    "SiloConfigurations" :
+    {
+        "ClusterId": "Snapper",
+        "ServiceId": "Snapper",
+        "ReplicaStartPort" : 25000,
+        "ReplicaStartGatewayPort" : 35000,
+        "ReplicaStartId" : 40000,
+        "Silos": {
+
+            "PrimarySilo" :
+            {
+                "IPAddress" : "127.0.0.1",
+                "SiloId": 10000,
+                "Region": "Global",
+                "SiloPort": 11111,
+                "GatewayPort": 30000
+            },
+
+            "GlobalSilo": {
+                "IPAddress" : "127.0.0.1",
+                "SiloId": 10001,
+                "Region": "EU",
+                "SiloPort": 11112,
+                "GatewayPort": 30001
+            },
+
+            "RegionalSilos" : [
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15000,
+                    "Region": "EU",
+                    "SiloPort": 15000,
+                    "GatewayPort": 30002
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15001,
+                    "Region": "US",
+                    "SiloPort": 15001,
+                    "GatewayPort": 30003
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15002,
+                    "Region": "SOUTH-AMERICA",
+                    "SiloPort": 15002,
+                    "GatewayPort": 30004
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15003,
+                    "Region": "ASIA",
+                    "SiloPort": 15003,
+                    "GatewayPort": 30005
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15004,
+                    "Region": "NORTH-POLE",
+                    "SiloPort": 15004,
+                    "GatewayPort": 30006
+                }
+            ],
+
+            "LocalSilos": [
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 0,
+                    "Region": "EU",
+                    "SiloPort": 20000,
+                    "GatewayPort": 30004
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 1,
+                    "Region": "EU",
+                    "SiloPort": 20001,
+                    "GatewayPort": 30005
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 2,
+                    "Region": "US",
+                    "SiloPort": 20002,
+                    "GatewayPort": 30006
+                }
+            ]
+        }
+    }
+}
