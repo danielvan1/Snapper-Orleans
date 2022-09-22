@@ -70,16 +70,20 @@ var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
     new Tuple<int, string>(actorId1, regionAndServer),
 };
 
+
 var amountToDeposit = 50;
+var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
+    amountToDeposit,
+    new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer) 
+}); 
 
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
-    await actor0.StartTransaction("Init", actorId0, actorAccessInfo0, grainClassName);
-    await actor1.StartTransaction("Init", actorId1, actorAccessInfo1, grainClassName);
+    await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer), actorAccessInfo0, grainClassName);
+    await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer), actorAccessInfo1, grainClassName);
 
     Console.WriteLine("Starting deposit txs");
 
-    var multiTransferInput = new Tuple<int, List<int>>(amountToDeposit, new List<int>() { actorId1 });  // money, List<to account>
     await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
 
     Console.WriteLine("Starting balance txs");
