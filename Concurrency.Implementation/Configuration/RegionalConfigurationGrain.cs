@@ -33,7 +33,7 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation("InitializeRegionalCoordinators in region {currentRegion}", this.GrainReference, currentRegion);
+            this.logger.LogInformation("Going to initialize regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
 
             if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
             {
@@ -67,7 +67,10 @@ namespace Concurrency.Implementation.Configuration
                 BasicToken token = new BasicToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;
+
+                this.logger.LogInformation("Passed the initial token for regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
             }
+
         }
     }
 }

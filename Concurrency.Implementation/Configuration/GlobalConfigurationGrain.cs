@@ -74,7 +74,10 @@ namespace Concurrency.Implementation.Configuration
                 BasicToken token = new BasicToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;
+
+                this.logger.LogInformation("Passed the initial token for global coordinators in region {deploymentRegion}", this.GrainReference, deploymentRegion);
             }
+
         }
     }
 }

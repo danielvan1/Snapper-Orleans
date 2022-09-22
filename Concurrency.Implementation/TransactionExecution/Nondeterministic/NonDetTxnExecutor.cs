@@ -61,21 +61,6 @@ namespace Concurrency.Implementation.TransactionExecution
             deadlockTimeout = TimeSpan.FromMilliseconds(20);
         }
 
-        public async Task<Tuple<long, TransactionContext>> GetNonDetContext()
-        {
-            long highestCommittedBid = -1;
-            TransactionRegistInfo info;
-            if (Constants.multiSilo && Constants.hierarchicalCoord)
-                info = await myGlobalCoord.NewTransaction();
-            else
-            {
-                info = await myLocalCoord.NewTransaction();
-                highestCommittedBid = info.highestCommittedBid;
-            }
-            var cxt = new TransactionContext(info.tid, myID, false);
-            return new Tuple<long, TransactionContext>(highestCommittedBid, cxt);
-        }
-
         public async Task<bool> WaitForTurn(long tid)
         {
             // wait for turn to execute

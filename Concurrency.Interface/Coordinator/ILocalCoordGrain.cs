@@ -13,8 +13,6 @@ namespace Concurrency.Interface.Coordinator
 
         Task<TransactionRegistInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
 
-        Task<TransactionRegistInfo> NewTransaction();
-
         Task PassToken(LocalToken token);
 
         Task AckBatchCompletion(long bid);
@@ -24,7 +22,7 @@ namespace Concurrency.Interface.Coordinator
         Task AckGlobalBatchCommit(long globalBid);
 
         // for global transactions (hierarchical architecture)
-        Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegistInfo> NewRegionalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
         Task ReceiveBatchSchedule(SubBatch batch);
     }
 }

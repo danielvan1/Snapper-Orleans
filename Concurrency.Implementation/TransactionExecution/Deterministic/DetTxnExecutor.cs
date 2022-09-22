@@ -141,13 +141,13 @@ namespace Concurrency.Implementation.TransactionExecution
                         if (coordID.Item2 == this.siloID)
                         {
                             this.logger.LogInformation($"Is calling NewGlobalTransaction w/ task", this.grainReference);
-                            task = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
+                            task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                         else
                         {
                             this.logger.LogInformation($"Is calling NewGlobalTransaction w/o task", this.grainReference);
 
-                            _ = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
+                            _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                     }
 
@@ -231,7 +231,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Batch arrived, batch: {batch}", this.grainReference, batch);
             if (localBatchInfoPromise.ContainsKey(batch.bid) == false)
                 localBatchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
-            this.logger.LogInformation("In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise}", this.grainReference, localBatchInfoPromise[batch.bid]);
+            this.logger.LogInformation("In BatchArrive: localBtchInfoPromise: {localBatchInfoPromise}", this.grainReference, localBatchInfoPromise[batch.bid]);
             localBatchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary

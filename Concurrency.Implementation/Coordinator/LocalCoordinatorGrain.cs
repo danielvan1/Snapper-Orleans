@@ -11,7 +11,6 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
-using Orleans.Runtime;
 using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
@@ -93,6 +92,8 @@ namespace Concurrency.Implementation.Coordinator
         // Going to be called by our Regional Coordinator
         public Task ReceiveBatchSchedule(SubBatch batch)
         {
+            this.logger.LogInformation("Received batch schedule from regional coordinator {regionalCoordinatorId} with previous bid {previousBatchId} and current bid {bid}", this.GrainReference, batch.coordID, batch.lastBid, batch.bid);
+
             var globalBid = batch.bid;
             this.globalBatchInfo.Add(globalBid, batch);
             this.globalBidToGlobalCoordID.Add(globalBid, batch.coordID);
@@ -101,50 +102,58 @@ namespace Concurrency.Implementation.Coordinator
             {
                 this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
             }
+
             return Task.CompletedTask;
         }
 
-        public async Task<TransactionRegistInfo> NewGlobalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionRegistInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
+            this.logger.LogInformation("NewRegionalTransaction is called regionalBid {globalBid} and regionalTid {bid}", this.GrainReference, regionalBid, regionalTid);
+
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
                 var grainID = grainAccessInfo[i];
-                if (this.grainClassName.ContainsKey(grainID) == false)
+
+                if (!this.grainClassName.ContainsKey(grainID))
+                {
                     this.grainClassName.Add(grainID, grainClassName[i]);
+                }
             }
 
-            if (this.globalTransactionInfo.ContainsKey(globalBid) == false)
-                this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
-            this.globalTransactionInfo[globalBid].Add(globalTid, grainAccessInfo);
+            if (!this.globalTransactionInfo.ContainsKey(regionalBid))
+            {
+                this.globalTransactionInfo.Add(regionalBid, new Dictionary<long, List<Tuple<int, string>>>());
+            }
+
+            this.globalTransactionInfo[regionalBid].Add(regionalTid, grainAccessInfo);
 
             var promise = new TaskCompletionSource<Tuple<long, long>>();
-            this.globalDetRequestPromise.Add(globalTid, promise);
+            this.globalDetRequestPromise.Add(regionalTid, promise);
             await promise.Task;
+
             return new TransactionRegistInfo(promise.Task.Result.Item1, promise.Task.Result.Item2, this.detTxnProcessor.highestCommittedBid);
         }
 
         // for PACT
         public async Task<TransactionRegistInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
-            this.GetPrimaryKeyLong(out string region);
             this.logger.LogInformation($"NewTransaction is called", this.GrainReference);
+
             var task = this.detTxnProcessor.NewDet(grainAccessInfo);
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
                 var grain = grainAccessInfo[i];
-                if (this.grainClassName.ContainsKey(grain) == false)
-                    this.grainClassName.Add(grain, grainClassName[i]);
-            }
-            var id = await task;
-            this.logger.LogInformation("NewTransaction is going to return tid: {tid} and {bid}", this.GrainReference, id.Item1, id.Item2);
-            return new TransactionRegistInfo(id.Item1, id.Item2, this.detTxnProcessor.highestCommittedBid);
-        }
 
-        // for ACT
-        public async Task<TransactionRegistInfo> NewTransaction()
-        {
-            var tid = await this.nonDetTxnProcessor.NewNonDet();
-            return new TransactionRegistInfo(tid, this.detTxnProcessor.highestCommittedBid);
+                if (!this.grainClassName.ContainsKey(grain)) this.grainClassName.Add(grain, grainClassName[i]);
+            }
+
+            var id = await task;
+            long bid = id.Item1;
+            long tid = id.Item2;
+
+            this.logger.LogInformation("NewTransaction is going to return bid: {bid} and tid: {tid}", this.GrainReference, bid, tid);
+
+            return new TransactionRegistInfo(bid, tid, this.detTxnProcessor.highestCommittedBid);
         }
 
         public async Task PassToken(LocalToken token)
@@ -182,7 +191,115 @@ namespace Concurrency.Implementation.Coordinator
                 foreach (var bid in curBatchIDs) await EmitBatch(bid);
         }
 
-        void ProcessGlobalBatch(LocalToken token, List<long> curBatchIDs)
+        // TODO: Rename to AckRegionalCoordinator, and input RegionalBatchId ?
+        public void ACKRegionalCoordinator(long globalBid)
+        {
+            this.GetPrimaryKeyLong(out string region);
+            var globalCoordID = globalBidToGlobalCoordID[globalBid];
+            // Just try to get the regional silo somehow to see if it works
+            var regionalCoordinatorRegion = region.Substring(0, 2);
+            //this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
+            var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(globalCoordID, regionalCoordinatorRegion);
+            _ = regionalCoordinator.AckBatchCompletion(globalBid);
+        }
+
+        public async Task AckBatchCompletion(long bid)
+        {
+            this.logger.LogInformation("Expected acknowledgements for batch: {bid} before decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
+            this.expectedAcksPerBatch[bid]--;
+            this.logger.LogInformation("Expected acknowledgements for batch: {bid} after decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
+
+            if (expectedAcksPerBatch[bid] != 0) return;
+
+            // the batch has been completed in this silo
+            long globalBid = -1;
+            var isPrevGlobal = false;
+            var isGlobal = localBidToGlobalBid.ContainsKey(bid);
+
+            if (isGlobal)
+            {
+                // ACK the regional coordinator
+                globalBid = localBidToGlobalBid[bid];
+                isPrevGlobal = globalBidToIsPrevBatchGlobal[globalBid];
+                if (isPrevGlobal)
+                {
+                    this.ACKRegionalCoordinator(globalBid);
+                }
+            }
+
+            await this.detTxnProcessor.WaitPrevBatchToCommit(bid);
+
+            if (isGlobal)
+            {
+                if (!isPrevGlobal)
+                {
+                    this.ACKRegionalCoordinator(globalBid);
+                }
+                await WaitGlobalBatchCommit(globalBid);
+
+                this.localBidToGlobalBid.Remove(bid);
+                this.globalBidToGlobalCoordID.Remove(globalBid);
+                this.globalBidToIsPrevBatchGlobal.Remove(globalBid);
+            }
+
+            this.detTxnProcessor.AckBatchCommit(bid);
+
+            var currentScheduleMap = bidToSubBatches[bid];
+            foreach (var item in currentScheduleMap)
+            {
+                this.GetPrimaryKeyLong(out string region);
+                this.logger.LogInformation($"Commit Grains", this.GrainReference);
+                Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
+                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
+                _ = dest.AckBatchCommit(bid);
+            }
+
+            this.bidToSubBatches.Remove(bid);
+            this.expectedAcksPerBatch.Remove(bid);
+        }
+
+        public async Task WaitBatchCommit(long bid)
+        {
+            await this.detTxnProcessor.WaitBatchCommit(bid);
+        }
+
+        public Task AckGlobalBatchCommit(long globalBid)
+        {
+            this.highestCommittedGlobalBid = Math.Max(globalBid, highestCommittedGlobalBid);
+            if (this.globalBatchCommit.ContainsKey(globalBid))
+            {
+                this.globalBatchCommit[globalBid].SetResult(true);
+                this.globalBatchCommit.Remove(globalBid);
+            }
+            return Task.CompletedTask;
+        }
+
+        public Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor)
+        {
+            this.highestCommittedGlobalBid = -1;
+            this.detTxnProcessor.Init();
+            this.nonDetTxnProcessor.Init();
+
+            this.neighborCoord = neighbor;
+
+            return Task.CompletedTask;
+        }
+
+        private async Task WaitGlobalBatchCommit(long globalBid)
+        {
+            if (this.highestCommittedGlobalBid >= globalBid)
+            {
+                return;
+            }
+            if (!this.globalBatchCommit.ContainsKey(globalBid))
+            {
+                this.globalBatchCommit.Add(globalBid, new TaskCompletionSource<bool>());
+            }
+
+            await this.globalBatchCommit[globalBid].Task;
+        }
+
+        private void ProcessGlobalBatch(LocalToken token, List<long> curBatchIDs)
         {
             while (this.globalBatchInfo.Count != 0)
             {
@@ -216,7 +333,7 @@ namespace Concurrency.Implementation.Coordinator
             }
         }
 
-        async Task EmitBatch(long bid)
+        private async Task EmitBatch(long bid)
         {
             var curScheduleMap = this.bidToSubBatches[bid];
 
@@ -250,114 +367,6 @@ namespace Concurrency.Implementation.Coordinator
 
                 _ = dest.ReceiveBatchSchedule(localSubBatch);
             }
-        }
-
-        // TODO: Rename to AckRegionalCoordinator, and input RegionalBatchId ?
-        public void ACKRegionalCoordinator(long globalBid)
-        {
-            this.GetPrimaryKeyLong(out string region);
-            var globalCoordID = globalBidToGlobalCoordID[globalBid];
-            // Just try to get the regional silo somehow to see if it works
-            var regionalCoordinatorRegion = region.Substring(0, 2);
-            //this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
-             var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(globalCoordID, regionalCoordinatorRegion);
-            _ = regionalCoordinator.AckBatchCompletion(globalBid);
-        }
-
-        public async Task AckBatchCompletion(long bid)
-        {
-            this.logger.LogInformation("Expected acknowledgements for batch: {bid} before decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
-            this.expectedAcksPerBatch[bid]--;
-            this.logger.LogInformation("Expected acknowledgements for batch: {bid} after decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
-
-            if (expectedAcksPerBatch[bid] != 0) return;
-
-            // the batch has been completed in this silo
-            long globalBid = -1;
-            var isPrevGlobal = false;
-            var isGlobal = localBidToGlobalBid.ContainsKey(bid);
-
-            if (isGlobal)
-            {
-                // ACK the regional coordinator
-                globalBid = localBidToGlobalBid[bid];
-                isPrevGlobal = globalBidToIsPrevBatchGlobal[globalBid];
-                if (isPrevGlobal)
-                {
-                    this.ACKRegionalCoordinator(globalBid);
-                }
-            }
-
-            await this.detTxnProcessor.WaitPrevBatchToCommit(bid);
-
-            if (isGlobal)
-            {
-                if (!isPrevGlobal) 
-                {
-                    this.ACKRegionalCoordinator(globalBid);
-                } 
-                await WaitGlobalBatchCommit(globalBid);
-
-                this.localBidToGlobalBid.Remove(bid);
-                this.globalBidToGlobalCoordID.Remove(globalBid);
-                this.globalBidToIsPrevBatchGlobal.Remove(globalBid);
-            }
-
-            this.detTxnProcessor.AckBatchCommit(bid);
-
-            var currentScheduleMap = bidToSubBatches[bid];
-            foreach (var item in currentScheduleMap)
-            {
-                this.GetPrimaryKeyLong(out string region);
-                this.logger.LogInformation($"Commit Grains", this.GrainReference);
-                Debug.Assert(region == item.Key.Item2); // I think this should be true, we just have the same info multiple places now
-                var dest = GrainFactory.GetGrain<ITransactionExecutionGrain>(item.Key.Item1, region, this.grainClassName[item.Key]);
-                _ = dest.AckBatchCommit(bid);
-            }
-
-            this.bidToSubBatches.Remove(bid);
-            this.expectedAcksPerBatch.Remove(bid);
-        }
-
-        public async Task WaitBatchCommit(long bid)
-        {
-            await this.detTxnProcessor.WaitBatchCommit(bid);
-        }
-
-        async Task WaitGlobalBatchCommit(long globalBid)
-        {
-            if (this.highestCommittedGlobalBid >= globalBid) 
-            {
-                return;
-            }
-            if (!this.globalBatchCommit.ContainsKey(globalBid)) 
-            {
-                this.globalBatchCommit.Add(globalBid, new TaskCompletionSource<bool>());
-            }
-                
-            await this.globalBatchCommit[globalBid].Task;
-        }
-
-        public Task AckGlobalBatchCommit(long globalBid)
-        {
-            this.highestCommittedGlobalBid = Math.Max(globalBid, highestCommittedGlobalBid);
-            if (this.globalBatchCommit.ContainsKey(globalBid))
-            {
-                this.globalBatchCommit[globalBid].SetResult(true);
-                this.globalBatchCommit.Remove(globalBid);
-            }
-            return Task.CompletedTask;
-        }
-
-        public Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor)
-        {
-            this.highestCommittedGlobalBid = -1;
-            this.detTxnProcessor.Init();
-            this.nonDetTxnProcessor.Init();
-
-            this.neighborCoord = neighbor;
-
-            return Task.CompletedTask;
         }
     }
 }

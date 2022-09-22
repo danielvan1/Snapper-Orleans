@@ -26,7 +26,7 @@ namespace Concurrency.Implementation.Configuration
 
         public async Task InitializeLocalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation("Initializing configuration in local config grain in region: {currentRegion}", this.GrainReference, currentRegion);
+            this.logger.LogInformation("Initializing local coordinators in region: {currentRegion}", this.GrainReference, currentRegion);
             if (!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
             {
                 this.logger.LogError("Currentregion: {currentRegion} does not exist in the dictionary", this.GrainReference, currentRegion);
