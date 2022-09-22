@@ -21,10 +21,4 @@ public class UnitTest1
         this.fixture.BuildAndDeployCluster();
         cluster = this.fixture.Cluster;
     }
-
-    [Fact]
-    public void Test1()
-    {
-        var regionalCoordinator = cluster.GrainFactory.GetGrain<ITransactionExecutionGrain>(1, "EU");
-    }
 }

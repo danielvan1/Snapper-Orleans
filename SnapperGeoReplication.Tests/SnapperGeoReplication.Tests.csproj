@@ -29,6 +29,13 @@
 	<ItemGroup>
 	  <ProjectReference Include="..\Concurrency.Implementation\Concurrency.Implementation.csproj" />
 	  <ProjectReference Include="..\Concurrency.Interface\Concurrency.Interface.csproj" />
+	  <ProjectReference Include="..\GeoSnapperDeployment\GeoSnapperDeployment.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Configurations/SiloConfigurationsTest1.json">
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 </Project>
