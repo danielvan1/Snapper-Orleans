@@ -18,7 +18,7 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         private readonly ILogger logger;
         private readonly GrainReference grainReference;
-        private readonly TransactionExecutionGrainId myId;
+        private readonly GrainId myId;
 
         // grain basic info
         private readonly int myID;
@@ -56,7 +56,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public DetTxnExecutor(
             ILogger logger,
             GrainReference grainReference,
-            TransactionExecutionGrainId myId,
+            GrainId myId,
             int myID,
             string siloID,
             int myLocalCoordID,
@@ -267,6 +267,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))", this.grainReference);
             var resultObj = (await grain.ExecuteDet(call, cxt)).Item1;
             this.logger.LogInformation("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))", this.grainReference);
+
             return new TransactionResult(resultObj);
         }
 
