@@ -1,8 +1,11 @@
 ﻿using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.VisualBasic;
 using Orleans.Hosting;
 using Unity;
+using Utilities;
 
 namespace GeoSnapperDeployment
 {
@@ -20,6 +23,11 @@ namespace GeoSnapperDeployment
             if(args.Length == 0)
             {
                 throw new ArgumentException("Deployment type needs to be specified");
+            }
+
+            if(!Directory.Exists(Utilities.Constants.LogPath))
+            {
+                Directory.CreateDirectory(Utilities.Constants.LogPath);
             }
 
             UnityContainer container = new UnityContainer();

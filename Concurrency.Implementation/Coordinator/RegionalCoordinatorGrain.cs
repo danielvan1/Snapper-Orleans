@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.Coordinator
         int myID;
         ICoordMap coordMap;
         IRegionalCoordinatorGrain neighborCoord;
-        private readonly ILogger logger;
+        private readonly ILogger<RegionalCoordinatorGrain> logger;
 
         // PACT
         DetTxnProcessor detTxnProcessor;
@@ -36,7 +36,7 @@ namespace Concurrency.Implementation.Coordinator
         DateTime timeOfBatchGeneration;
         double batchSizeInMSecs;
 
-        public RegionalCoordinatorGrain(ILogger logger)
+        public RegionalCoordinatorGrain(ILogger<RegionalCoordinatorGrain> logger)
         {
             this.logger = logger;
         }

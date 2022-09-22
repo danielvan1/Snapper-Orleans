@@ -51,7 +51,7 @@ namespace Concurrency.Implementation.Coordinator
         private NonDetTxnProcessor nonDetTxnProcessor;
         private readonly SiloInfo SiloInfo;
 
-        public LocalCoordinatorGrain(ILogger logger)
+        public LocalCoordinatorGrain(ILogger<LocalCoordinatorGrain> logger)
         {
             this.logger = logger;
         }
@@ -96,6 +96,7 @@ namespace Concurrency.Implementation.Coordinator
             var globalBid = batch.bid;
             this.globalBatchInfo.Add(globalBid, batch);
             this.globalBidToGlobalCoordID.Add(globalBid, batch.coordID);
+
             if (!this.globalTransactionInfo.ContainsKey(globalBid))
             {
                 this.globalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());

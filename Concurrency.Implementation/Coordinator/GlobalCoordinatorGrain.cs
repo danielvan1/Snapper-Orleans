@@ -19,7 +19,7 @@ namespace Concurrency.Implementation.Coordinator
         // coord basic info
         int myID;
         ICoordMap coordMap;
-        private readonly ILogger logger;
+        private readonly ILogger<GlobalCoordinatorGrain> logger;
         IGlobalCoordinatorGrain neighborCoord;
 
         // PACT
@@ -45,7 +45,7 @@ namespace Concurrency.Implementation.Coordinator
             return base.OnActivateAsync();
         }
 
-        public GlobalCoordinatorGrain(ILogger logger)
+        public GlobalCoordinatorGrain(ILogger<GlobalCoordinatorGrain> logger)
         {
             this.logger = logger;
         }

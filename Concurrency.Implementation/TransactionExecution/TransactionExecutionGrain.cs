@@ -20,7 +20,7 @@ namespace Concurrency.Implementation.TransactionExecution
     [TransactionExecutionGrainPlacementStrategy]
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
-        private readonly ILogger logger;
+        private readonly ILogger<TransactionExecutionGrain<TState>> logger;
 
         private TransactionExecutionGrainId myId;
         // grain basic info
@@ -49,7 +49,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private SiloInfo siloInfo;
 
-        public TransactionExecutionGrain(ILogger logger, string myClassName)
+        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, string myClassName)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.myClassName = myClassName;
@@ -288,11 +288,11 @@ namespace Concurrency.Implementation.TransactionExecution
                 coordinatorMap.Add(cxt.globalTid, cxt.nonDetCoordID);
             }
             var mi = call.grainClassName.GetMethod(call.funcName);
-            //this.logger.Info($"[{id}-{region}] going to call mi.Invoke for method {call.funcName} on {this}, {cxt}, {call.funcInput} ");
-            var t = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
+            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {}", this.GrainReference, call.funcName, call.funcInput);
+            var transactionResult = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
-            var result = await t;
+            var result = await transactionResult;
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
             return result;
         }

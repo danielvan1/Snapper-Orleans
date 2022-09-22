@@ -91,7 +91,7 @@ namespace Utilities
 
         public static readonly string dataPath = Path.Combine(new string[]{"..", "Snapper-Orleans", "data"});
         // @"..\Snapper-Orleans\data\"
-        public static readonly string logPath = Path.Combine(dataPath, "log");
+        public static readonly string LogPath = Path.Combine(Directory.GetCurrentDirectory(), "Logs");
         public static readonly string resultPath = Path.Combine(dataPath, "result.txt");
         public static readonly string credentialFile = Path.Combine(dataPath, "AWS_credential.txt");
 

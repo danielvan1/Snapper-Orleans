@@ -13,9 +13,9 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
-        private readonly ILogger logger;
+        private readonly ILogger<SnapperTransactionalAccountGrain> logger;
 
-        public SnapperTransactionalAccountGrain(ILogger logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
             this.logger = logger;
         }
