@@ -5,22 +5,27 @@ using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Hosting;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
+using Serilog;
+using Serilog.Filters;
 
 namespace GeoSnapperDeployment
 {
     public class LocalSiloDeployer
     {
         private readonly ISiloConfigurationFactory siloConfigurationFactory;
+        private readonly string logPath = Path.Combine(Utilities.Constants.LogPath, $"Snapper-{DateTime.Now:ddMMyyyy-HHmm}.log");
+        private ILogger logger;
 
         public LocalSiloDeployer(ISiloConfigurationFactory siloConfigurationFactory)
         {
             this.siloConfigurationFactory = siloConfigurationFactory ?? throw new ArgumentNullException(nameof(siloConfigurationFactory));
+            this.logger = CreateLogger();
         }
 
         public async Task<ISiloHost> DeployPrimarySilo(SiloConfigurations siloConfigurations)
@@ -177,24 +182,29 @@ namespace GeoSnapperDeployment
                                options.ClusterId = clusterId;
                                options.ServiceId = serviceId;
                            });
-                           //.ConfigureLogging(logging => logging.AddConsole());
+            //.ConfigureLogging(logging => logging.AddConsole());
         }
 
         private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, SiloInfo globalSiloInfo)
         {
 
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
-                                                                    Logger.AddSimpleConsole(options =>
-                                                                    {
-                                                                        options.SingleLine = true;
-                                                                        options.IncludeScopes = true;
-                                                                    }));
-            ILogger logger = loggerFactory.CreateLogger("Global");
+            // ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
+            //                                                         Logger.AddSimpleConsole(options =>
+            //                                                         {
+            //                                                             options.SingleLine = true;
+            //                                                             options.IncludeScopes = true;
+            //                                                         }));
+            // ILogger logger = loggerFactory.CreateLogger("Global");
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
+                serviceCollection.AddLogging(builder =>
+                {
+                    builder.AddSerilog(this.logger);
+                });
+
                 serviceCollection.AddSingleton(globalConfiguration);
                 serviceCollection.AddSingleton(globalSiloInfo);
-                serviceCollection.AddSingleton(logger);
+                // serviceCollection.AddSingleton(logger);
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigurationGrainPlacement>(typeof(GlobalConfigurationGrainPlacementStrategy));
@@ -210,22 +220,17 @@ namespace GeoSnapperDeployment
                                              LocalConfiguration localConfiguration,
                                              LocalSiloPlacementInfo localSilos)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
-                                                                    Logger.AddSimpleConsole(options =>
-                                                                    {
-                                                                        options.SingleLine = true;
-                                                                        options.IncludeScopes = true;
-                                                                        options.UseUtcTimestamp = true;
-                                                                        options.TimestampFormat = "[hh:mm:ss:ffff] ";
-                                                                    }));
-            ILogger logger = loggerFactory.CreateLogger(string.Empty);
-
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
+                serviceCollection.AddLogging(builder =>
+                {
+                    builder.AddSerilog(this.logger);
+                });
+
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(regionalConfiguration);
                 serviceCollection.AddSingleton(localConfiguration);
-                serviceCollection.AddSingleton(logger);
+                // serviceCollection.AddSingleton(logger);
                 serviceCollection.AddSingleton(localSilos);
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
@@ -247,22 +252,26 @@ namespace GeoSnapperDeployment
 
         private void ConfigureLocalGrains(SiloHostBuilder siloHostBuilder, RegionalSilosPlacementInfo regionalSilos, LocalSiloPlacementInfo localSilos)
         {
-            ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
-                                                                    Logger.AddSimpleConsole(options =>
-                                                                    {
-                                                                        options.SingleLine = true;
-                                                                        options.IncludeScopes = false;
-                                                                        options.UseUtcTimestamp = true;
-                                                                        options.TimestampFormat = "[hh:mm:ss:ffff] ";
+            // ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
+            //                                                         Logger.AddSimpleConsole(options =>
+            //                                                         {
+            //                                                             options.SingleLine = true;
+            //                                                             options.IncludeScopes = false;
+            //                                                             options.UseUtcTimestamp = true;
+            //                                                             options.TimestampFormat = "[hh:mm:ss:ffff] ";
 
-                                                                    }));
-            ILogger logger = loggerFactory.CreateLogger(string.Empty);
+            //                                                         }));
+            // ILogger logger = loggerFactory.CreateLogger(string.Empty);
 
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
+                serviceCollection.AddLogging(builder =>
+                {
+                    builder.AddSerilog(this.logger);
+                });
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(localSilos);
-                serviceCollection.AddSingleton(logger);
+                // serviceCollection.AddSingleton(logger);
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, LocalConfigurationGrainPlacementStrategy>(nameof(LocalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigurationGrainPlacement>(typeof(LocalConfigurationGrainPlacementStrategy));
@@ -273,6 +282,14 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, TransactionExecutionGrainPlacementStrategy>(nameof(TransactionExecutionGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, TransactionExecutionGrainPlacement>(typeof(TransactionExecutionGrainPlacementStrategy));
             });
+        }
+
+        private ILogger CreateLogger()
+        {
+            return new LoggerConfiguration()
+                        .WriteTo.File(this.logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .CreateLogger();
         }
     }
 }

@@ -13,10 +13,10 @@ namespace Concurrency.Implementation.GrainPlacement
 {
     public class TransactionExecutionGrainPlacement : IPlacementDirector
     {
-        private readonly ILogger logger;
+        private readonly ILogger<TransactionExecutionGrainPlacement> logger;
         private readonly LocalSiloPlacementInfo localSiloPlacementInfo;
 
-        public TransactionExecutionGrainPlacement(ILogger logger, LocalSiloPlacementInfo localSiloPlacementInfo)
+        public TransactionExecutionGrainPlacement(ILogger<TransactionExecutionGrainPlacement> logger, LocalSiloPlacementInfo localSiloPlacementInfo)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localSiloPlacementInfo = localSiloPlacementInfo ?? throw new ArgumentNullException(nameof(localSiloPlacementInfo));

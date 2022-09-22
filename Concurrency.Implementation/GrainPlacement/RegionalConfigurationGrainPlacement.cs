@@ -15,10 +15,10 @@ namespace Concurrency.Implementation.GrainPlacement
 {
     public class RegionalConfigurationGrainPlacement : IPlacementDirector
     {
-        private readonly ILogger logger;
+        private readonly ILogger<RegionalConfigurationGrainPlacement> logger;
         private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public RegionalConfigurationGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
+        public RegionalConfigurationGrainPlacement(ILogger<RegionalConfigurationGrainPlacement> logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));

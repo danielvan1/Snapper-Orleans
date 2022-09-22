@@ -20,7 +20,7 @@ namespace Concurrency.Implementation.TransactionExecution
     [TransactionExecutionGrainPlacementStrategy]
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
-        private readonly ILogger logger;
+        private readonly ILogger<TransactionExecutionGrain<TState>> logger;
 
         private TransactionExecutionGrainId myId;
         // grain basic info
@@ -49,7 +49,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private SiloInfo siloInfo;
 
-        public TransactionExecutionGrain(ILogger logger, string myClassName)
+        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, string myClassName)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.myClassName = myClassName;
@@ -184,14 +184,14 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task WaitForBatchCommit(long bid)
         {
             if (highestCommittedLocalBid >= bid) return;
-            this.logger.LogInformation($"Waiting for batch id:{bid} to commit", this.GrainReference);
+            this.logger.LogInformation("Waiting for batch id: {bid} to commit", this.GrainReference, bid);
             await batchCommit[bid].Task;
         }
 
         /// <summary> A local coordinator calls this interface to notify the commitment of a local batch </summary>
         public Task AckBatchCommit(long bid)
         {
-            this.logger.LogInformation($"DetTxnExecutor.AckBatchCommit is called on batch id:{bid} by local coordinator", this.GrainReference);
+            this.logger.LogInformation("DetTxnExecutor.AckBatchCommit is called on batch id: {bid} by local coordinator", this.GrainReference, bid);
             if (highestCommittedLocalBid < bid)
             {
                 highestCommittedLocalBid = bid;
@@ -231,14 +231,14 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
         {
-            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
+            this.logger.LogInformation($"detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
             await this.detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
-            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await InvokeFunction(call, cxt)", this.GrainReference);
+            this.logger.LogInformation($"InvokeFunction(call, cxt)", this.GrainReference);
             var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
-            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: await detTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
+            this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             await this.detTxnExecutor.FinishExecuteDetTxn(cxt);
-            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} TransactionExecutionGrain: (after) await detTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
+            this.logger.LogInformation($"(after) DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             this.detTxnExecutor.CleanUp(cxt.localTid);
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }
@@ -288,11 +288,11 @@ namespace Concurrency.Implementation.TransactionExecution
                 coordinatorMap.Add(cxt.globalTid, cxt.nonDetCoordID);
             }
             var mi = call.grainClassName.GetMethod(call.funcName);
-            //this.logger.Info($"[{id}-{region}] going to call mi.Invoke for method {call.funcName} on {this}, {cxt}, {call.funcInput} ");
-            var t = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
+            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
+            var transactionResult = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
-            var result = await t;
+            var result = await transactionResult;
             //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
             return result;
         }

@@ -11,6 +11,7 @@ namespace SnapperGeoReplication.Tests.ClusterSetup.TestSiloConfigurations
         public void Configure(ISiloBuilder siloBuilder)
         {
             Mock<ILogger> loggerMock = new Mock<ILogger>();
+
             siloBuilder.ConfigureServices(serviceCollection =>
             {
                 serviceCollection.AddSingleton<ILogger>(loggerMock.Object);

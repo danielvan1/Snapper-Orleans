@@ -8,7 +8,7 @@ namespace Concurrency.Interface.Models
     {
         public long lastEmitBid;
         public long lastEmitTid;
-        public int lastCoordID;
+        public long lastCoordID;
         public long highestCommittedBid;
         public bool isLastEmitBidGlobal;
         // for local coordinator: <grainID, latest local bid emitted to this grain>

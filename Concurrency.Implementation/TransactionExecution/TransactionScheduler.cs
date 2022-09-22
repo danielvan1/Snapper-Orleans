@@ -14,7 +14,7 @@ namespace Concurrency.Implementation.TransactionExecution
         Dictionary<long, SubBatch> batchInfo;                               // key: local bid
         Dictionary<long, long> tidToLastTid;
         Dictionary<long, TaskCompletionSource<bool>> detExecutionPromise;   // key: local tid
-       
+
         public TransactionScheduler(int myID)
         {
             this.myID = myID;
@@ -54,7 +54,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task WaitForTurn(long bid, long tid)
         {
             var depTid = tidToLastTid[tid];
-            if (depTid == -1)  
+            if (depTid == -1)
             {
                 // if the tid is the first txn in the batch, wait for previous node
                 var depNode = scheduleInfo.GetDependingNode(bid);
@@ -74,14 +74,14 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // int: the local coordID if the batch has been completed
-        public int AckComplete(long bid, long tid)
+        public long AckComplete(long bid, long tid)
         {
             var txnList = batchInfo[bid].txnList;
             Debug.Assert(txnList.First() == tid);
             txnList.RemoveAt(0);
             tidToLastTid.Remove(tid);
 
-            var coordID = -1;
+            long coordID = -1;
             if (txnList.Count == 0)
             {
                 coordID = batchInfo[bid].coordID;
@@ -109,7 +109,7 @@ namespace Concurrency.Implementation.TransactionExecution
                     {
                         scheduleInfo.detNodes.Remove(node.id);
                         scheduleInfo.localBidToGlobalBid.Remove(node.id);
-                    } 
+                    }
                     else break;   // meet a det node whose id > bid
                 }
                 else

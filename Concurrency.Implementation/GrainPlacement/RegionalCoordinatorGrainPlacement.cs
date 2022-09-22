@@ -14,10 +14,10 @@ namespace Concurrency.Implementation.GrainPlacement
 {
     public class RegionalCoordinatorGrainPlacement : IPlacementDirector
     {
-        private readonly ILogger logger;
+        private readonly ILogger<RegionalCoordinatorGrainPlacement> logger;
         private readonly RegionalSilosPlacementInfo regionalSilos;
 
-        public RegionalCoordinatorGrainPlacement(ILogger logger, RegionalSilosPlacementInfo regionalSilos)
+        public RegionalCoordinatorGrainPlacement(ILogger<RegionalCoordinatorGrainPlacement> logger, RegionalSilosPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -37,8 +37,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogError($"The {nameof(RegionalCoordinatorGrain)}: {configGrainId}--{region} is not found in the dictionary");
-            this.logger.LogError(string.Join(", ", this.regionalSilos.RegionsSiloInfo.Keys));
+            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(RegionalCoordinatorGrain), region );
 
             throw new GrainPlacementException($"Wrong placement of {nameof(RegionalCoordinatorGrain)}");
         }

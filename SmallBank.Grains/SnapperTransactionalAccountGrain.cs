@@ -13,9 +13,9 @@ namespace SmallBank.Grains
 
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
-        private readonly ILogger logger;
+        private readonly ILogger<SnapperTransactionalAccountGrain> logger;
 
-        public SnapperTransactionalAccountGrain(ILogger logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
             this.logger = logger;
         }
@@ -26,7 +26,7 @@ namespace SmallBank.Grains
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 100;
-            this.logger.LogInformation($"Balance {(int)myState.balance}", this.GrainReference);
+            this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
             return new TransactionResult();
         }
 

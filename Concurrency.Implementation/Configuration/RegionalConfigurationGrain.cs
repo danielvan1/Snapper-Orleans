@@ -15,10 +15,10 @@ namespace Concurrency.Implementation.Configuration
     public class RegionalConfigurationGrain : Grain, IRegionalConfigGrain
     {
         private readonly RegionalConfiguration regionalConfiguration;
-        private readonly ILogger logger;
+        private readonly ILogger<RegionalConfiguration> logger;
         private bool tokenEnabled;
 
-        public RegionalConfigurationGrain(ILogger logger, RegionalConfiguration regionalConfiguration)
+        public RegionalConfigurationGrain(ILogger<RegionalConfiguration> logger, RegionalConfiguration regionalConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));
@@ -27,18 +27,17 @@ namespace Concurrency.Implementation.Configuration
         public override Task OnActivateAsync()
         {
             this.tokenEnabled = false;
-            this.logger.LogInformation($"OnActivateAsync is called inside:{this.IdentityString}");
 
             return base.OnActivateAsync();
         }
 
         public async Task InitializeRegionalCoordinators(string currentRegion)
         {
-            this.logger.LogInformation($"InitializeRegionalCoordinators in region {currentRegion}", this.GrainReference);
+            this.logger.LogInformation("Going to initialize regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
 
             if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
             {
-                this.logger.LogError($"Could not find number of silos in the region {currentRegion}", this.GrainReference);
+                this.logger.LogError("Could not find number of silos in the region {currentRegion}", this.GrainReference, currentRegion);
 
                 return;
             }
@@ -60,7 +59,7 @@ namespace Concurrency.Implementation.Configuration
 
             await Task.WhenAll(initRegionalCoordinatorTasks);
 
-            this.logger.LogInformation($"Initialized all regional coordinators in region {currentRegion}", this.GrainReference);
+            this.logger.LogInformation("Initialized all regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
 
             if (!this.tokenEnabled)
             {
@@ -68,7 +67,10 @@ namespace Concurrency.Implementation.Configuration
                 BasicToken token = new BasicToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;
+
+                this.logger.LogInformation("Passed the initial token for regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
             }
+
         }
     }
 }
