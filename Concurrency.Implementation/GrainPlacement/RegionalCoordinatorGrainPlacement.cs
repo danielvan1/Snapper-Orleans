@@ -37,8 +37,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogError($"The {nameof(RegionalCoordinatorGrain)}: {configGrainId}--{region} is not found in the dictionary");
-            this.logger.LogError(string.Join(", ", this.regionalSilos.RegionsSiloInfo.Keys));
+            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(RegionalCoordinatorGrain), region );
 
             throw new GrainPlacementException($"Wrong placement of {nameof(RegionalCoordinatorGrain)}");
         }

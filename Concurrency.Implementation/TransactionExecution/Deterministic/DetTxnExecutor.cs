@@ -112,11 +112,9 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
-                this.logger.LogInformation($"Silolist count: {siloList.Count}", this.grainReference);
+                this.logger.LogInformation("Silolist count: {siloList.Count}", this.grainReference, siloList.Count);
                 if (siloList.Count != 1)
                 {
-                    this.logger.LogError("Should not go this path", this.grainReference);
-
                     // get regional tid from regional coordinator
                     // TODO: Should be our Regional Coordinators here.
                     // Note the Dictionary<string, Tuple<int, string>> part of the
@@ -142,21 +140,22 @@ namespace Concurrency.Implementation.TransactionExecution
                         // get local tid, bid from local coordinator
                         if (coordID.Item2 == this.siloID)
                         {
-                            this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is calling NewGlobalTransaction w/ task");
+                            this.logger.LogInformation($"Is calling NewGlobalTransaction w/ task", this.grainReference);
                             task = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                         else
                         {
-                            this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is calling NewGlobalTransaction w/o task");
+                            this.logger.LogInformation($"Is calling NewGlobalTransaction w/o task", this.grainReference);
+
                             _ = localCoordinator.NewGlobalTransaction(regionalBid, regionalTid, grainListPerSilo[siloID.Item2], grainNamePerSilo[siloID.Item2]);
                         }
                     }
 
 
                     Debug.Assert(task != null);
-                    this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is just waiting for task in GetDetContext");
+                    this.logger.LogInformation($"Waiting for task in GetDetContext", this.grainReference);
                     TransactionRegistInfo localInfo = await task;
-                    this.logger.Info($"[region:{this.siloID};id:{this.myID}] Is DONE waiting for task in GetDetContext, going to return tx context");
+                    this.logger.LogInformation($"Is DONE waiting for task in GetDetContext, going to return tx context", this.grainReference);
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, regionalBid, regionalTid);
 
                     // TODO: What is this -1??
@@ -221,7 +220,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 var localCoordinatorRegion = this.myId.StringId;
                 // TODO: This coordinator should be the one that sent the batch
                 var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
-                this.logger.LogInformation($"Send the local coordinator(int id: {localCoordinatorId}, region:{localCoordinatorRegion}) the acknowledgement of the batch commit for batch id:{cxt.localBid}", this.grainReference);
+                this.logger.LogInformation("Send the local coordinator(int id: {localCoordinatorId}, region: {localCoordinatorRegion}) the acknowledgement of the batch commit for batch id: {cxt.localBid}", this.grainReference, localCoordinatorId, localCoordinatorRegion, cxt.localBid);
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
         }
@@ -229,10 +228,10 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public void BatchArrive(LocalSubBatch batch)
         {
-            this.logger.LogInformation($"Batch arrived, batch: {batch}", this.grainReference);
+            this.logger.LogInformation("Batch arrived, batch: {batch}", this.grainReference, batch);
             if (localBatchInfoPromise.ContainsKey(batch.bid) == false)
                 localBatchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
-            this.logger.LogInformation($"In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}", this.grainReference);
+            this.logger.LogInformation("In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}", this.grainReference, localBatchInfoPromise[batch.bid]);
             localBatchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary

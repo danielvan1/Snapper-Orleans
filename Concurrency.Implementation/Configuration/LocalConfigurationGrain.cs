@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;

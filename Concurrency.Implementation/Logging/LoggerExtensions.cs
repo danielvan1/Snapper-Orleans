@@ -5,6 +5,16 @@ namespace Concurrency.Implementation.Logging
 {
     public static class LoggerExtension
     {
+        public static void LogInformation(this ILogger logger, string message, GrainReference grainReference, object o1, object o2, object o3)
+        {
+            var grainIdentity = grainReference.GrainIdentity;
+
+            long id = grainIdentity.GetPrimaryKeyLong(out string region);
+            string identityString = grainIdentity.IdentityString;
+
+            logger.LogInformation($"[{{id}}-{{region}}-{{ClassName}}]: {message}", id, region, GetClassName(identityString), o1, o2, o3);
+        }
+
         public static void LogInformation(this ILogger logger, string message, GrainReference grainReference, object o1, object o2)
         {
             var grainIdentity = grainReference.GrainIdentity;
@@ -42,7 +52,7 @@ namespace Concurrency.Implementation.Logging
             long id = grainIdentity.GetPrimaryKeyLong(out string region);
             string identityString = grainIdentity.IdentityString;
 
-            logger.LogError($"[{{id}}-{{region}}-{{ClassName}}]: {message}" + message, id, region, GetClassName(identityString));
+            logger.LogError($"[{{id}}-{{region}}-{{ClassName}}]: {message}", id, region, GetClassName(identityString));
         }
 
         private static string GetClassName(string identityString)

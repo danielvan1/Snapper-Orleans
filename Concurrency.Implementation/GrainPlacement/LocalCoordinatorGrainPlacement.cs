@@ -38,13 +38,9 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogError($"Local coordinator ID: {region}");
-            this.logger.LogError(string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo));
+            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(LocalCoordinatorGrain), region );
 
             throw new GrainPlacementException($"Wrong placement of {nameof(LocalCoordinatorGrain)}");
-            // TODO: Handle this in a better way.
-            SiloAddress[] silos = context.GetCompatibleSilos(target).OrderBy(s => s).ToArray();
-            return Task.FromResult(silos[0]);
         }
     }
 
