@@ -33,6 +33,18 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<Content Include="Configurations/SiloConfigurationsTest3.json">
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<Content Include="Configurations/SiloConfigurationsTest2.json">
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
 		<Content Include="Configurations/SiloConfigurationsTest1.json">
 		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
