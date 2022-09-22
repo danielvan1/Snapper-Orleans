@@ -112,7 +112,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
-                this.logger.LogInformation("Silolist count: {siloList.Count}", this.grainReference, siloList.Count);
+                this.logger.LogInformation("Silolist count: {siloListCount}", this.grainReference, siloList.Count);
                 if (siloList.Count != 1)
                 {
                     // get regional tid from regional coordinator
@@ -220,7 +220,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 var localCoordinatorRegion = this.myId.StringId;
                 // TODO: This coordinator should be the one that sent the batch
                 var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
-                this.logger.LogInformation("Send the local coordinator(int id: {localCoordinatorId}, region: {localCoordinatorRegion}) the acknowledgement of the batch commit for batch id: {cxt.localBid}", this.grainReference, localCoordinatorId, localCoordinatorRegion, cxt.localBid);
+                this.logger.LogInformation("Send the local coordinator(int id: {localCoordinatorId}, region: {localCoordinatorRegion}) the acknowledgement of the batch commit for batch id: {localBid}", this.grainReference, localCoordinatorId, localCoordinatorRegion, cxt.localBid);
                 _ = coord.AckBatchCompletion(cxt.localBid);
             }
         }
@@ -231,7 +231,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Batch arrived, batch: {batch}", this.grainReference, batch);
             if (localBatchInfoPromise.ContainsKey(batch.bid) == false)
                 localBatchInfoPromise.Add(batch.bid, new TaskCompletionSource<bool>());
-            this.logger.LogInformation("In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise[batch.bid]}", this.grainReference, localBatchInfoPromise[batch.bid]);
+            this.logger.LogInformation("In BatchArrive: localBtchInfoPromise[batch.bid]: {localBatchInfoPromise}", this.grainReference, localBatchInfoPromise[batch.bid]);
             localBatchInfoPromise[batch.bid].SetResult(true);
 
             // register global info mapping if necessary

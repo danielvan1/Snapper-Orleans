@@ -26,7 +26,7 @@ namespace SmallBank.Grains
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 100;
-            this.logger.LogInformation("Balance {myState.balance}", this.GrainReference, myState.balance);
+            this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
             return new TransactionResult();
         }
 

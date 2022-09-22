@@ -136,7 +136,7 @@ namespace Concurrency.Implementation.Coordinator
                     this.grainClassName.Add(grain, grainClassName[i]);
             }
             var id = await task;
-            this.logger.LogInformation("NewTransaction is going to return tid: {id.Item1} and {id.Item2}", this.GrainReference, id.Item1, id.Item2);
+            this.logger.LogInformation("NewTransaction is going to return tid: {tid} and {bid}", this.GrainReference, id.Item1, id.Item2);
             return new TransactionRegistInfo(id.Item1, id.Item2, this.detTxnProcessor.highestCommittedBid);
         }
 
@@ -236,7 +236,7 @@ namespace Concurrency.Implementation.Coordinator
             foreach (var item in curScheduleMap)
             {
                 this.GetPrimaryKeyLong(out string region);
-                this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {item.Key} region: {region} ", this.GrainReference, item.Key, region);
+                this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {Key} region: {region} ", this.GrainReference, item.Key, region);
                 // I think this should be true, we just have the same info multiple places now
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
@@ -266,9 +266,9 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task AckBatchCompletion(long bid)
         {
-            this.logger.LogInformation("Expected acknowledgements for batch: {bid} before decrement: {this.expectedAcksPerBatch[bid]}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
+            this.logger.LogInformation("Expected acknowledgements for batch: {bid} before decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
             this.expectedAcksPerBatch[bid]--;
-            this.logger.LogInformation("Expected acknowledgements for batch: {bid} after decrement: {this.expectedAcksPerBatch[bid]}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
+            this.logger.LogInformation("Expected acknowledgements for batch: {bid} after decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
 
             if (expectedAcksPerBatch[bid] != 0) return;
 
