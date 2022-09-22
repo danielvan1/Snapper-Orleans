@@ -1,11 +1,11 @@
 ﻿using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Hosting;
-using Microsoft.VisualBasic;
 using Orleans.Hosting;
 using Unity;
-using Utilities;
+using Orleans;
+using Orleans.Configuration;
+using Concurrency.Interface.Configuration;
 
 namespace GeoSnapperDeployment
 {
@@ -64,6 +64,30 @@ namespace GeoSnapperDeployment
             {
                 throw new ArgumentException($"Invalid deployment type given: {deploymentType}");
             }
+
+
+            var client = new ClientBuilder()
+            .UseLocalhostClustering()
+            .Configure<ClusterOptions>(options =>
+            {
+                options.ClusterId = "Snapper";
+                options.ServiceId = "Snapper";
+            })
+            .Build();
+
+            await client.Connect();
+
+            IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
+            IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
+
+            await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+            await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
+
+            ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
+            ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
+            await localConfigGrainEU.InitializeLocalCoordinators("EU");
+            await localConfigGrainUS.InitializeLocalCoordinators("US");
+            client.Close();
 
             Console.WriteLine("All silos created successfully");
             Console.WriteLine("Press Enter to terminate all silos...");

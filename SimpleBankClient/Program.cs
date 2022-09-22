@@ -15,22 +15,6 @@ var client = new ClientBuilder()
 
 await client.Connect();
 
-/*IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
-await globalConfigGrain.InitializeGlobalCoordinators();*/
-
-IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
-//IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(0, "US");
-// await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
-
-await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
-
-ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-await localConfigGrainEU.InitializeLocalCoordinators("EU");
-await localConfigGrainUS.InitializeLocalCoordinators("US");
-
 // Going to perform 2 init transactions on two accounts in the same region,
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
