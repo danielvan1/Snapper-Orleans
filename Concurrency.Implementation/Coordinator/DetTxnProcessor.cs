@@ -69,18 +69,28 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // for PACT
-        public async Task<Tuple<long, long>> NewDet(List<Tuple<int, string>> serviceList)   // returns a Tuple<bid, tid>
+        public async Task<Tuple<long, long>> NewDeterministicTransaction(List<Tuple<int, string>> serviceList)   // returns a Tuple<bid, tid>
         {
             this.deterministicRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
+
+            // We are waiting until the token is arrived which then will create the tuple.
             this.detRequestPromise.Add(promise);
-            this.logger.LogInformation("Waiting in NewDet", this.grainReference);
-            // Waits for this.GenerateBatch(..) to give it a batchId and transactionId
-            await promise.Task;
-            this.logger.LogInformation("finished NewDet", this.grainReference);
+
+            this.logger.LogInformation("Waiting for the token to arrive", this.grainReference);
+            var tuple = await promise.Task;
+            long bid = tuple.Item1;
+            long tid = tuple.Item2;
+
+            this.logger.LogInformation("Token has arrived and sat the bid: {bid} and tid: {tid} ", this.grainReference, bid, tid);
+
             return new Tuple<long, long>(promise.Task.Result.Item1, promise.Task.Result.Item2);
         }
 
+        /// <summary>
+        /// This is called every time the corresponding coordinator receives the token.
+        /// </summary>
+        /// <returns>batchId</returns>
         public long GenerateBatch(BasicToken token)
         {
             if (this.deterministicRequests.Count == 0)
@@ -97,10 +107,12 @@ namespace Concurrency.Implementation.Coordinator
                 GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
                 this.detRequestPromise[i].SetResult(new Tuple<long, long>(currentBatchID, tid));
             }
+
             UpdateToken(token, currentBatchID, -1);
 
             deterministicRequests.Clear();
             detRequestPromise.Clear();
+
             return currentBatchID;
         }
 
@@ -110,7 +122,7 @@ namespace Concurrency.Implementation.Coordinator
         // - Local coordinator (Then 'service' refers to execution grains inside silo)
         //
         // This is why we differentiate between the two with isRegionalCoordinator
-        public void GenerateSchedulePerService(long tid, long curBatchID, List<Tuple<int, string>> serviceList)
+        public void GenerateSchedulePerService(long tid, long curBatchID, List<Tuple<int, string>> deterministicRequest)
         {
             if (!this.bidToSubBatches.ContainsKey(curBatchID))
             {
@@ -122,14 +134,15 @@ namespace Concurrency.Implementation.Coordinator
                 }
             }
 
-            var serviceIDToSubBatch = this.bidToSubBatches[curBatchID];
+            Dictionary<Tuple<int, string>, SubBatch> deterministicRequestToSubBatch = this.bidToSubBatches[curBatchID];
 
-            for (int i = 0; i < serviceList.Count; i++)
+            for (int i = 0; i < deterministicRequest.Count; i++)
             {
-                var serviceID = serviceList[i];
-                if (serviceIDToSubBatch.ContainsKey(serviceID) == false)
+                var grainId = deterministicRequest[i];
+
+                if (!deterministicRequestToSubBatch.ContainsKey(grainId))
                 {
-                    serviceIDToSubBatch.Add(serviceID, new SubBatch(curBatchID, myID));
+                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(curBatchID, myID));
                     if (this.isRegionalCoordinator)
                     {
                         // randomly choose a local coord as the coordinator for this batch on that silo
@@ -137,18 +150,18 @@ namespace Concurrency.Implementation.Coordinator
                         //var chosenCoordID = LocalCoordGrainPlacementHelper.MapSiloIDToRandomCoordID(serviceID);
                         // New code:
                         int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
-                        string localCoordinatorServer = serviceID.Item2;
-                        this.localCoordinatorPerSiloPerBatch[curBatchID].Add(serviceID, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorServer));
+                        string localCoordinatorServer = grainId.Item2;
+                        this.localCoordinatorPerSiloPerBatch[curBatchID].Add(grainId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorServer));
                     }
                 }
 
-                serviceIDToSubBatch[serviceID].txnList.Add(tid);
+                deterministicRequestToSubBatch[grainId].transactions.Add(tid);
             }
         }
 
         public void UpdateToken(BasicToken token, long curBatchID, long globalBid)
         {
-            var serviceIDToSubBatch = bidToSubBatches[curBatchID];
+            Dictionary<Tuple<int, string>, SubBatch> serviceIDToSubBatch = bidToSubBatches[curBatchID];
             expectedAcksPerBatch.Add(curBatchID, serviceIDToSubBatch.Count);
 
             // update the last batch ID for each service accessed by this batch
@@ -187,28 +200,6 @@ namespace Concurrency.Implementation.Coordinator
             token.lastCoordID = myID;
         }
 
-        public void GarbageCollectTokenInfo(BasicToken token)
-        {
-            Debug.Assert(!this.isRegionalCoordinator);
-            var expiredGrains = new HashSet<Tuple<int, string>>();
-
-            // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.lastBidPerService)
-            {
-                if (item.Value <= highestCommittedBid)
-                {
-                     expiredGrains.Add(item.Key);
-                }
-            }
-
-            foreach (var item in expiredGrains)
-            {
-                token.lastBidPerService.Remove(item);
-                token.lastGlobalBidPerGrain.Remove(item);
-            }
-
-            token.highestCommittedBid = highestCommittedBid;
-        }
 
         public async Task WaitPrevBatchToCommit(long bid)
         {
@@ -224,6 +215,7 @@ namespace Concurrency.Implementation.Coordinator
                 }
                 else
                 {
+                    this.logger.LogInformation("FUCKING HERP DERP", this.grainReference);
                     if (this.isRegionalCoordinator)
                     {
                         var lastCoord = coordMap.GetGlobalCoord(coord);
@@ -259,6 +251,29 @@ namespace Concurrency.Implementation.Coordinator
                 batchCommit[bid].SetResult(true);
                 batchCommit.Remove(bid);
             }
+        }
+
+        public void GarbageCollectTokenInfo(BasicToken token)
+        {
+            Debug.Assert(!this.isRegionalCoordinator);
+            var expiredGrains = new HashSet<Tuple<int, string>>();
+
+            // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
+            foreach (var item in token.lastBidPerService)
+            {
+                if (item.Value <= highestCommittedBid)
+                {
+                     expiredGrains.Add(item.Key);
+                }
+            }
+
+            foreach (var item in expiredGrains)
+            {
+                token.lastBidPerService.Remove(item);
+                token.lastGlobalBidPerGrain.Remove(item);
+            }
+
+            token.highestCommittedBid = highestCommittedBid;
         }
     }
 }

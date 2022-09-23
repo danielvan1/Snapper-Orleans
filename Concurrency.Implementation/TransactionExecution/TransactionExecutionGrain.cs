@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
@@ -75,7 +76,7 @@ namespace Concurrency.Implementation.TransactionExecution
             var regionalCoordinatorID = 0;
             var regionalCoordinator = GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, "EU");
 
-            this.logger.LogInformation("Init DetTxnExecutor", this.GrainReference);
+            this.logger.LogInformation("Initialized DetTxnExecutor", this.GrainReference);
             this.detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
                 this.GrainReference,
@@ -88,23 +89,24 @@ namespace Concurrency.Implementation.TransactionExecution
                 GrainFactory,
                 myScheduler,
                 state);
-            this.logger.LogInformation("After Init of DetTxnExecutor", this.GrainReference);
 
             return Task.CompletedTask;
         }
 
         // Notice: the current implementation assumes each actor will be accessed at most once
         // TODO: Change the grainAccessInfo to correspond to the current way we use ids.
-        public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
         {
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction1", this.GrainReference);
+            this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}], grainClassNames: [{grainClassNames}] ",
+                                       this.GrainReference, startFunc, funcInput, string.Join(", ", grainAccessInfo), string.Join(", ", grainClassNames));
+
+
             var receiveTxnTime = DateTime.Now;
 
-            this.logger.LogInformation("Going to call DetTxnExecutor.GetDetContext", this.GrainReference);
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
-            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassName);
+            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassNames);
             var cxt = transactionContext.Item2;
 
             // Only gets here in multi-server or multi-home transaction
@@ -116,11 +118,11 @@ namespace Concurrency.Implementation.TransactionExecution
 
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
             // execute PACT
-            var call = new FunctionCall(startFunc, funcInput, GetType());
-            var res = await ExecuteDet(call, cxt);
+            var functionCall = new FunctionCall(startFunc, funcInput, GetType());
+            var result = await this.ExecuteDeterministicTransaction(functionCall, cxt);
             var finishExeTime = DateTime.Now;
-            var startExeTime = res.Item2;
-            var resultObj = res.Item1;
+            var startExeTime = result.Item2;
+            var resultObj = result.Item1;
 
             // wait for this batch to commit
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
@@ -197,18 +199,22 @@ namespace Concurrency.Implementation.TransactionExecution
             return this.detTxnExecutor.GetState(cxt.localTid, mode);
         }
 
-        public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
+        public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext cxt)
         {
             this.logger.LogInformation($"detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
             await this.detTxnExecutor.WaitForTurn(cxt);
             var time = DateTime.Now;
+
             this.logger.LogInformation($"InvokeFunction(call, cxt)", this.GrainReference);
-            var txnRes = await InvokeFunction(call, cxt);   // execute the function call;
+            var transactionResult = await InvokeFunction(call, cxt);   // execute the function call;
             this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
-            await this.detTxnExecutor.FinishExecuteDetTxn(cxt);
+
+            await this.detTxnExecutor.FinishExecuteDeterministicTransaction(cxt);
+
             this.logger.LogInformation($"(after) DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             this.detTxnExecutor.CleanUp(cxt.localTid);
-            return new Tuple<object, DateTime>(txnRes.resultObj, time);
+
+            return new Tuple<object, DateTime>(transactionResult.resultObj, time);
         }
 
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
@@ -228,19 +234,19 @@ namespace Concurrency.Implementation.TransactionExecution
 
         private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)
         {
-            var id = this.GetPrimaryKeyLong(out string region);
-            //this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
             if (cxt.localBid == -1)
             {
                 //this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
             }
-            var mi = call.grainClassName.GetMethod(call.funcName);
+
+            MethodInfo methodInfo = call.grainClassName.GetMethod(call.funcName);
+
             this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
-            var transactionResult = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
+
+            var transactionResult = (Task<TransactionResult>)methodInfo.Invoke(this, new object[] { cxt, call.funcInput });
+
             var result = await transactionResult;
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
+
             return result;
         }
 

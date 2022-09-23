@@ -70,6 +70,11 @@ namespace Concurrency.Implementation.Configuration
             this.logger.LogInformation("Passed the initial token for local coordinators in region {currentRegion}", this.GrainReference, currentRegion);
         }
 
+        public new virtual IGrainFactory GrainFactory
+        {
+            get { return base.GrainFactory; }
+        }
+
         // Start the circular token passing by sending the initial token to
         // the first coordinator in the chain, the first coordinator
         // will then pass it to the second until it wraps around to the

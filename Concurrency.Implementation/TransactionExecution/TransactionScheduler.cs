@@ -34,20 +34,22 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public void RegisterBatch(SubBatch batch, long globalBid, long highestCommittedBid)
         {
-            scheduleInfo.InsertDetBatch(batch, globalBid, highestCommittedBid);
+            this.scheduleInfo.InsertDeterministicBatch(batch, globalBid, highestCommittedBid);
+            this.batchInfo.Add(batch.bid, batch);
 
-            batchInfo.Add(batch.bid, batch);
-            for (int i = 0; i < batch.txnList.Count; i++)
+            // TODO: This logic can be improved
+            for (int i = 0; i < batch.transactions.Count; i++)
             {
-                var tid = batch.txnList[i];
+                var tid = batch.transactions[i];
+                // TODO: Change it to look nicer
                 if (i == 0) tidToLastTid.Add(tid, -1);
-                else tidToLastTid.Add(tid, batch.txnList[i - 1]);
+                else tidToLastTid.Add(tid, batch.transactions[i - 1]);
 
-                if (i == batch.txnList.Count - 1) break;
+                if (i == batch.transactions.Count - 1) break;
 
                 // the last txn in the list does not need this entry
-                if (detExecutionPromise.ContainsKey(tid) == false)
-                    detExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
+                if (!this.detExecutionPromise.ContainsKey(tid))
+                    this.detExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
             }
         }
 
@@ -76,7 +78,7 @@ namespace Concurrency.Implementation.TransactionExecution
         // int: the local coordID if the batch has been completed
         public long AckComplete(long bid, long tid)
         {
-            var txnList = batchInfo[bid].txnList;
+            var txnList = batchInfo[bid].transactions;
             Debug.Assert(txnList.First() == tid);
             txnList.RemoveAt(0);
             tidToLastTid.Remove(tid);
