@@ -4,14 +4,14 @@ using System.Diagnostics;
 namespace Utilities
 {
     [Serializable]
-    public class TransactionRegistInfo
+    public class TransactionRegisterInfo
     {
         public readonly long tid;
         public readonly long bid;
         public readonly long highestCommittedBid;
 
         /// <summary> This constructor is only for PACT </summary>
-        public TransactionRegistInfo(long bid, long tid, long highestCommittedBid)
+        public TransactionRegisterInfo(long bid, long tid, long highestCommittedBid)
         {
             this.tid = tid;
             this.bid = bid;
@@ -19,11 +19,16 @@ namespace Utilities
         }
 
         /// <summary> This constructor is only for ACT </summary>
-        public TransactionRegistInfo(long tid, long highestCommittedBid)
+        public TransactionRegisterInfo(long tid, long highestCommittedBid)
         {
             this.tid = tid;
             bid = -1;
             this.highestCommittedBid = highestCommittedBid;
+        }
+
+        public override string ToString()
+        {
+            return $"tid: {this.tid}, bid: {this.bid}, highestCommittedBid: {this.highestCommittedBid}";
         }
     }
 

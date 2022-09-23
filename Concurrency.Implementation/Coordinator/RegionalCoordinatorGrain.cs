@@ -54,19 +54,19 @@ namespace Concurrency.Implementation.Coordinator
 
 
         // for PACT
-        public async Task<Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList)
+        public async Task<Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList)
         {
             this.logger.LogInformation("Calling NewDet", this.GrainReference);
-            var id = await detTxnProcessor.NewDet(siloList);
+            var id = await detTxnProcessor.NewDeterministicTransaction(siloList);
             long bid = id.Item1;
             long tid = id.Item2;
             Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(bid));
 
             this.logger.LogInformation("Returning transaction registration info with bid {bid} and tid {tid}", this.GrainReference, bid, tid);
 
-            var info = new TransactionRegistInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
+            var info = new TransactionRegisterInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
 
-            return new Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[bid]);
+            return new Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[bid]);
         }
 
         public async Task PassToken(BasicToken token)

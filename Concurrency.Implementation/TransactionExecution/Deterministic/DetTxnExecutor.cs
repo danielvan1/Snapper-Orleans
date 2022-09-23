@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -87,8 +88,11 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // int: the highestCommittedBid get from local coordinator
-        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<Tuple<int, string>> grainList, List<string> grainClassName)
+        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<Tuple<int, string>> grainList, List<string> grainClassNames)
         {
+            this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
+                                       this.grainReference, string.Join(", ", grainList), string.Join(", ", grainClassNames));
+
             if (Constants.multiSilo && Constants.hierarchicalCoord)
             {
                 // check if the transaction will access multiple silos
@@ -108,7 +112,7 @@ namespace Concurrency.Implementation.TransactionExecution
                     }
 
                     grainListPerSilo[grainID.Item2].Add(grainID);
-                    grainNamePerSilo[grainID.Item2].Add(grainClassName[i]);
+                    grainNamePerSilo[grainID.Item2].Add(grainClassNames[i]);
                 }
 
                 // For a simple example, make sure that only 1 silo is involved in the transaction
@@ -120,14 +124,14 @@ namespace Concurrency.Implementation.TransactionExecution
                     // Note the Dictionary<string, Tuple<int, string>> part of the
                     // return type of NewTransaction(..) is a map between the region
                     // and which local coordinators
-                    Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>> regionalInfo = await myRegionalCoordinator.NewTransaction(siloList);
+                    Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>> regionalInfo = await myRegionalCoordinator.NewTransaction(siloList);
                     var regionalTid = regionalInfo.Item1.tid;
                     var regionalBid = regionalInfo.Item1.bid;
                     var siloIDToLocalCoordID = regionalInfo.Item2;
 
                     // send corresponding grainAccessInfo to local coordinators in different silos
                     Debug.Assert(grainListPerSilo.ContainsKey(siloID));
-                    Task<TransactionRegistInfo> task = null;
+                    Task<TransactionRegisterInfo> task = null;
                     for (int i = 0; i < siloList.Count; i++)
                     {
                         var siloID = siloList[i];
@@ -154,7 +158,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
                     Debug.Assert(task != null);
                     this.logger.LogInformation($"Waiting for task in GetDetContext", this.grainReference);
-                    TransactionRegistInfo localInfo = await task;
+                    TransactionRegisterInfo localInfo = await task;
                     this.logger.LogInformation($"Is DONE waiting for task in GetDetContext, going to return tx context", this.grainReference);
                     var cxt1 = new TransactionContext(localInfo.bid, localInfo.tid, regionalBid, regionalTid);
 
@@ -163,12 +167,13 @@ namespace Concurrency.Implementation.TransactionExecution
                 }
             }
 
-            this.logger.LogInformation($"GetDetContext going to call myLocalCoord.NewTransaction", this.grainReference);
-            var info = await myLocalCoord.NewTransaction(grainList, grainClassName);
-            this.logger.LogInformation($"GetDetContext after call to myLocalCoord.NewTransaction", this.grainReference);
-            var cxt2 = new TransactionContext(info.tid, info.bid);
+            TransactionRegisterInfo info = await myLocalCoord.NewTransaction(grainList, grainClassNames);
+            this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.myLocalCoord);
 
-            return new Tuple<long, TransactionContext>(info.highestCommittedBid, cxt2);
+            var cxt2 = new TransactionContext(info.tid, info.bid);
+            var context = new Tuple<long, TransactionContext>(info.highestCommittedBid, cxt2);
+
+            return context;
         }
 
         public async Task WaitForTurn(TransactionContext cxt)
@@ -201,27 +206,28 @@ namespace Concurrency.Implementation.TransactionExecution
             await myScheduler.WaitForTurn(cxt.localBid, cxt.localTid);
         }
 
-        public async Task FinishExecuteDetTxn(TransactionContext cxt)
+        public async Task FinishExecuteDeterministicTransaction(TransactionContext transactionContext)
         {
-            var coordId = myScheduler.AckComplete(cxt.localBid, cxt.localTid);
-            if (coordId != -1)   // the current batch has completed on this grain
+            var coordinatorId = myScheduler.AckComplete(transactionContext.localBid, transactionContext.localTid);
+
+            if (coordinatorId != -1)   // the current batch has completed on this grain
             {
-                localBatchInfoPromise.Remove(cxt.localBid);
-                if (cxt.globalBid != -1)
+                localBatchInfoPromise.Remove(transactionContext.localBid);
+                if (transactionContext.globalBid != -1)
                 {
-                    globalBidToLocalBid.Remove(cxt.globalBid);
-                    globalTidToLocalTidPerBatch.Remove(cxt.globalBid);
-                    globalBtchInfoPromise.Remove(cxt.globalBid);
+                    globalBidToLocalBid.Remove(transactionContext.globalBid);
+                    globalTidToLocalTidPerBatch.Remove(transactionContext.globalBid);
+                    globalBtchInfoPromise.Remove(transactionContext.globalBid);
                 }
 
-                myScheduler.scheduleInfo.CompleteDetBatch(cxt.localBid);
+                myScheduler.scheduleInfo.CompleteDetBatch(transactionContext.localBid);
 
                 var localCoordinatorId = this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo;
                 var localCoordinatorRegion = this.myId.StringId;
                 // TODO: This coordinator should be the one that sent the batch
-                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId, localCoordinatorRegion);
-                this.logger.LogInformation("Send the local coordinator(int id: {localCoordinatorId}, region: {localCoordinatorRegion}) the acknowledgement of the batch commit for batch id: {localBid}", this.grainReference, localCoordinatorId, localCoordinatorRegion, cxt.localBid);
-                _ = coord.AckBatchCompletion(cxt.localBid);
+                var coord = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordinatorId, localCoordinatorRegion);
+                this.logger.LogInformation("Send the local coordinator(int id: {localCoordinatorId}, region: {localCoordinatorRegion}) the acknowledgement of the batch commit for batch id: {localBid}", this.grainReference, localCoordinatorId, localCoordinatorRegion, transactionContext.localBid);
+                _ = coord.AckBatchCompletion(transactionContext.localBid);
             }
         }
 
@@ -265,7 +271,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task<TransactionResult> CallGrain(TransactionContext cxt, FunctionCall call, ITransactionExecutionGrain grain)
         {
             this.logger.LogInformation("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))", this.grainReference);
-            var resultObj = (await grain.ExecuteDet(call, cxt)).Item1;
+            var resultObj = (await grain.ExecuteDeterministicTransaction(call, cxt)).Item1;
             this.logger.LogInformation("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))", this.grainReference);
 
             return new TransactionResult(resultObj);
