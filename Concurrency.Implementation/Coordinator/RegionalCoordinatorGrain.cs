@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading.Tasks;
@@ -68,14 +69,15 @@ namespace Concurrency.Implementation.Coordinator
             return new Tuple<TransactionRegistInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[bid]);
         }
 
-        public Task PassToken(BasicToken token)
+        public async Task PassToken(BasicToken token)
         {
+            Thread.Sleep(10);
             long curBatchID = -1;
-            var elapsedTime = (DateTime.Now - timeOfBatchGeneration).TotalMilliseconds;
+            var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
             if (elapsedTime >= batchSizeInMSecs)
             {
                 curBatchID = detTxnProcessor.GenerateBatch(token);
-                if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
+                if (curBatchID != -1) this.timeOfBatchGeneration = DateTime.Now;
             }
 
             if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
@@ -84,7 +86,6 @@ namespace Concurrency.Implementation.Coordinator
 
             _ = neighborCoord.PassToken(token);
             if (curBatchID != -1) _ = EmitBatch(curBatchID);
-            return Task.CompletedTask;
         }
 
         async Task EmitBatch(long bid)

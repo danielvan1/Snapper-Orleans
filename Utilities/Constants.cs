@@ -60,7 +60,7 @@ namespace Utilities
         // global silo config
         public const double scaleSpeed = 1.75;
         //public const int batchSizeInMSecsBasic = RealScaleOut ? 30 : 20;
-        public const int batchSizeInMSecsBasic = 400;
+        public const int batchSizeInMSecsBasic = 20;
         public const int numCPUForGlobal = numSilo;
         public const int numGlobalCoord = numSilo;
         public const int numGlobalLogger = numSilo;

@@ -80,13 +80,17 @@ namespace GeoSnapperDeployment
             IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
             IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 
-            await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
+            
+            List<Task> configureAllConfigAndCoordinators = new List<Task>();
+            var task1 = regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+            var task2 = regionalConfigGrainEU.InitializeRegionalCoordinators("US");
 
             ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
             ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-            await localConfigGrainEU.InitializeLocalCoordinators("EU");
-            await localConfigGrainUS.InitializeLocalCoordinators("US");
+            var task3 = localConfigGrainEU.InitializeLocalCoordinators("EU");
+            var task4 = localConfigGrainUS.InitializeLocalCoordinators("US");
+            await Task.WhenAll(configureAllConfigAndCoordinators);
+
             client.Close();
 
             Console.WriteLine("All silos created successfully");

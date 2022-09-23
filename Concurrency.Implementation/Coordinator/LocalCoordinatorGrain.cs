@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -153,10 +154,6 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(LocalToken token)
         {
-            /*if (this.region.Equals("EU-EU-1"))
-            {
-                this.logger.Info($"PassToken is called on region:{this.region}");
-            }*/
             long curBatchID;
             var curBatchIDs = new List<long>();
             if (token.isLastEmitBidGlobal)
@@ -166,10 +163,6 @@ namespace Concurrency.Implementation.Coordinator
             }
             else
             {
-                /*if (this.region.Equals("EU-EU-1"))
-                {
-                    this.logger.Info($"LocalCoordinator in region {this.region} is going to call GenerateBatch");
-                }*/
                 curBatchID = this.detTxnProcessor.GenerateBatch(token);
                 this.ProcessGlobalBatch(token, curBatchIDs);
             }
