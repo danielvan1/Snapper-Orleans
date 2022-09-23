@@ -5,7 +5,6 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
-using Concurrency.Implementation.TransactionExecution.Nondeterministic;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
@@ -21,33 +20,26 @@ namespace Concurrency.Implementation.TransactionExecution
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
         private readonly ILogger<TransactionExecutionGrain<TState>> logger;
+        private GrainId myId;
 
-        private TransactionExecutionGrainId myId;
         // grain basic info
         private string mySiloID;
-        readonly ICoordMap coordMap;
-        readonly string myClassName;
-        static int myLocalCoordID;
-        static ILocalCoordinatorGrain myLocalCoord;   // use this coord to get tid for local transactions
-        static IGlobalCoordinatorGrain myGlobalCoord;
+        private readonly string myClassName;
+        private static int myLocalCoordID;
+        private static ILocalCoordinatorGrain myLocalCoord;   // use this coord to get tid for local transactions
+        private static IGlobalCoordinatorGrain myGlobalCoord;
 
         // transaction execution
-        TransactionScheduler myScheduler;
-        ITransactionalState<TState> state;
+        private TransactionScheduler myScheduler;
+        private ITransactionalState<TState> state;
 
         // PACT execution
-        DetTxnExecutor<TState> detTxnExecutor;
-        Dictionary<long, TaskCompletionSource<bool>> batchCommit;                // key: local bid
+        private DetTxnExecutor<TState> detTxnExecutor;
+        private Dictionary<long, TaskCompletionSource<bool>> batchCommit;                // key: local bid
 
-        // ACT execution
-        Dictionary<long, int> coordinatorMap;
-        NonDetTxnExecutor<TState> nonDetTxnExecutor;
-        NonDetCommitter<TState> nonDetCommitter;
 
         // garbage collection
-        long highestCommittedLocalBid;
-
-        private SiloInfo siloInfo;
+        private long highestCommittedLocalBid;
 
         public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, string myClassName)
         {
@@ -55,24 +47,11 @@ namespace Concurrency.Implementation.TransactionExecution
             this.myClassName = myClassName;
         }
 
-        public Task CheckGC()
-        {
-            state.CheckGC();
-            myScheduler.CheckGC();
-            detTxnExecutor.CheckGC();
-            nonDetTxnExecutor.CheckGC();
-            nonDetCommitter.CheckGC();
-            if (batchCommit.Count != 0) Console.WriteLine($"TransactionExecutionGrain: batchCommit.Count = {batchCommit.Count}");
-            if (coordinatorMap.Count != 0) Console.WriteLine($"TransactionExecutionGrain: coordinatorMap.Count = {coordinatorMap.Count}");
-
-            return Task.CompletedTask;
-        }
-
         public override Task OnActivateAsync()
         {
-            highestCommittedLocalBid = -1;
+            this.highestCommittedLocalBid = -1;
 
-            this.myId = new TransactionExecutionGrainId()
+            this.myId = new GrainId()
             {
                 IntId = (int)this.GetPrimaryKeyLong(out string localRegion),
                 StringId = localRegion
@@ -83,9 +62,8 @@ namespace Concurrency.Implementation.TransactionExecution
             // transaction execution
             // loggerGroup.GetLoggingProtocol(myID, out log);
             this.myScheduler = new TransactionScheduler(this.myId.IntId);
-            this.state = new HybridState<TState>();
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.coordinatorMap = new Dictionary<long, int>();
+            this.state = new DeterministicState<TState>();
 
             myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
 
@@ -216,17 +194,7 @@ namespace Concurrency.Implementation.TransactionExecution
             // intended?
 
             //var isDet = cxt.localBid != -1;
-            var isDeterministic = true;
-            if (isDeterministic)
-            {
-                return detTxnExecutor.GetState(cxt.localTid, mode);
-            }
-            else
-            {
-                // TODO: Rename to context.regionalTransactionId if
-                // we find out we need to run this(Which I think we do)
-                return await nonDetTxnExecutor.GetState(cxt.globalTid, mode);
-            }
+            return this.detTxnExecutor.GetState(cxt.localTid, mode);
         }
 
         public async Task<Tuple<object, DateTime>> ExecuteDet(FunctionCall call, TransactionContext cxt)
@@ -243,60 +211,6 @@ namespace Concurrency.Implementation.TransactionExecution
             return new Tuple<object, DateTime>(txnRes.resultObj, time);
         }
 
-        public async Task<Tuple<NonDetFuncResult, DateTime>> ExecuteNonDet(FunctionCall call, TransactionContext cxt)
-        {
-            var canExecute = await nonDetTxnExecutor.WaitForTurn(cxt.globalTid);
-            var time = DateTime.Now;
-            if (canExecute == false)
-            {
-                var funcResult = new NonDetFuncResult();
-                funcResult.Exp_Deadlock = true;
-                funcResult.exception = true;
-                nonDetTxnExecutor.CleanUp(cxt.globalTid);
-                return new Tuple<NonDetFuncResult, DateTime>(funcResult, time);
-            }
-            else
-            {
-                var exception = false;
-                Object resultObj = null;
-                try
-                {
-                    var txnRes = await InvokeFunction(call, cxt);
-                    resultObj = txnRes.resultObj;
-                }
-                catch (Exception)
-                {
-                    // exceptions thrown from GetState will be caught here
-                    exception = true;
-                }
-                var funcResult = nonDetTxnExecutor.UpdateExecutionResult(cxt.globalTid, highestCommittedLocalBid);
-                if (resultObj != null) funcResult.SetResultObj(resultObj);
-                nonDetTxnExecutor.CleanUp(cxt.globalTid);
-                if (exception) CleanUp(cxt.globalTid);
-                return new Tuple<NonDetFuncResult, DateTime>(funcResult, time);
-            }
-        }
-
-        async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)
-        {
-            var id = this.GetPrimaryKeyLong(out string region);
-            //this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
-            if (cxt.localBid == -1)
-            {
-                //this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
-                Debug.Assert(!coordinatorMap.ContainsKey(cxt.globalTid));
-                coordinatorMap.Add(cxt.globalTid, cxt.nonDetCoordID);
-            }
-            var mi = call.grainClassName.GetMethod(call.funcName);
-            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
-            var transactionResult = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
-            var result = await transactionResult;
-            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
-            return result;
-        }
-
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
         public Task<TransactionResult> CallGrain(TransactionContext cxt, Tuple<int, string> grainID, string grainNameSpace, FunctionCall call)
         {
@@ -309,43 +223,26 @@ namespace Concurrency.Implementation.TransactionExecution
             // if we only run PACTs ?
 
             //var isDet = cxt.localBid != 1;
-            var isDeterministic = true;
-            if (isDeterministic)
+            return this.detTxnExecutor.CallGrain(cxt, call, grain);
+        }
+
+        private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)
+        {
+            var id = this.GetPrimaryKeyLong(out string region);
+            //this.logger.Info($"[{id}-{region}] Inside of InvokeFunction");
+            if (cxt.localBid == -1)
             {
-                return this.detTxnExecutor.CallGrain(cxt, call, grain);
+                //this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
             }
-            else
-            {
-                return this.nonDetTxnExecutor.CallGrain(cxt, call, grain);
-            }
+            var mi = call.grainClassName.GetMethod(call.funcName);
+            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
+            var transactionResult = (Task<TransactionResult>)mi.Invoke(this, new object[] { cxt, call.funcInput });
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke on {this}, {cxt} {call.funcInput} ");
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, waiting for task to complete");
+            var result = await transactionResult;
+            //this.logger.Info($"[{id}-{region}] After call to mi.Invoke, AFTER waiting for task to complete");
+            return result;
         }
 
-        public async Task<bool> Prepare(long tid, bool isReader)
-        {
-            var vote = await nonDetCommitter.Prepare(tid, isReader);
-            if (isReader) CleanUp(tid);
-            return vote;
-        }
-
-        // only writer grain needs 2nd phase of 2PC
-        public async Task Commit(long tid, long maxBeforeLocalBid, long maxBeforeGlobalBid)
-        {
-            nonDetTxnExecutor.Commit(maxBeforeLocalBid, maxBeforeGlobalBid);
-            await nonDetCommitter.Commit(tid);
-            CleanUp(tid);
-        }
-
-        public Task Abort(long tid)
-        {
-            nonDetCommitter.Abort(tid);
-            CleanUp(tid);
-            return Task.CompletedTask;
-        }
-
-        void CleanUp(long tid)
-        {
-            coordinatorMap.Remove(tid);
-            myScheduler.scheduleInfo.CompleteNonDetTxn(tid);
-        }
     }
 }

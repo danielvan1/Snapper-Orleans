@@ -1,6 +1,6 @@
 namespace Concurrency.Implementation.TransactionExecution
 {
-    public record TransactionExecutionGrainId
+    public record GrainId
     {
         public int IntId { get; init; }
 
