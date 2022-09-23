@@ -71,7 +71,6 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(BasicToken token)
         {
-            Thread.Sleep(10);
             long curBatchID = -1;
             var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
             if (elapsedTime >= batchSizeInMSecs)

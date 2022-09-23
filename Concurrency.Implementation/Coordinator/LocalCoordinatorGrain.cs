@@ -154,7 +154,6 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(LocalToken token)
         {
-            Thread.Sleep(10);
             long curBatchID;
             var curBatchIDs = new List<long>();
             if (token.isLastEmitBidGlobal)
