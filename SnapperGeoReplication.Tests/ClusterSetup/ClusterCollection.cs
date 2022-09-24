@@ -6,6 +6,6 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
 
     public class ClusterCollection
     {
-        public const string Name = "ClusterCollection";
+        public const string Name = "Snapper test suite";
     }
 }

@@ -10,22 +10,15 @@ using Xunit;
 namespace SnapperGeoReplication.Tests;
 
 [Collection(ClusterCollection.Name)]
-public class LocalSingleHomeTests
+public class LocalSingleHomeTests : ClusterTestBase<TestLocalSiloConfiguration>
 {
-    private readonly ClusterFixture fixture;
-    private readonly TestCluster cluster;
-
-    public LocalSingleHomeTests(ClusterFixture fixture)
+    public LocalSingleHomeTests() : base(new ClusterFixture<TestLocalSiloConfiguration>())
     {
-        this.fixture = fixture ?? throw new ArgumentNullException(nameof(fixture));
-        this.fixture.AddSiloBuilderConfigurator<TestLocalSiloConfiguration>();
-        this.fixture.BuildAndDeployCluster();
-        cluster = this.fixture.Cluster;
     }
 
     public void SuckADick()
     {
-        var client = this.cluster.Client;
+        var client = this.Cluster.Client;
 
         var localCoordinatorGrainMock = new Mock<ILocalCoordinatorGrain>();
         // localCoordinatorGrainMock.Setup(x => x.NewTransaction)

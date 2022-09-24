@@ -1,35 +1,27 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
-using GeoSnapperDeployment.Factories;
-using GeoSnapperDeployment.Models;
-using Microsoft.Extensions.Configuration;
 using Xunit;
-using System.Linq;
-using Orleans.TestingHost;
 using SmallBank.Interfaces;
 using Concurrency.Interface.Configuration;
 using System.Threading.Tasks;
+using SnapperGeoReplication.Tests.ClusterSetup;
 
 namespace SnapperGeoIntegration.Tests;
 
 [Collection("Simple Bank Regional Integration Tests")]
-public class SimpleBankRegionalIntegrationTest
+public class SimpleBankRegionalIntegrationTest : ClusterTestBase<RegionalIntegrationTestConfiguration>
 {
-    public SimpleBankRegionalIntegrationTest()
+
+    public SimpleBankRegionalIntegrationTest() : base(new ClusterFixture<RegionalIntegrationTestConfiguration>())
     {
     }
 
     [Fact]
     public async void TestSimpleRegionalMultiTransferTransaction()
     {
-        var builder = new TestClusterBuilder();
-        builder.AddSiloBuilderConfigurator<RegionalIntegrationTestConfiguration>();
-        var cluster = builder.Build();
-        cluster.Deploy();
 
-        IRegionalConfigGrain regionalConfigGrainEU = cluster.GrainFactory.GetGrain<IRegionalConfigGrain>(0, "EU");
-        ILocalConfigGrain localConfigGrainEU = cluster.GrainFactory.GetGrain<ILocalConfigGrain>(3, "EU");
+        IRegionalConfigGrain regionalConfigGrainEU = this.Cluster.GrainFactory.GetGrain<IRegionalConfigGrain>(0, "EU");
+        ILocalConfigGrain localConfigGrainEU = this.Cluster.GrainFactory.GetGrain<ILocalConfigGrain>(3, "EU");
 
         var task1 = regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
         var task2 = localConfigGrainEU.InitializeLocalCoordinators("EU");
@@ -39,7 +31,6 @@ public class SimpleBankRegionalIntegrationTest
         };
 
         try {
-
             await Task.WhenAll(configureAllConfigAndCoordinators);
         } catch (Exception e)
         {
@@ -72,10 +63,10 @@ public class SimpleBankRegionalIntegrationTest
         var grainClassName = new List<string>();
         grainClassName.Add(snapperTransactionalAccountGrainTypeName);
 
-        var actor0 = cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(actorId0, regionAndServer0);
+        var actor0 = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(actorId0, regionAndServer0);
         var accountId = actorId1;
 
-        var actor1 = cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, regionAndServer1);
+        var actor1 = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, regionAndServer1);
 
         var grainClassNamesForMultiTransfer = new List<string>();                                             // grainID, grainClassName
         grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
@@ -108,6 +99,12 @@ public class SimpleBankRegionalIntegrationTest
             Xunit.Assert.True(false);
         }
 
-        cluster.StopAllSilos();
+        this.Cluster.StopAllSilos();
+    }
+
+    [Fact]
+    public async void TestAlotOfBigRegionalMultiTransferTransactions()
+    {
+
     }
 }

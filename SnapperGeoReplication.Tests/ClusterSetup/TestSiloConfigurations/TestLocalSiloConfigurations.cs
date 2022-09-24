@@ -3,10 +3,11 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Orleans.Hosting;
 using Orleans.TestingHost;
+using System;
 
 namespace SnapperGeoReplication.Tests.ClusterSetup
 {
-    public class TestLocalSiloConfiguration : ISiloConfigurator
+    public class TestLocalSiloConfiguration : ISiloConfigurator, IDisposable
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
@@ -17,5 +18,7 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
                 serviceCollection.AddSingleton<ILogger>(loggerMock.Object);
             });
         }
+
+        public void Dispose() { }
     }
 }

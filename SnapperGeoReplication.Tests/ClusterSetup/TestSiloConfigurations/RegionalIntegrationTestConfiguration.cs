@@ -4,20 +4,17 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 
 using Serilog;
-using Serilog.Filters;
 using Orleans.Runtime;
 using Concurrency.Implementation.GrainPlacement;
 using System;
 using Orleans.Runtime.Placement;
 using Concurrency.Interface.Configuration;
 using System.Collections.Generic;
-using Concurrency.Interface.Models;
-using System.Net;
 using Moq;
 
 namespace SnapperGeoIntegration.Tests
 {
-    public class RegionalIntegrationTestConfiguration : ISiloConfigurator
+    public class RegionalIntegrationTestConfiguration : ISiloConfigurator, IDisposable
     {
         public void Configure(ISiloBuilder siloBuilder)
         {
@@ -41,7 +38,12 @@ namespace SnapperGeoIntegration.Tests
 
             this.ConfigureRegionalGrains(siloBuilder, regionalSiloPlacementInfo, regionalConfiguration, localConfiguration, localSiloPlacementInfo);
         }
-        
+
+        public void Dispose()
+        {
+            
+        }
+
         private void ConfigureRegionalGrains(ISiloBuilder siloHostBuilder,
                                              RegionalSilosPlacementInfo regionalSilos,
                                              RegionalConfiguration regionalConfiguration,
@@ -76,4 +78,4 @@ namespace SnapperGeoIntegration.Tests
             });
         }
     }
-    }
+}
