@@ -28,10 +28,9 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly string myClassName;
         private static int myLocalCoordID;
         private static ILocalCoordinatorGrain myLocalCoord;   // use this coord to get tid for local transactions
-        private static IGlobalCoordinatorGrain myGlobalCoord;
 
         // transaction execution
-        private TransactionScheduler myScheduler;
+        private TransactionScheduler transactionScheduler;
         private ITransactionalState<TState> state;
 
         // PACT execution
@@ -62,7 +61,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // transaction execution
             // loggerGroup.GetLoggingProtocol(myID, out log);
-            this.myScheduler = new TransactionScheduler(this.myId.IntId);
+            this.transactionScheduler = new TransactionScheduler();
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.state = new DeterministicState<TState>();
 
@@ -87,7 +86,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 myLocalCoord,
                 regionalCoordinator,
                 GrainFactory,
-                myScheduler,
+                transactionScheduler,
                 state);
 
             return Task.CompletedTask;
@@ -107,26 +106,26 @@ namespace Concurrency.Implementation.TransactionExecution
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
             Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassNames);
-            var cxt = transactionContext.Item2;
+            var context = transactionContext.Item2;
 
             // Only gets here in multi-server or multi-home transaction
-            if (highestCommittedLocalBid < transactionContext.Item1)
+            if (this.highestCommittedLocalBid < transactionContext.Item1)
             {
-                highestCommittedLocalBid = transactionContext.Item1;
-                myScheduler.AckBatchCommit(highestCommittedLocalBid);
+                this.highestCommittedLocalBid = transactionContext.Item1;
+                this.transactionScheduler.AckBatchCommit(highestCommittedLocalBid);
             }
 
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
             // execute PACT
             var functionCall = new FunctionCall(startFunc, funcInput, GetType());
-            var result = await this.ExecuteDeterministicTransaction(functionCall, cxt);
+            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
             var finishExeTime = DateTime.Now;
             var startExeTime = result.Item2;
             var resultObj = result.Item1;
 
             // wait for this batch to commit
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
-            await WaitForBatchCommit(cxt.localBid);
+            await WaitForBatchCommit(context.localBid);
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
 
             var commitTime = DateTime.Now;
@@ -140,19 +139,22 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
-            this.logger.LogInformation($"{this.myId.IntId}-{this.myId.StringId} ReceiveBatchSchedule was called with bid: {batch.bid}", this.GrainReference);
+            this.logger.LogInformation("ReceiveBatchSchedule was called with bid: {batch} from coordinator {intId}",
+                                       this.GrainReference, batch.Bid, batch.CoordinatorId);
+
             // do garbage collection for committed local batches
-            if (highestCommittedLocalBid < batch.highestCommittedBid)
+            if (this.highestCommittedLocalBid < batch.HighestCommittedBid)
             {
-                highestCommittedLocalBid = batch.highestCommittedBid;
-                myScheduler.AckBatchCommit(highestCommittedLocalBid);
+                this.highestCommittedLocalBid = batch.HighestCommittedBid;
+                this.transactionScheduler.AckBatchCommit(this.highestCommittedLocalBid);
             }
-            batchCommit.Add(batch.bid, new TaskCompletionSource<bool>());
+
+            this.batchCommit.Add(batch.Bid, new TaskCompletionSource<bool>());
 
             // register the local SubBatch info
 
             this.logger.LogInformation($"ReceiveBatchSchedule: registerBatch", this.GrainReference);
-            this.myScheduler.RegisterBatch(batch, batch.globalBid, highestCommittedLocalBid);
+            this.transactionScheduler.RegisterBatch(batch, batch.GlobalBid, highestCommittedLocalBid);
             this.logger.LogInformation($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}", this.GrainReference);
             this.detTxnExecutor.BatchArrive(batch);
             this.logger.LogInformation($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);", this.GrainReference);
@@ -163,7 +165,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When commit an ACT, call this interface to wait for a specific local batch to commit </summary>
         public async Task WaitForBatchCommit(long bid)
         {
-            if (highestCommittedLocalBid >= bid) return;
+            if (this.highestCommittedLocalBid >= bid) return;
             this.logger.LogInformation("Waiting for batch id: {bid} to commit", this.GrainReference, bid);
             await batchCommit[bid].Task;
         }
@@ -172,15 +174,34 @@ namespace Concurrency.Implementation.TransactionExecution
         public Task AckBatchCommit(long bid)
         {
             this.logger.LogInformation("DetTxnExecutor.AckBatchCommit is called on batch id: {bid} by local coordinator", this.GrainReference, bid);
-            if (highestCommittedLocalBid < bid)
+            if (this.highestCommittedLocalBid < bid)
             {
-                highestCommittedLocalBid = bid;
-                myScheduler.AckBatchCommit(highestCommittedLocalBid);
+                this.highestCommittedLocalBid = bid;
+                this.transactionScheduler.AckBatchCommit(highestCommittedLocalBid);
             }
-            batchCommit[bid].SetResult(true);
-            batchCommit.Remove(bid);
+
+            this.batchCommit[bid].SetResult(true);
+            this.batchCommit.Remove(bid);
             //myScheduler.AckBatchCommit(highestCommittedBid);
             return Task.CompletedTask;
+        }
+
+        public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
+        {
+            this.logger.LogInformation($"detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
+            await this.detTxnExecutor.WaitForTurn(context);
+            var time = DateTime.Now;
+
+            this.logger.LogInformation($"InvokeFunction(call, cxt)", this.GrainReference);
+            var transactionResult = await InvokeFunction(call, context);   // execute the function call;
+            this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
+
+            await this.detTxnExecutor.FinishExecuteDeterministicTransaction(context);
+
+            this.logger.LogInformation($"(after) DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
+            this.detTxnExecutor.CleanUp(context.localTid);
+
+            return new Tuple<object, DateTime>(transactionResult.resultObj, time);
         }
 
         /// <summary> When execute a transaction on the grain, call this interface to read / write grain state </summary>
@@ -199,26 +220,8 @@ namespace Concurrency.Implementation.TransactionExecution
             return this.detTxnExecutor.GetState(cxt.localTid, mode);
         }
 
-        public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext cxt)
-        {
-            this.logger.LogInformation($"detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
-            await this.detTxnExecutor.WaitForTurn(cxt);
-            var time = DateTime.Now;
-
-            this.logger.LogInformation($"InvokeFunction(call, cxt)", this.GrainReference);
-            var transactionResult = await InvokeFunction(call, cxt);   // execute the function call;
-            this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
-
-            await this.detTxnExecutor.FinishExecuteDeterministicTransaction(cxt);
-
-            this.logger.LogInformation($"(after) DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
-            this.detTxnExecutor.CleanUp(cxt.localTid);
-
-            return new Tuple<object, DateTime>(transactionResult.resultObj, time);
-        }
-
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
-        public Task<TransactionResult> CallGrain(TransactionContext cxt, Tuple<int, string> grainID, string grainNameSpace, FunctionCall call)
+        public async Task<TransactionResult> CallGrain(TransactionContext cxt, Tuple<int, string> grainID, string grainNameSpace, FunctionCall call)
         {
             var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainID.Item1, grainID.Item2, grainNameSpace);
 
@@ -228,8 +231,11 @@ namespace Concurrency.Implementation.TransactionExecution
             // Question: do we need this old check isDet = cxt.localBid != 1
             // if we only run PACTs ?
 
-            //var isDet = cxt.localBid != 1;
-            return this.detTxnExecutor.CallGrain(cxt, call, grain);
+            this.logger.LogInformation("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))", this.GrainReference);
+            var resultObj = (await grain.ExecuteDeterministicTransaction(call, cxt)).Item1;
+            this.logger.LogInformation("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))", this.GrainReference);
+
+            return new TransactionResult(resultObj);
         }
 
         private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext cxt)

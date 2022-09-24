@@ -1,150 +1,135 @@
-﻿using System;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
     public class TransactionScheduler
     {
-        readonly int myID;
-        public ScheduleInfo scheduleInfo;
-        Dictionary<long, SubBatch> batchInfo;                               // key: local bid
-        Dictionary<long, long> tidToLastTid;
-        Dictionary<long, TaskCompletionSource<bool>> detExecutionPromise;   // key: local tid
+        private readonly ScheduleInfo scheduleInfo;
+        private Dictionary<long, SubBatch> batchInfo;                               // key: local bid
+        private Dictionary<long, long> tidToLastTid;
+        private Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
 
-        public TransactionScheduler(int myID)
+        public TransactionScheduler()
         {
-            this.myID = myID;
-            scheduleInfo = new ScheduleInfo(myID);
-            batchInfo = new Dictionary<long, SubBatch>();
-            tidToLastTid = new Dictionary<long, long>();
-            detExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.scheduleInfo = new ScheduleInfo();
+            this.batchInfo = new Dictionary<long, SubBatch>();
+            this.tidToLastTid = new Dictionary<long, long>();
+            this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
         }
 
-        public void CheckGC()
+        public void CompleteDeterministicBatch(long bid)
         {
-            scheduleInfo.CheckGC();
-            if (batchInfo.Count != 0) Console.WriteLine($"TransactionScheduler: batchInfo.Count = {batchInfo.Count}");
-            if (tidToLastTid.Count != 0) Console.WriteLine($"TransactionScheduler: tidToLastTid.Count = {tidToLastTid.Count}");
-            if (detExecutionPromise.Count != 0) Console.WriteLine($"TransactionScheduler: detExecutionPromise.Count = {detExecutionPromise.Count}");
+            this.scheduleInfo.CompleteDeterministicBatch(bid);
         }
 
-        public void RegisterBatch(SubBatch batch, long globalBid, long highestCommittedBid)
+        public void RegisterBatch(SubBatch batch, long regionalBid, long highestCommittedBid)
         {
-            this.scheduleInfo.InsertDeterministicBatch(batch, globalBid, highestCommittedBid);
-            this.batchInfo.Add(batch.bid, batch);
+            this.scheduleInfo.InsertDeterministicBatch(batch, regionalBid, highestCommittedBid);
+            this.batchInfo.Add(batch.Bid, batch);
 
             // TODO: This logic can be improved
-            for (int i = 0; i < batch.transactions.Count; i++)
+            for (int i = 0; i < batch.Transactions.Count; i++)
             {
-                var tid = batch.transactions[i];
+                var tid = batch.Transactions[i];
                 // TODO: Change it to look nicer
                 if (i == 0) tidToLastTid.Add(tid, -1);
-                else tidToLastTid.Add(tid, batch.transactions[i - 1]);
+                else tidToLastTid.Add(tid, batch.Transactions[i - 1]);
 
-                if (i == batch.transactions.Count - 1) break;
+                if (i == batch.Transactions.Count - 1) break;
 
                 // the last txn in the list does not need this entry
-                if (!this.detExecutionPromise.ContainsKey(tid))
-                    this.detExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
+                if (!this.deterministicExecutionPromise.ContainsKey(tid))
+                {
+                    this.deterministicExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
+                }
             }
         }
 
         public async Task WaitForTurn(long bid, long tid)
         {
-            var depTid = tidToLastTid[tid];
-            if (depTid == -1)
+            var previousTid = this.tidToLastTid[tid];
+
+            if (previousTid == -1)
             {
                 // if the tid is the first txn in the batch, wait for previous node
-                var depNode = scheduleInfo.GetDependingNode(bid);
-                await depNode.nextNodeCanExecute.Task;
+                var previousNode = this.scheduleInfo.GetDependingNode(bid);
+                await previousNode.NextNodeCanExecute.Task;
             }
             else
             {
                 // wait for previous det txn
-                await detExecutionPromise[depTid].Task;
-                detExecutionPromise.Remove(depTid);
+                await this.deterministicExecutionPromise[previousTid].Task;
+                this.deterministicExecutionPromise.Remove(previousTid);
             }
         }
 
-        public async Task WaitForTurn(long tid)
+        /// <summary>
+        /// Determines whether a batch is complete.
+        /// If it is complete it returns the coordinator belonging to the subbatch.
+        /// otherwise -1.
+        /// </summary>
+        public long IsBatchComplete(long bid, long tid)
         {
-            await scheduleInfo.InsertNonDetTransaction(tid).nextNodeCanExecute.Task;
-        }
+            // TODO: Can be optimized to use a Queue. This is O(n^2).
+            var transactions = this.batchInfo[bid].Transactions;
+            Debug.Assert(transactions.First() == tid);
+            transactions.RemoveAt(0);
+            this.tidToLastTid.Remove(tid);
 
-        // int: the local coordID if the batch has been completed
-        public long AckComplete(long bid, long tid)
-        {
-            var txnList = batchInfo[bid].transactions;
-            Debug.Assert(txnList.First() == tid);
-            txnList.RemoveAt(0);
-            tidToLastTid.Remove(tid);
+            long coordinatorId = -1;
 
-            long coordID = -1;
-            if (txnList.Count == 0)
+            if (transactions.Count == 0)
             {
-                coordID = batchInfo[bid].coordID;
-                batchInfo.Remove(bid);
+                coordinatorId = this.batchInfo[bid].CoordinatorId;
+                this.batchInfo.Remove(bid);
+            }
+            else
+            {
+                this.deterministicExecutionPromise[tid].SetResult(true);
             }
 
-            else detExecutionPromise[tid].SetResult(true);
-
-            return coordID;
+            return coordinatorId;
         }
 
+        // TODO: THIS IS GARBAGE COLLECTION. METHOD NAME SHOULD BE RENAMED TO SOME PROPER
         // this function is only used to do grabage collection
         // bid: current highest committed batch among all coordinators
         public void AckBatchCommit(long bid)
         {
             if (bid == -1) return;
-            var head = scheduleInfo.detNodes[-1];
-            var node = head.next;
+            var head = this.scheduleInfo.DeterministicNodes[-1];
+            var node = head.Next;
             if (node == null) return;
             while (node != null)
             {
-                if (node.isDet)
+                if (node.Id <= bid)
                 {
-                    if (node.id <= bid)
-                    {
-                        scheduleInfo.detNodes.Remove(node.id);
-                        scheduleInfo.localBidToGlobalBid.Remove(node.id);
-                    }
-                    else break;   // meet a det node whose id > bid
-                }
-                else
-                {
-                    if (node.next != null)
-                    {
-                        Debug.Assert(node.next.isDet);  // next node must be a det node
-                        if (node.next.id <= bid)
-                        {
-                            scheduleInfo.nonDetNodes.Remove(node.id);
-                            scheduleInfo.nonDetNodeIDToTxnSet.Remove(node.id);
-                        }
-                        else break;
-                    }
-                }
-                if (node.next == null) break;
-                node = node.next;
+                    scheduleInfo.DeterministicNodes.Remove(node.Id);
+                    scheduleInfo.LocalBidToRegionalBid.Remove(node.Id);
+                } else break;   // meet a det node whose id > bid
+
+                if (node.Next == null) break;
+                node = node.Next;
             }
 
             // case 1: node.isDet = true && node.id <= bid && node.next = null
-            if (node.isDet && node.id <= bid)    // node should be removed
+            if (node.IsDet && node.Id <= bid)    // node should be removed
             {
-                Debug.Assert(node.next == null);
-                head.next = null;
+                Debug.Assert(node.Next == null);
+                head.Next = null;
             }
             else  // node.isDet = false || node.id > bid
             {
                 // case 2: node.isDet = true && node.id > bid
                 // case 3: node.isDet = false && node.next = null
                 // case 4: node.isDet = false && node.next.id > bid
-                Debug.Assert((node.isDet && node.id > bid) || (!node.isDet && (node.next == null || node.next.id > bid)));
-                head.next = node;
-                node.prev = head;
+                Debug.Assert((node.IsDet && node.Id > bid) || (!node.IsDet && (node.Next == null || node.Next.Id > bid)));
+                head.Next = node;
+                node.Previous = head;
             }
         }
     }

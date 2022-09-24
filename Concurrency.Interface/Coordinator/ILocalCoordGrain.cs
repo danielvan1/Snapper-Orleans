@@ -19,7 +19,7 @@ namespace Concurrency.Interface.Coordinator
 
         Task WaitBatchCommit(long bid);
 
-        Task AckGlobalBatchCommit(long globalBid);
+        Task AckRegionalBatchCommit(long globalBid);
 
         // for global transactions (hierarchical architecture)
         Task<TransactionRegisterInfo> NewRegionalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
