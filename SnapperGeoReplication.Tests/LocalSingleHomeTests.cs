@@ -9,10 +9,10 @@ using Xunit;
 
 namespace SnapperGeoReplication.Tests;
 
-[Collection(ClusterCollection.Name)]
+[Collection(BasicSnapperClusterCollection.Name)]
 public class LocalSingleHomeTests : ClusterTestBase<TestLocalSiloConfiguration>
 {
-    public LocalSingleHomeTests() : base(new ClusterFixture<TestLocalSiloConfiguration>())
+    public LocalSingleHomeTests(ClusterFixture<TestLocalSiloConfiguration> clusterFixture) : base(clusterFixture)
     {
     }
 

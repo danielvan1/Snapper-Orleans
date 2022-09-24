@@ -12,7 +12,7 @@ using Concurrency.Interface.Configuration;
 using System.Collections.Generic;
 using Moq;
 
-namespace SnapperGeoIntegration.Tests
+namespace SnapperGeoReplication.Tests.ClusterSetup
 {
     public class RegionalIntegrationTestConfiguration : ISiloConfigurator, IDisposable
     {

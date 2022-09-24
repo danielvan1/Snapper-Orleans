@@ -8,7 +8,6 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
     /// An abstract class containing a <see cref="TestCluster"/> for use in tests against
     /// the Orleans grains.
     /// </summary>
-    [Collection(ClusterCollection.Name)]
     public abstract class ClusterTestBase<T> where T: ISiloConfigurator, IDisposable, new()
     {
         protected readonly TestCluster Cluster;

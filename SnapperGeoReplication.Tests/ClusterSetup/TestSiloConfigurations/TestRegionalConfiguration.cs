@@ -4,7 +4,7 @@ using Moq;
 using Orleans.Hosting;
 using Orleans.TestingHost;
 
-namespace SnapperGeoReplication.Tests.ClusterSetup.TestSiloConfigurations
+namespace SnapperGeoReplication.Tests.ClusterSetup
 {
     public class TestRegionalConfiguration : ISiloConfigurator
     {
