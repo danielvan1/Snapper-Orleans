@@ -8,6 +8,7 @@ using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans.Runtime;
 using Utilities;
+using Orleans;
 
 namespace Concurrency.Implementation.Coordinator
 {
@@ -30,6 +31,7 @@ namespace Concurrency.Implementation.Coordinator
         Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
         Dictionary<long, int> expectedAcksPerBatch;
         Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
+        private readonly IGrainFactory grainFactory;
         Dictionary<long, TaskCompletionSource<bool>> batchCommit;
         // only for global batch
         Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // global bid, silo ID, chosen local coord ID
@@ -40,6 +42,7 @@ namespace Concurrency.Implementation.Coordinator
             long myID,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches,
+            IGrainFactory grainFactory,
             Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch = null)
         {
             this.logger = logger;
@@ -51,6 +54,7 @@ namespace Concurrency.Implementation.Coordinator
             bidToLastCoordID = new Dictionary<long, long>();
             this.expectedAcksPerBatch = expectedAcksPerBatch;
             this.bidToSubBatches = bidToSubBatches;
+            this.grainFactory = grainFactory;
 
             // TODO: Consider if this following two lines are equivalent
             // to the previous code, I think it is.
@@ -218,13 +222,16 @@ namespace Concurrency.Implementation.Coordinator
                     this.logger.LogInformation("FUCKING HERP DERP", this.grainReference);
                     if (this.isRegionalCoordinator)
                     {
-                        var lastCoord = coordMap.GetGlobalCoord(coord);
-                        await lastCoord.WaitBatchCommit(lastBid);
+                        this.grainReference.GetPrimaryKeyLong(out string region);
+                        string regionalCoordinatorRegion = region.Substring(0, 2);
+                        var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coord, regionalCoordinatorRegion);
+                        await previousBatchRegionalCoordinator.WaitBatchCommit(lastBid);
                     }
                     else // if it is a local coordinator
                     {
-                        var lastCoord = coordMap.GetLocalCoord(coord);
-                        await lastCoord.WaitBatchCommit(lastBid);
+                        this.grainReference.GetPrimaryKeyLong(out string region);
+                        var previousBatchCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coord, region);
+                        await previousBatchCoordinator.WaitBatchCommit(lastBid);
                     }
                 }
             }

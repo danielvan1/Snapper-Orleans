@@ -16,5 +16,7 @@ namespace Concurrency.Interface.Coordinator
         Task<Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList);
 
         Task AckBatchCompletion(long bid);
+
+        Task WaitBatchCommit(long bid);
     }
 }

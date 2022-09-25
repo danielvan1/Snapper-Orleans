@@ -5,6 +5,8 @@ using SmallBank.Interfaces;
 using Concurrency.Interface.Configuration;
 using System.Threading.Tasks;
 using SnapperGeoReplication.Tests.ClusterSetup;
+using System.Linq;
+using Utilities;
 
 namespace SnapperGeoRegionalIntegration.Tests
 {
@@ -18,23 +20,6 @@ namespace SnapperGeoRegionalIntegration.Tests
         [Fact]
         public async void TestSimpleRegionalMultiTransferTransaction()
         {
-            IRegionalConfigGrain regionalConfigGrainEU = this.Cluster.GrainFactory.GetGrain<IRegionalConfigGrain>(0, "EU");
-            ILocalConfigGrain localConfigGrainEU = this.Cluster.GrainFactory.GetGrain<ILocalConfigGrain>(3, "EU");
-
-            var task1 = regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            var task2 = localConfigGrainEU.InitializeLocalCoordinators("EU");
-            List<Task> configureAllConfigAndCoordinators = new List<Task>()
-            {
-                task1, task2
-            };
-
-            try {
-                await Task.WhenAll(configureAllConfigAndCoordinators);
-            } catch (Exception e)
-            {
-                Console.WriteLine(e.StackTrace);
-            }
-
             Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
             string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 
@@ -84,26 +69,96 @@ namespace SnapperGeoRegionalIntegration.Tests
                 var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
                     amountToDeposit,
                     new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer1) 
-                });  // money, List<to account>
+                });
                 await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
                 var PACTBalanceActor0 = await actor0.StartTransaction("Balance", null, actorAccessInfo0, grainClassName);
-                Xunit.Assert.Equal(50, Convert.ToInt32(PACTBalanceActor0.resultObj));
+                Xunit.Assert.Equal(9950, Convert.ToInt32(PACTBalanceActor0.resultObj));
                 var PACTBalanceActor1 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
-                Xunit.Assert.Equal(150, Convert.ToInt32(PACTBalanceActor1.resultObj));
+                Xunit.Assert.Equal(10050, Convert.ToInt32(PACTBalanceActor1.resultObj));
             } catch (Exception e) {
+                Console.WriteLine("hi");
                 Console.WriteLine(e.Message);
                 Console.WriteLine(e.StackTrace);
                 // TODO: Find a nicer way to just fail the test when it catches an exception
                 Xunit.Assert.True(false);
             }
-
-            this.Cluster.StopAllSilos();
         }
-
+        
         [Fact]
         public async void TestAlotOfBigRegionalMultiTransferTransactions()
         {
+            var numberOfAccountsInEachServer = 10;
+            var accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
+            var theOneAccountThatSendsTheMoney = 1;
+            var accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer+theOneAccountThatSendsTheMoney);
+            int startAccountId0 = 0;
+            int startAccountId1 = numberOfAccountsInEachServer;
+            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0);
+            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1);
+            var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
+            var initTasks = new List<Task>();
+            Console.WriteLine("Starting with inits");
+            foreach (var accountId in accountIds)
+            {
+                var id = accountId.Item1;
+                var regionAndServer = accountId.Item2;
+                var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+                var initTask = actor.StartTransaction("Init", accountId, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                initTasks.Add(initTask);
+            }
 
+            await Task.WhenAll(initTasks);
+            Console.WriteLine("Starting with multi transfers");
+
+            var multiTransferTasks = new List<Task>();
+            var oneDollar = 1;
+            foreach (var accountId in accountIdsServer0)
+            {
+                var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(oneDollar, accountIdsServer1);
+                var id = accountId.Item1;
+                var regionAndServer = accountId.Item2;
+                var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+                Xunit.Assert.Equal(11, accessInfoClassNamesMultiTransfer.Count);
+                Xunit.Assert.Equal(10, accountIdsServer1.Count);
+                var herp = accountIdsServer1.Append(accountId).ToList();
+                Xunit.Assert.Equal(11, herp.Count);
+                var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferInput, herp, accessInfoClassNamesMultiTransfer);
+                multiTransferTasks.Add(multiTransfertask);
+            }
+            await Task.WhenAll(multiTransferTasks);
+
+            Console.WriteLine("Starting with balances");
+
+            var balanceTasks = new List<Task<TransactionResult>>();
+            foreach (var accountId in accountIds)
+            {
+                var id = accountId.Item1;
+                var regionAndServer = accountId.Item2;
+                var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+
+                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                balanceTasks.Add(balanceTask);
+            }
+
+            var results = await Task.WhenAll(balanceTasks);
+
+            Console.WriteLine("Started with checking all balances");
+            var initialBalance = 10000;
+            for(int i = 0; i < results.Length; i++) 
+            {
+                var result = results[0];
+                if (i < numberOfAccountsInEachServer) {
+                    Xunit.Assert.Equal(initialBalance-numberOfAccountsInEachServer*oneDollar, Convert.ToInt32(result.resultObj));
+                } else {
+                    Xunit.Assert.Equal(initialBalance+numberOfAccountsInEachServer*oneDollar, Convert.ToInt32(result.resultObj));
+                }
+            }
+        }
+
+        public Task DisposeAsync()
+        {
+            this.Cluster.StopAllSilos();
+            return Task.CompletedTask;
         }
     }
 

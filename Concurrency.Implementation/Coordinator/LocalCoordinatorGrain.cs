@@ -76,7 +76,9 @@ namespace Concurrency.Implementation.Coordinator
                 this.GrainReference,
                 this.GetPrimaryKeyLong(out _),
                 this.expectedAcksPerBatch,
-                this.bidToSubBatches);
+                this.bidToSubBatches,
+                this.GrainFactory
+                );
 
             this.GetPrimaryKeyLong(out string region);
             this.region = region;
@@ -118,7 +120,7 @@ namespace Concurrency.Implementation.Coordinator
         public async Task<TransactionRegisterInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
         {
             this.logger.LogInformation("NewTransaction is called with grainAccessInfo: {grainAccessInfo}, grainClassNames: {grainClassNames}",
-                                       this.GrainReference, string.Join(", ", grainAccessInfo), string.Join(", ", grainIdTograinClassName));
+                                       this.GrainReference, string.Join(", ", grainAccessInfo), string.Join(", ", grainClassNames));
 
             var task = this.detTxnProcessor.NewDeterministicTransaction(grainAccessInfo);
 

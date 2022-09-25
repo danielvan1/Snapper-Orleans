@@ -66,7 +66,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.state = new DeterministicState<TState>();
 
-            myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
+            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
 
             // TODO: Need this later when we have multi server and multi home
             // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);

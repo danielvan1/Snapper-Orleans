@@ -11,13 +11,23 @@ using Orleans.Runtime.Placement;
 using Concurrency.Interface.Configuration;
 using System.Collections.Generic;
 using Moq;
+using System.IO;
+using Serilog.Filters;
 
 namespace SnapperGeoReplication.Tests.ClusterSetup
 {
     public class RegionalIntegrationTestConfiguration : ISiloConfigurator, IDisposable
     {
+        private readonly string logPath = Path.Combine(Utilities.Constants.LogPath, $"Snapper-{DateTime.Now:ddMMyyyy-HHmm}.log");
+        private ILogger logger;
+
         public void Configure(ISiloBuilder siloBuilder)
         {
+            if(!Directory.Exists(Utilities.Constants.LogPath))
+            {
+                Directory.CreateDirectory(Utilities.Constants.LogPath);
+            }
+
             siloBuilder.AddMemoryGrainStorageAsDefault();
             siloBuilder.UseInMemoryReminderService();
             var localSiloPlacementInfo = new LocalSiloPlacementInfo();
@@ -52,9 +62,7 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
         {
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
-
-                Mock<ILogger> loggerMock = new Mock<ILogger>();
-                serviceCollection.AddSingleton<ILogger>(loggerMock.Object);
+                serviceCollection.AddSingleton<ILogger>(this.CreateLogger());
 
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(regionalConfiguration);
@@ -76,6 +84,19 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, TransactionExecutionGrainPlacementStrategy>(nameof(TransactionExecutionGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, TransactionExecutionGrainPlacement>(typeof(TransactionExecutionGrainPlacementStrategy));
             });
+        }
+
+        private ILogger CreateLogger()
+        {
+            /*return new LoggerConfiguration()
+                        .WriteTo.File(this.logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .CreateLogger();
+                        */
+            return new LoggerConfiguration()
+                        .WriteTo.File(this.logPath)
+                        .WriteTo.Console()
+                        .CreateLogger();
         }
     }
 }

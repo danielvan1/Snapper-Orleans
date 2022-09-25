@@ -48,6 +48,7 @@ namespace Concurrency.Implementation.Coordinator
                 this.GetPrimaryKeyLong(out string _),
                 this.expectedAcksPerBatch,
                 this.bidToSubBatches,
+                this.GrainFactory,
                 this.localCoordinatorPerSiloPerBatch);
             return base.OnActivateAsync();
         }

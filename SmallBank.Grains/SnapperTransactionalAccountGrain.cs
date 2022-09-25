@@ -25,7 +25,7 @@ namespace SmallBank.Grains
             var accountID = (Tuple<int, string>)funcInput;
             var myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
-            myState.balance = 100;
+            myState.balance = 10000;
             this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
             return new TransactionResult();
         }

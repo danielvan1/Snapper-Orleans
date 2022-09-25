@@ -21,22 +21,6 @@ await client.Connect();
 
 Console.WriteLine("Regional Bank Client is ready");
 
-/*IGlobalConfigurationGrain globalConfigGrain = client.GetGrain<IGlobalConfigurationGrain>(0);
-await globalConfigGrain.InitializeGlobalCoordinators();*/
-
-/*IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
-//IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(0, "US");
-// await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
-
-await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
-
-ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-await localConfigGrainEU.InitializeLocalCoordinators("EU");
-await localConfigGrainUS.InitializeLocalCoordinators("US");
-*/
 
 // Going to perform 2 init transactions on two accounts in the same region,
 // and then transfer 50$ from account id 0 to account id 1. They both
@@ -87,8 +71,13 @@ var amountToDeposit = 50;
 
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
-    await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0, grainClassName);
-    await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1, grainClassName);
+    var tasks=  new List<Task>();
+    var task1 = actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0, grainClassName);
+    var task2 = actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1, grainClassName);
+    tasks.Add(task1);
+    tasks.Add(task2);
+    await Task.WhenAll(tasks);
+    
 
     Console.WriteLine("Starting deposit txs");
 
