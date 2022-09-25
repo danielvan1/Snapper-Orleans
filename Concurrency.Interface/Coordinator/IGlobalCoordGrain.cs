@@ -13,8 +13,6 @@ namespace Concurrency.Interface.Coordinator
 
         Task PassToken(BasicToken token);
 
-        Task<TransactionRegisterInfo> NewTransaction();
-
         Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList);
 
         Task AckBatchCompletion(long bid);

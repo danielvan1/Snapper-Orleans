@@ -59,13 +59,6 @@ namespace Concurrency.Implementation.Coordinator
             return new Tuple<TransactionRegisterInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
         }
 
-        // for ACT
-        public async Task<TransactionRegisterInfo> NewTransaction()
-        {
-            var tid = await nonDetTxnProcessor.NewNonDet();
-            return new TransactionRegisterInfo(tid, detTxnProcessor.highestCommittedBid);
-        }
-
         public Task PassToken(BasicToken token)
         {
             long curBatchID = -1;
@@ -117,7 +110,7 @@ namespace Concurrency.Implementation.Coordinator
             {
                 var localCoordID = coords[item.Key];
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
-                _ = dest.AckGlobalBatchCommit(bid);
+                _ = dest.AckRegionalBatchCommit(bid);
             }
 
             // garbage collection

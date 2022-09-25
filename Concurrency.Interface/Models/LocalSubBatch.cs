@@ -4,18 +4,19 @@ using System.Collections.Generic;
 namespace Concurrency.Interface.Models
 {
     [Serializable]
-    public class LocalSubBatch : SubBatch     // sent from local coordinator to transactional grains
+    public record LocalSubBatch : SubBatch     // sent from local coordinator to transactional grains
     {
-        public readonly long globalBid;
-        public Dictionary<long, long> globalTidToLocalTid;
+        public long GlobalBid { get; init; }
 
-        public long highestCommittedBid;
+        public Dictionary<long, long> GlobalTidToLocalTid { get; set; }
+
+        public long HighestCommittedBid { get; set; }
 
         public LocalSubBatch(long globalBid, SubBatch subBatch) : base(subBatch)
         {
-            this.globalBid = globalBid;
-            globalTidToLocalTid = new Dictionary<long, long>();
-            highestCommittedBid = -1;
+            this.GlobalBid = globalBid;
+            this.GlobalTidToLocalTid = new Dictionary<long, long>();
+            this.HighestCommittedBid = -1;
         }
     }
 }

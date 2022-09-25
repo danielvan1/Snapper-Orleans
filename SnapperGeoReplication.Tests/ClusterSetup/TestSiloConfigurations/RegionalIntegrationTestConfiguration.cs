@@ -51,7 +51,7 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
 
         public void Dispose()
         {
-            
+
         }
 
         private void ConfigureRegionalGrains(ISiloBuilder siloHostBuilder,

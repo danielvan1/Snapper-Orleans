@@ -1,7 +1,7 @@
 using System;
-using System.Threading;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -72,20 +72,26 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(BasicToken token)
         {
-            long curBatchID = -1;
+            long curBatchId = -1;
+
             var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
             if (elapsedTime >= batchSizeInMSecs)
             {
-                curBatchID = detTxnProcessor.GenerateBatch(token);
-                if (curBatchID != -1) this.timeOfBatchGeneration = DateTime.Now;
+                curBatchId = detTxnProcessor.GenerateBatch(token);
+                if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
             }
 
-            if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
-                token.highestCommittedBid = detTxnProcessor.highestCommittedBid;
-            else detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
+            if (this.detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
+            {
+                token.highestCommittedBid = this.detTxnProcessor.highestCommittedBid;
+            }
+            else
+            {
+                this.detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
+            }
 
-            _ = neighborCoord.PassToken(token);
-            if (curBatchID != -1) _ = EmitBatch(curBatchID);
+            _ = this.neighborCoord.PassToken(token);
+            if (curBatchId != -1) _ = EmitBatch(curBatchId);
         }
 
         async Task EmitBatch(long bid)
@@ -111,14 +117,15 @@ namespace Concurrency.Implementation.Coordinator
         {
             // count down the number of expected ACKs from different silos
             this.expectedAcksPerBatch[bid]--;
+
             if (this.expectedAcksPerBatch[bid] != 0)
             {
                 return;
             }
 
             // commit the batch
-            await detTxnProcessor.WaitPrevBatchToCommit(bid);
-            detTxnProcessor.AckBatchCommit(bid);
+            await this.detTxnProcessor.WaitPrevBatchToCommit(bid);
+            this.detTxnProcessor.AckBatchCommit(bid);
 
             // send ACKs to local coordinators
             var curScheduleMap = this.bidToSubBatches[bid];
@@ -131,7 +138,7 @@ namespace Concurrency.Implementation.Coordinator
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
 
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
-                _ = dest.AckGlobalBatchCommit(bid);
+                _ = dest.AckRegionalBatchCommit(bid);
             }
 
             // garbage collection

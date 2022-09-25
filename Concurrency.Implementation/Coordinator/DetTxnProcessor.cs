@@ -17,24 +17,25 @@ namespace Concurrency.Implementation.Coordinator
         private readonly ILogger logger;
         private readonly GrainReference grainReference;
         private readonly Random random;
-        private readonly long myID;
+        private readonly long myId;
         private readonly bool isRegionalCoordinator;
         public long highestCommittedBid;
         readonly ICoordMap coordMap;
 
         // transaction processing
         private IList<List<Tuple<int, string>>> deterministicRequests;
-        List<TaskCompletionSource<Tuple<long, long>>> detRequestPromise; // <local bid, local tid>
+        private List<TaskCompletionSource<Tuple<long, long>>> detRequestPromise; // <local bid, local tid>
 
         // batch processing
-        Dictionary<long, long> bidToLastBid;
-        Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
-        Dictionary<long, int> expectedAcksPerBatch;
-        Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
+        private Dictionary<long, long> bidToLastBid;
+        private Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
+        private Dictionary<long, int> expectedAcksPerBatch;
+        private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
         private readonly IGrainFactory grainFactory;
-        Dictionary<long, TaskCompletionSource<bool>> batchCommit;
+        private Dictionary<long, TaskCompletionSource<bool>> batchCommit;
+
         // only for global batch
-        Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // global bid, silo ID, chosen local coord ID
+        private Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // global bid, silo ID, chosen local coord ID
 
         public DetTxnProcessor(
             ILogger logger,
@@ -48,7 +49,7 @@ namespace Concurrency.Implementation.Coordinator
             this.logger = logger;
             this.grainReference = grainReference;
             this.random = new Random();
-            this.myID = myID;
+            this.myId = myID;
             this.coordMap = coordMap;
             bidToLastBid = new Dictionary<long, long>();
             bidToLastCoordID = new Dictionary<long, long>();
@@ -108,11 +109,11 @@ namespace Concurrency.Implementation.Coordinator
             for (int i = 0; i < this.deterministicRequests.Count; i++)
             {
                 var tid = ++token.lastEmitTid;
-                GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
+                this.GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
                 this.detRequestPromise[i].SetResult(new Tuple<long, long>(currentBatchID, tid));
             }
 
-            UpdateToken(token, currentBatchID, -1);
+            this.UpdateToken(token, currentBatchID, -1);
 
             deterministicRequests.Clear();
             detRequestPromise.Clear();
@@ -146,7 +147,7 @@ namespace Concurrency.Implementation.Coordinator
 
                 if (!deterministicRequestToSubBatch.ContainsKey(grainId))
                 {
-                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(curBatchID, myID));
+                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(curBatchID, myId));
                     if (this.isRegionalCoordinator)
                     {
                         // randomly choose a local coord as the coordinator for this batch on that silo
@@ -159,7 +160,7 @@ namespace Concurrency.Implementation.Coordinator
                     }
                 }
 
-                deterministicRequestToSubBatch[grainId].transactions.Add(tid);
+                deterministicRequestToSubBatch[grainId].Transactions.Add(tid);
             }
         }
 
@@ -176,7 +177,7 @@ namespace Concurrency.Implementation.Coordinator
 
                 if (token.lastBidPerService.ContainsKey(serviceID))
                 {
-                    subBatch.lastBid = token.lastBidPerService[serviceID];
+                    subBatch.PreviousBid = token.lastBidPerService[serviceID];
                     // TODO: Consider this: token.lastGlobalBidPerGrain[new Tuple<int, string>(this.myID, serviceID)];
                     // the old code just used token.lastGlobalBidPerGrain[serviceID];
                     if (!this.isRegionalCoordinator)
@@ -186,34 +187,35 @@ namespace Concurrency.Implementation.Coordinator
                 }
                 // else, the default value is -1
 
-                Debug.Assert(subBatch.bid > subBatch.lastBid);
-                token.lastBidPerService[serviceID] = subBatch.bid;
+                Debug.Assert(subBatch.Bid > subBatch.PreviousBid);
+                token.lastBidPerService[serviceID] = subBatch.Bid;
                 if (!this.isRegionalCoordinator)
                 {
                     token.lastGlobalBidPerGrain[serviceID] = globalBid;
                 }
             }
-            bidToLastBid.Add(curBatchID, token.lastEmitBid);
+            this.bidToLastBid.Add(curBatchID, token.lastEmitBid);
+
             if (token.lastEmitBid != -1)
             {
-                bidToLastCoordID.Add(curBatchID, token.lastCoordID);
+                this.bidToLastCoordID.Add(curBatchID, token.lastCoordID);
             }
 
             token.lastEmitBid = curBatchID;
             token.isLastEmitBidGlobal = globalBid != -1;
-            token.lastCoordID = myID;
+            token.lastCoordID = this.myId;
         }
 
 
         public async Task WaitPrevBatchToCommit(long bid)
         {
-            var lastBid = bidToLastBid[bid];
-            bidToLastBid.Remove(bid);
+            var lastBid = this.bidToLastBid[bid];
+            this.bidToLastBid.Remove(bid);
 
             if (highestCommittedBid < lastBid)
             {
-                var coord = bidToLastCoordID[bid];
-                if (coord == myID)
+                var coordinator = this.bidToLastCoordID[bid];
+                if (coordinator == this.myId)
                 {
                     await WaitBatchCommit(lastBid);
                 }
@@ -222,6 +224,7 @@ namespace Concurrency.Implementation.Coordinator
                     this.logger.LogInformation("FUCKING HERP DERP", this.grainReference);
                     if (this.isRegionalCoordinator)
                     {
+<<<<<<< HEAD
                         this.grainReference.GetPrimaryKeyLong(out string region);
                         string regionalCoordinatorRegion = region.Substring(0, 2);
                         var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coord, regionalCoordinatorRegion);
@@ -232,6 +235,15 @@ namespace Concurrency.Implementation.Coordinator
                         this.grainReference.GetPrimaryKeyLong(out string region);
                         var previousBatchCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coord, region);
                         await previousBatchCoordinator.WaitBatchCommit(lastBid);
+=======
+                        var lastCoord = coordMap.GetGlobalCoord(coordinator);
+                        await lastCoord.WaitBatchCommit(lastBid);
+                    }
+                    else // if it is a local coordinator
+                    {
+                        var lastCoord = coordMap.GetLocalCoord(coordinator);
+                        await lastCoord.WaitBatchCommit(lastBid);
+>>>>>>> 78b5f4e5a8dcc7d20e503afdc71048bb5c279c66
                     }
                 }
             }
@@ -240,23 +252,28 @@ namespace Concurrency.Implementation.Coordinator
                 Debug.Assert(highestCommittedBid == lastBid);
             }
 
-            if (bidToLastCoordID.ContainsKey(bid)) bidToLastCoordID.Remove(bid);
+            if (this.bidToLastCoordID.ContainsKey(bid)) this.bidToLastCoordID.Remove(bid);
         }
 
         public async Task WaitBatchCommit(long bid)
         {
-            if (highestCommittedBid == bid) return;
-            if (batchCommit.ContainsKey(bid) == false) batchCommit.Add(bid, new TaskCompletionSource<bool>());
-            await batchCommit[bid].Task;
+            if (this.highestCommittedBid == bid) return;
+
+            if (!this.batchCommit.ContainsKey(bid))
+            {
+                this.batchCommit.Add(bid, new TaskCompletionSource<bool>());
+            }
+
+            await this.batchCommit[bid].Task;
         }
 
         public void AckBatchCommit(long bid)
         {
-            highestCommittedBid = Math.Max(bid, highestCommittedBid);
-            if (batchCommit.ContainsKey(bid))
+            this.highestCommittedBid = Math.Max(bid, highestCommittedBid);
+            if (this.batchCommit.ContainsKey(bid))
             {
-                batchCommit[bid].SetResult(true);
-                batchCommit.Remove(bid);
+                this.batchCommit[bid].SetResult(true);
+                this.batchCommit.Remove(bid);
             }
         }
 
