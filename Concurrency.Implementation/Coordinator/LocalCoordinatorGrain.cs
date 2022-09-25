@@ -326,8 +326,8 @@ namespace Concurrency.Implementation.Coordinator
 
             while (this.regionalBatchInfo.Count > 0)
             {
-                this.logger.LogInformation("ProcessingRegionalBatch: Received the local token and we have received current regional sub batches: {regionalBatchInfo}",
-                                           string.Join(", ", this.regionalBatchInfo) );
+                /*this.logger.LogInformation("ProcessingRegionalBatch: Received the local token and we have received current regional sub batches: {regionalBatchInfo}",
+                                           string.Join(", ", this.regionalBatchInfo) );*/
 
                 var batch = this.regionalBatchInfo.First();
                 var globalBid = batch.Key;
