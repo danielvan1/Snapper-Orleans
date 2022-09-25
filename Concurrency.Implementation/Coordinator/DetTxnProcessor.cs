@@ -224,26 +224,16 @@ namespace Concurrency.Implementation.Coordinator
                     this.logger.LogInformation("FUCKING HERP DERP", this.grainReference);
                     if (this.isRegionalCoordinator)
                     {
-<<<<<<< HEAD
                         this.grainReference.GetPrimaryKeyLong(out string region);
                         string regionalCoordinatorRegion = region.Substring(0, 2);
-                        var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coord, regionalCoordinatorRegion);
+                        var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, regionalCoordinatorRegion);
                         await previousBatchRegionalCoordinator.WaitBatchCommit(lastBid);
                     }
                     else // if it is a local coordinator
                     {
                         this.grainReference.GetPrimaryKeyLong(out string region);
-                        var previousBatchCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coord, region);
+                        var previousBatchCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordinator, region);
                         await previousBatchCoordinator.WaitBatchCommit(lastBid);
-=======
-                        var lastCoord = coordMap.GetGlobalCoord(coordinator);
-                        await lastCoord.WaitBatchCommit(lastBid);
-                    }
-                    else // if it is a local coordinator
-                    {
-                        var lastCoord = coordMap.GetLocalCoord(coordinator);
-                        await lastCoord.WaitBatchCommit(lastBid);
->>>>>>> 78b5f4e5a8dcc7d20e503afdc71048bb5c279c66
                     }
                 }
             }
