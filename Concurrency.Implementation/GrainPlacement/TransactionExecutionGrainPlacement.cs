@@ -29,6 +29,7 @@ namespace Concurrency.Implementation.GrainPlacement
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
             bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
             if (isTestSilo) {
+                this.logger.Info("Is using test placement strategy");
                 return Task.FromResult(compatibleSilos[0]);
             }
 

@@ -72,6 +72,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public async Task PassToken(BasicToken token)
         {
+            //this.logger.LogInformation("Pass token is called", this.GrainReference);
             long curBatchId = -1;
 
             var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
@@ -90,6 +91,7 @@ namespace Concurrency.Implementation.Coordinator
                 this.detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
             }
 
+            await Task.Delay(2);
             _ = this.neighborCoord.PassToken(token);
             if (curBatchId != -1) _ = EmitBatch(curBatchId);
         }

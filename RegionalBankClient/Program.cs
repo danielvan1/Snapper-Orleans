@@ -77,7 +77,6 @@ try {
     tasks.Add(task1);
     tasks.Add(task2);
     await Task.WhenAll(tasks);
-    
 
     Console.WriteLine("Starting deposit txs");
 

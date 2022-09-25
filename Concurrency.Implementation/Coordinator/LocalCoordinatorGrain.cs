@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -191,6 +192,8 @@ namespace Concurrency.Implementation.Coordinator
                 this.detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
             }
 
+            //this.logger.LogInformation("Pass token is called", this.GrainReference);
+            await Task.Delay(2);
             _ = this.neighborCoord.PassToken(token);
             if (curBatchID != -1) await EmitBatch(curBatchID);
             if (curBatchIDs.Count != 0)
