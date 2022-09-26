@@ -18,7 +18,6 @@ namespace Concurrency.Implementation.Coordinator
     {
         // coord basic info
         int myID;
-        ICoordMap coordMap;
         private readonly ILogger<GlobalCoordinatorGrain> logger;
         IGlobalCoordinatorGrain neighborCoord;
 
@@ -29,9 +28,6 @@ namespace Concurrency.Implementation.Coordinator
         // only for global batches (Hierarchical Architecture)
         Dictionary<long, Dictionary<string, int>> coordPerBatchPerSilo;        // <global bid, siloID, chosen local Coord ID>
 
-        // ACT
-        NonDetTxnProcessor nonDetTxnProcessor;
-
         DateTime timeOfBatchGeneration;
         double batchSizeInMSecs;
 
@@ -41,7 +37,6 @@ namespace Concurrency.Implementation.Coordinator
             expectedAcksPerBatch = new Dictionary<long, int>();
             bidToSubBatches = new Dictionary<long, Dictionary<string, SubBatch>>();
             coordPerBatchPerSilo = new Dictionary<long, Dictionary<string, int>>();
-            nonDetTxnProcessor = new NonDetTxnProcessor(myID);
             return base.OnActivateAsync();
         }
 
@@ -53,7 +48,7 @@ namespace Concurrency.Implementation.Coordinator
         // for PACT
         public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList)
         {
-            var id = await detTxnProcessor.NewDeterministicTransaction(siloList);
+            var id = await detTxnProcessor.GetDeterministicTransactionBidAndTid(siloList);
             Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
             var info = new TransactionRegisterInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
             return new Tuple<TransactionRegisterInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
@@ -68,8 +63,6 @@ namespace Concurrency.Implementation.Coordinator
                 curBatchID = detTxnProcessor.GenerateBatch(token);
                 if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
             }
-
-            nonDetTxnProcessor.EmitNonDetTransactions(token);
 
             if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
                 token.highestCommittedBid = detTxnProcessor.highestCommittedBid;
@@ -127,7 +120,6 @@ namespace Concurrency.Implementation.Coordinator
         public Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor)
         {
             this.detTxnProcessor.Init();
-            this.nonDetTxnProcessor.Init();
 
             this.neighborCoord = neighbor;
 

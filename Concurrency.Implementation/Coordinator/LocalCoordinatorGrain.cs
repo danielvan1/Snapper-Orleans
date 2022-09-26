@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -87,6 +86,7 @@ namespace Concurrency.Implementation.Coordinator
             this.grainIdToGrainClassName = new Dictionary<Tuple<int, string>, string>();
             this.expectedAcksPerBatch = new Dictionary<long, int>();
             this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
+
             this.regionalBatchInfo = new SortedDictionary<long, SubBatch>();
             this.regionalTransactionInfo = new Dictionary<long, Dictionary<long, List<Tuple<int, string>>>>();
             this.regionalDetRequestPromise = new Dictionary<long, TaskCompletionSource<Tuple<long, long>>>();
@@ -100,9 +100,38 @@ namespace Concurrency.Implementation.Coordinator
 
         #region NewTransaction from TransactionExecutionGrain
 
+        // for PACT
+        public async Task<TransactionRegisterInfo> NewLocalTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
+        {
+            this.logger.LogInformation("NewLocalTransaction is called with grainAccessInfo: {grainAccessInfo}, grainClassNames: {grainClassNames}",
+                                       this.GrainReference, string.Join(", ", grainAccessInfo), string.Join(", ", grainIdToGrainClassName));
+
+            Task<Tuple<long, long>> getBidAndTidTask = this.detTxnProcessor.GetDeterministicTransactionBidAndTid(grainAccessInfo);
+
+            // Mapping each grainId to the corresponding grainClassName
+            for (int i = 0; i < grainAccessInfo.Count; i++)
+            {
+                var grainId = grainAccessInfo[i];
+
+                if (!this.grainIdToGrainClassName.ContainsKey(grainId))
+                {
+                    this.grainIdToGrainClassName.Add(grainId, grainClassNames[i]);
+                }
+            }
+
+            var bidAndTid = await getBidAndTidTask;
+            long bid = bidAndTid.Item1;
+            long tid = bidAndTid.Item2;
+
+            this.logger.LogInformation("NewTransaction is going to return bid: {bid} and tid: {tid}", this.GrainReference, bid, tid);
+
+            return new TransactionRegisterInfo(bid, tid, this.detTxnProcessor.highestCommittedBid);
+        }
+
         public async Task<TransactionRegisterInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
         {
-            this.logger.LogInformation("NewRegionalTransaction is called regionalBid {globalBid} and regionalTid {bid}", this.GrainReference, regionalBid, regionalTid);
+            this.logger.LogInformation("NewRegionalTransaction is called regionalBid {globalBid} and regionalTid {tid}, with grainAccessInfo {grainAccesInfo}",
+                                        this.GrainReference, regionalBid, regionalTid, string.Join(", ", grainAccessInfo));
 
             for (int i = 0; i < grainAccessInfo.Count; i++)
             {
@@ -128,32 +157,6 @@ namespace Concurrency.Implementation.Coordinator
             return new TransactionRegisterInfo(promise.Task.Result.Item1, promise.Task.Result.Item2, this.detTxnProcessor.highestCommittedBid);
         }
 
-        // for PACT
-        public async Task<TransactionRegisterInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
-        {
-            this.logger.LogInformation("NewTransaction is called with grainAccessInfo: {grainAccessInfo}, grainClassNames: {grainClassNames}",
-                                       this.GrainReference, string.Join(", ", grainAccessInfo), string.Join(", ", grainClassNames));
-
-            var task = this.detTxnProcessor.NewDeterministicTransaction(grainAccessInfo);
-
-            for (int i = 0; i < grainAccessInfo.Count; i++)
-            {
-                var grain = grainAccessInfo[i];
-
-                if (!this.grainIdToGrainClassName.ContainsKey(grain))
-                {
-                    this.grainIdToGrainClassName.Add(grain, grainClassNames[i]);
-                }
-            }
-
-            var id = await task;
-            long bid = id.Item1;
-            long tid = id.Item2;
-
-            this.logger.LogInformation("NewTransaction is going to return bid: {bid} and tid: {tid}", this.GrainReference, bid, tid);
-
-            return new TransactionRegisterInfo(bid, tid, this.detTxnProcessor.highestCommittedBid);
-        }
         #endregion
 
         /// <summary>
@@ -174,13 +177,13 @@ namespace Concurrency.Implementation.Coordinator
             // TODO: Why do we need to do it like this?
             if (token.isLastEmitBidGlobal)
             {
-                curBatchIDs = this.ProcessRegionalBatch(token);
+                curBatchIDs = this.GenerateRegionalBatch(token);
                 curBatchID = this.detTxnProcessor.GenerateBatch(token);
             }
             else
             {
                 curBatchID = this.detTxnProcessor.GenerateBatch(token);
-                curBatchIDs = this.ProcessRegionalBatch(token);
+                curBatchIDs = this.GenerateRegionalBatch(token);
             }
 
             if (this.detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
@@ -217,9 +220,9 @@ namespace Concurrency.Implementation.Coordinator
         {
             this.logger.LogInformation("Expected acknowledgements for batch: {bid} before decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
             this.expectedAcksPerBatch[bid]--;
-            this.logger.LogInformation("Expected acknowledgements for batch: {bid} after decrement: {expectedAcksPerBatch}", this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
 
-            if (this.expectedAcksPerBatch[bid] != 0) return;
+            if (this.expectedAcksPerBatch[bid] > 0) return;
+
 
             // the batch has been completed in this silo
             long regionalBid = -1;
@@ -227,6 +230,9 @@ namespace Concurrency.Implementation.Coordinator
             // TODO: Why does it matter why the previous is a regional or local batch?
             bool isPreviousRegional = false;
             bool isRegional = this.localBidToRegionalBid.ContainsKey(bid);
+
+            this.logger.LogInformation("Got all acknowledgements for batch: {bid}. Is the batch regional: {isRegional} and is the previous batch regional: {isPreviousRegional}",
+                                        this.GrainReference, bid, isRegional, isPreviousRegional);
 
             // Some sick optimization.......
             if (isRegional)
@@ -238,6 +244,7 @@ namespace Concurrency.Implementation.Coordinator
                 if (isPreviousRegional)
                 {
                     this.AckCompletionToRegionalCoordinator(regionalBid);
+
                 }
             }
 
@@ -295,13 +302,13 @@ namespace Concurrency.Implementation.Coordinator
             this.logger.LogInformation("Received batch schedule from regional coordinator {regionalCoordinatorId} with previous bid {previousBatchId} and current bid {bid}",
                                        this.GrainReference, batch.CoordinatorId, batch.PreviousBid, batch.Bid);
 
-            var globalBid = batch.Bid;
-            this.regionalBatchInfo.Add(globalBid, batch);
-            this.regionalBidToRegionalCoordID.Add(globalBid, batch.CoordinatorId);
+            var regionalBid = batch.Bid;
+            this.regionalBatchInfo.Add(regionalBid, batch);
+            this.regionalBidToRegionalCoordID.Add(regionalBid, batch.CoordinatorId);
 
-            if (!this.regionalTransactionInfo.ContainsKey(globalBid))
+            if (!this.regionalTransactionInfo.ContainsKey(regionalBid))
             {
-                this.regionalTransactionInfo.Add(globalBid, new Dictionary<long, List<Tuple<int, string>>>());
+                this.regionalTransactionInfo.Add(regionalBid, new Dictionary<long, List<Tuple<int, string>>>());
             }
 
             return Task.CompletedTask;
@@ -309,6 +316,9 @@ namespace Concurrency.Implementation.Coordinator
 
         public Task AckRegionalBatchCommit(long regionalBid)
         {
+            this.logger.LogInformation("AckRegionalBatch commit was called from regional coordinator. We can now commit batch: {regionalBid}",
+                                       this.GrainReference,  regionalBid);
+
             this.highestCommittedRegionalBid = Math.Max(regionalBid, highestCommittedRegionalBid);
 
             if (this.regionalBatchCommit.ContainsKey(regionalBid))
@@ -320,43 +330,44 @@ namespace Concurrency.Implementation.Coordinator
             return Task.CompletedTask;
         }
 
-        private IList<long> ProcessRegionalBatch(LocalToken token)
+        private IList<long> GenerateRegionalBatch(LocalToken token)
         {
             IList<long> currentBatchIds = new List<long>();
 
             while (this.regionalBatchInfo.Count > 0)
             {
-                this.logger.LogInformation("ProcessingRegionalBatch: Received the local token and we have received current regional sub batches: {regionalBatchInfo}",
-                                           string.Join(", ", this.regionalBatchInfo) );
+                // this.logger.LogInformation("ProcessingRegionalBatch: Received the local token and we have received current regional sub batches: {regionalBatchInfo}",
+                //                            string.Join(", ", this.regionalBatchInfo) );
 
-                var batch = this.regionalBatchInfo.First();
-                var globalBid = batch.Key;
+                var bidAndBatch = this.regionalBatchInfo.First();
+                var regionalBid = bidAndBatch.Key;
+                var subBatch = bidAndBatch.Value;
 
-                if (batch.Value.PreviousBid != token.lastEmitGlobalBid) return new List<long>();
-                if (batch.Value.Transactions.Count != this.regionalTransactionInfo[globalBid].Count) return new List<long>();
+                if (subBatch.PreviousBid != token.lastEmitGlobalBid) return new List<long>();
+                if (subBatch.Transactions.Count != this.regionalTransactionInfo[regionalBid].Count) return new List<long>();
 
-                var curBatchID = token.lastEmitTid + 1;
-                currentBatchIds.Add(curBatchID);
-                this.localBidToRegionalBid.Add(curBatchID, globalBid);
-                this.regionalTidToLocalTidPerBatch.Add(curBatchID, new Dictionary<long, long>());
+                var currentBatchId = token.lastEmitTid + 1;
+                currentBatchIds.Add(currentBatchId);
+                this.localBidToRegionalBid.Add(currentBatchId, regionalBid);
+                this.regionalTidToLocalTidPerBatch.Add(currentBatchId, new Dictionary<long, long>());
 
-                foreach (var globalTid in batch.Value.Transactions)
+                foreach (var globalTid in subBatch.Transactions)
                 {
                     var localTid = ++token.lastEmitTid;
-                    this.regionalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(curBatchID, localTid));
+                    this.regionalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(currentBatchId, localTid));
 
-                    var grainAccessInfo = regionalTransactionInfo[globalBid][globalTid];
-                    this.detTxnProcessor.GenerateSchedulePerService(localTid, curBatchID, grainAccessInfo);
+                    var grainAccessInfo = this.regionalTransactionInfo[regionalBid][globalTid];
+                    this.detTxnProcessor.GenerateSchedulePerService(localTid, currentBatchId, grainAccessInfo);
 
-                    this.regionalTidToLocalTidPerBatch[curBatchID].Add(globalTid, localTid);
+                    this.regionalTidToLocalTidPerBatch[currentBatchId].Add(globalTid, localTid);
                     this.regionalDetRequestPromise.Remove(globalTid);
                 }
 
-                this.regionalBidToIsPreviousBatchRegional.Add(globalBid, token.isLastEmitBidGlobal);
-                this.regionalBatchInfo.Remove(globalBid);
-                this.regionalTransactionInfo.Remove(globalBid);
-                this.detTxnProcessor.UpdateToken(token, curBatchID, globalBid);
-                token.lastEmitGlobalBid = globalBid;
+                this.regionalBidToIsPreviousBatchRegional.Add(regionalBid, token.isLastEmitBidGlobal);
+                this.regionalBatchInfo.Remove(regionalBid);
+                this.regionalTransactionInfo.Remove(regionalBid);
+                this.detTxnProcessor.UpdateToken(token, currentBatchId, regionalBid);
+                token.lastEmitGlobalBid = regionalBid;
             }
 
             return currentBatchIds;
@@ -365,27 +376,31 @@ namespace Concurrency.Implementation.Coordinator
         private void AckCompletionToRegionalCoordinator(long regionalBid)
         {
             this.GetPrimaryKeyLong(out string region);
-            var regionalCoordID = regionalBidToRegionalCoordID[regionalBid];
+            var regionalCoordID = this.regionalBidToRegionalCoordID[regionalBid];
             // Just try to get the regional silo somehow to see if it works
             string regionalCoordinatorRegion = region.Substring(0, 2);
+            this.logger.LogInformation("Complete current regional batch: {regionalBid} to RegionalCoordinator {id}-{region}", this.GrainReference, regionalBid, regionalCoordID, regionalCoordinatorRegion);
             //this.logger.Info($"[{region}] LocalCoordinatorGrain is going to call AckBatchCompletion on the regional coordinator:{regionalCoordinatorRegion} ID:{globalCoordID}");
             var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordID, regionalCoordinatorRegion);
 
             _ = regionalCoordinator.AckBatchCompletion(regionalBid);
         }
 
-        private async Task WaitRegionalBatchCommit(long globalBid)
+        private async Task WaitRegionalBatchCommit(long regionalBid)
         {
-            if (this.highestCommittedRegionalBid >= globalBid)
+            if (this.highestCommittedRegionalBid >= regionalBid)
             {
                 return;
             }
-            if (!this.regionalBatchCommit.ContainsKey(globalBid))
+            if (!this.regionalBatchCommit.ContainsKey(regionalBid))
             {
-                this.regionalBatchCommit.Add(globalBid, new TaskCompletionSource<bool>());
+                this.regionalBatchCommit.Add(regionalBid, new TaskCompletionSource<bool>());
             }
 
-            await this.regionalBatchCommit[globalBid].Task;
+            this.logger.LogInformation("Waiting for the regional batch: {bid} to commit",
+                                        this.GrainReference, regionalBid);
+
+            await this.regionalBatchCommit[regionalBid].Task;
         }
 
         #endregion
@@ -412,7 +427,7 @@ namespace Concurrency.Implementation.Coordinator
                 int id = grainId.Item1;
                 string region = grainId.Item2;
 
-                this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {Key}-{region} ", this.GrainReference, grainId, region);
+                this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {grainId}", this.GrainReference, grainId);
 
                 // I think this should be true, we just have the same info multiple places now
                 // The problem is if this is not true, then the local coordinator is talking to
@@ -420,10 +435,12 @@ namespace Concurrency.Implementation.Coordinator
 
                 var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, this.grainIdToGrainClassName[grainId]);
 
-                var localSubBatch = new LocalSubBatch(globalBid, subBatch);
-
-                localSubBatch.HighestCommittedBid = this.detTxnProcessor.highestCommittedBid;
-                localSubBatch.GlobalTidToLocalTid = regionalTidToLocalTid;
+                var localSubBatch = new LocalSubBatch(subBatch)
+                {
+                    RegionalBid = globalBid,
+                    HighestCommittedBid = this.detTxnProcessor.highestCommittedBid,
+                    RegionalTidToLocalTid = regionalTidToLocalTid
+                };
 
                 _ = destination.ReceiveBatchSchedule(localSubBatch);
             }

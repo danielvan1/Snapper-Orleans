@@ -55,24 +55,25 @@ namespace Concurrency.Implementation.Coordinator
 
 
         // for PACT
-        public async Task<Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewTransaction(List<Tuple<int, string>> siloList)
+        public async Task<Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewRegionalTransaction(List<Tuple<int, string>> silos)
         {
-            this.logger.LogInformation("Calling NewDet", this.GrainReference);
-            var id = await detTxnProcessor.NewDeterministicTransaction(siloList);
-            long bid = id.Item1;
-            long tid = id.Item2;
+            this.logger.LogInformation("New Regional transaction received. The silos involved in the trainsaction: [{silos}]  ",
+                                        this.GrainReference, string.Join(", ", silos));
+
+            Tuple<long, long> BidAndTid = await detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);
+            long bid = BidAndTid.Item1;
+            long tid = BidAndTid.Item2;
             Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(bid));
 
             this.logger.LogInformation("Returning transaction registration info with bid {bid} and tid {tid}", this.GrainReference, bid, tid);
 
-            var info = new TransactionRegisterInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
+            var transactionRegisterInfo = new TransactionRegisterInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
 
-            return new Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(info, this.localCoordinatorPerSiloPerBatch[bid]);
+            return new Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(transactionRegisterInfo, this.localCoordinatorPerSiloPerBatch[bid]);
         }
 
         public async Task PassToken(BasicToken token)
         {
-            //this.logger.LogInformation("Pass token is called", this.GrainReference);
             long curBatchId = -1;
 
             var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
@@ -91,32 +92,34 @@ namespace Concurrency.Implementation.Coordinator
                 this.detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
             }
 
-            await Task.Delay(2);
             _ = this.neighborCoord.PassToken(token);
+
             if (curBatchId != -1) _ = EmitBatch(curBatchId);
         }
 
-        async Task EmitBatch(long bid)
+        private async Task EmitBatch(long bid)
         {
-            var id = this.GetPrimaryKeyLong(out string region);
             this.logger.LogInformation("Going to emit batch {bid}", this.GrainReference, bid);
-            var curScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<Tuple<int, string>, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
 
-            var coords = this.localCoordinatorPerSiloPerBatch[bid];
+            Dictionary<Tuple<int, string>, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
 
-            foreach (var item in curScheduleMap)
+            foreach (( var id,  SubBatch subBatch) in currentScheduleMap)
             {
-                var localCoordID = coords[item.Key];
+                var localCoordID = coordinators[id];
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
-                this.logger.LogInformation("Trying to emit batch to {localCoordinatorRegionAndServer} with id: {localCoordinatorID}", this.GrainReference, localCoordinatorRegionAndServer, localCoordinatorID);
+                this.logger.LogInformation("Emit batch to {localCoordinatorRegionAndServer} with localCoordinator: {localCoordinatorID}, {subbatch}",
+                                            this.GrainReference, localCoordinatorRegionAndServer, localCoordinatorID, string.Join(", ", subBatch));
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
-                _ = dest.ReceiveBatchSchedule(item.Value);
+                _ = dest.ReceiveBatchSchedule(subBatch);
             }
         }
 
         public async Task AckBatchCompletion(long bid)
         {
+            this.logger.LogInformation("Received ack batch completion for bid: {bid}. expectedAcksPerBatch {acks}",
+                                        this.GrainReference, bid, this.expectedAcksPerBatch[bid]);
             // count down the number of expected ACKs from different silos
             this.expectedAcksPerBatch[bid]--;
 
@@ -130,14 +133,18 @@ namespace Concurrency.Implementation.Coordinator
             this.detTxnProcessor.AckBatchCommit(bid);
 
             // send ACKs to local coordinators
-            var curScheduleMap = this.bidToSubBatches[bid];
-            var coords = this.localCoordinatorPerSiloPerBatch[bid];
+            Dictionary<Tuple<int, string>, SubBatch> curScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<Tuple<int, string>, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
+
             foreach (var item in curScheduleMap)
             {
-                var localCoordID = coords[item.Key];
+                var localCoordID = coordinators[item.Key];
 
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
+
+                this.logger.LogInformation("Sending acknowledgements to local coordinator {localCoordinatorId} that batch: {bid} can commit",
+                                           this.GrainReference, localCoordinatorID+localCoordinatorRegionAndServer,bid);
 
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.AckRegionalBatchCommit(bid);
@@ -152,10 +159,12 @@ namespace Concurrency.Implementation.Coordinator
         public async Task WaitBatchCommit(long bid)
         {
             await detTxnProcessor.WaitBatchCommit(bid);
+            this.logger.LogInformation("Done waiting for batch: {bid} to commit", this.GrainReference, bid);
         }
 
         public Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor)
         {
+            // TODO: This seems not to be necessary as it is called in the ctor of detTxnProcessor
             this.detTxnProcessor.Init();
 
             this.neighborCoord = neighbor;

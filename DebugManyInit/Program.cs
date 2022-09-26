@@ -23,7 +23,7 @@ await client.Connect();
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
 
-var numberOfAccountsInEachServer = 10;
+var numberOfAccountsInEachServer = 2;
 var accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
 var theOneAccountThatSendsTheMoney = 1;
 var accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer+theOneAccountThatSendsTheMoney);
@@ -54,10 +54,10 @@ foreach (var accountId in accountIdsServer0)
     var id = accountId.Item1;
     var regionAndServer = accountId.Item2;
     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
-    Debug.Assert(11 == accessInfoClassNamesMultiTransfer.Count);
-    Debug.Assert(10 == accountIdsServer1.Count);
+    // Debug.Assert(11 == accessInfoClassNamesMultiTransfer.Count);
+    // Debug.Assert(10 == accountIdsServer1.Count);
     var herp = accountIdsServer1.Append(accountId).ToList();
-    Debug.Assert(11 == herp.Count);
+    // Debug.Assert(11 == herp.Count);
     var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferInput, herp, accessInfoClassNamesMultiTransfer);
     multiTransferTasks.Add(multiTransfertask);
 }

@@ -1,10 +1,10 @@
 using System.Threading.Tasks;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public record ScheduleNode
     {
-        public long Id { get; init; }
+        public long Bid { get; init; }
 
         public bool IsDet { get; init; }
 
@@ -14,9 +14,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public ScheduleNode Next { get; set; }
 
-        public ScheduleNode(long id, bool isDet)
+        public ScheduleNode(long bid, bool isDet)
         {
-            this.Id = id;
+            this.Bid = bid;
             this.IsDet = isDet;
             this.NextNodeCanExecute = new TaskCompletionSource<bool>();
         }

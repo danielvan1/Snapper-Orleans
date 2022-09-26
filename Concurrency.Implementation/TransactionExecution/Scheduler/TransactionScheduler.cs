@@ -4,18 +4,18 @@ using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public class TransactionScheduler
     {
-        private readonly ScheduleInfo scheduleInfo;
-        private Dictionary<long, SubBatch> batchInfo;                               // key: local bid
-        private Dictionary<long, long> tidToLastTid;
-        private Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
+        private readonly ScheduleInfoManager scheduleInfoManager;
+        private readonly Dictionary<long, SubBatch> batchInfo;                               // key: local bid
+        private readonly Dictionary<long, long> tidToLastTid;
+        private readonly Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
 
         public TransactionScheduler()
         {
-            this.scheduleInfo = new ScheduleInfo();
+            this.scheduleInfoManager = new ScheduleInfoManager();
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
@@ -23,12 +23,12 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public void CompleteDeterministicBatch(long bid)
         {
-            this.scheduleInfo.CompleteDeterministicBatch(bid);
+            this.scheduleInfoManager.CompleteDeterministicBatch(bid);
         }
 
         public void RegisterBatch(SubBatch batch, long regionalBid, long highestCommittedBid)
         {
-            this.scheduleInfo.InsertDeterministicBatch(batch, regionalBid, highestCommittedBid);
+            this.scheduleInfoManager.InsertDeterministicBatch(batch, regionalBid, highestCommittedBid);
             this.batchInfo.Add(batch.Bid, batch);
 
             // TODO: This logic can be improved
@@ -56,7 +56,7 @@ namespace Concurrency.Implementation.TransactionExecution
             if (previousTid == -1)
             {
                 // if the tid is the first txn in the batch, wait for previous node
-                var previousNode = this.scheduleInfo.GetDependingNode(bid);
+                var previousNode = this.scheduleInfoManager.GetDependingNode(bid);
                 await previousNode.NextNodeCanExecute.Task;
             }
             else
@@ -95,42 +95,11 @@ namespace Concurrency.Implementation.TransactionExecution
             return coordinatorId;
         }
 
-        // TODO: THIS IS GARBAGE COLLECTION. METHOD NAME SHOULD BE RENAMED TO SOME PROPER
         // this function is only used to do grabage collection
         // bid: current highest committed batch among all coordinators
-        public void AckBatchCommit(long bid)
+        public void GarbageCollection(long bid)
         {
-            if (bid == -1) return;
-            var head = this.scheduleInfo.DeterministicNodes[-1];
-            var node = head.Next;
-            if (node == null) return;
-            while (node != null)
-            {
-                if (node.Id <= bid)
-                {
-                    scheduleInfo.DeterministicNodes.Remove(node.Id);
-                    scheduleInfo.LocalBidToRegionalBid.Remove(node.Id);
-                } else break;   // meet a det node whose id > bid
-
-                if (node.Next == null) break;
-                node = node.Next;
-            }
-
-            // case 1: node.isDet = true && node.id <= bid && node.next = null
-            if (node.IsDet && node.Id <= bid)    // node should be removed
-            {
-                Debug.Assert(node.Next == null);
-                head.Next = null;
-            }
-            else  // node.isDet = false || node.id > bid
-            {
-                // case 2: node.isDet = true && node.id > bid
-                // case 3: node.isDet = false && node.next = null
-                // case 4: node.isDet = false && node.next.id > bid
-                Debug.Assert((node.IsDet && node.Id > bid) || (!node.IsDet && (node.Next == null || node.Next.Id > bid)));
-                head.Next = node;
-                node.Previous = head;
-            }
+            this.scheduleInfoManager.GarbageCollection(bid);
         }
     }
 }

@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.TransactionExecution.Scheduler;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
@@ -112,7 +113,7 @@ namespace Concurrency.Implementation.TransactionExecution
             if (this.highestCommittedLocalBid < transactionContext.Item1)
             {
                 this.highestCommittedLocalBid = transactionContext.Item1;
-                this.transactionScheduler.AckBatchCommit(highestCommittedLocalBid);
+                this.transactionScheduler.GarbageCollection(highestCommittedLocalBid);
             }
 
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
@@ -139,14 +140,14 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> Call this interface to emit a SubBatch from a local coordinator to a grain </summary>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
-            this.logger.LogInformation("ReceiveBatchSchedule was called with bid: {batch} from coordinator {intId}",
-                                       this.GrainReference, batch.Bid, batch.CoordinatorId);
+            this.logger.LogInformation("ReceiveBatchSchedule was called with bid",
+                                       this.GrainReference, batch);
 
             // do garbage collection for committed local batches
             if (this.highestCommittedLocalBid < batch.HighestCommittedBid)
             {
                 this.highestCommittedLocalBid = batch.HighestCommittedBid;
-                this.transactionScheduler.AckBatchCommit(this.highestCommittedLocalBid);
+                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
             }
 
             this.batchCommit.Add(batch.Bid, new TaskCompletionSource<bool>());
@@ -154,8 +155,8 @@ namespace Concurrency.Implementation.TransactionExecution
             // register the local SubBatch info
 
             this.logger.LogInformation($"ReceiveBatchSchedule: registerBatch", this.GrainReference);
-            this.transactionScheduler.RegisterBatch(batch, batch.GlobalBid, highestCommittedLocalBid);
-            this.logger.LogInformation($"ReceiveBatchSchedule: batchArrive. detTxnExecutor: {detTxnExecutor}", this.GrainReference);
+            this.transactionScheduler.RegisterBatch(batch, batch.RegionalBid, this.highestCommittedLocalBid);
+            this.logger.LogInformation($"ReceiveBatchSchedule: batchArrive", this.GrainReference);
             this.detTxnExecutor.BatchArrive(batch);
             this.logger.LogInformation($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);", this.GrainReference);
 
@@ -166,21 +167,24 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task WaitForBatchCommit(long bid)
         {
             if (this.highestCommittedLocalBid >= bid) return;
-            this.logger.LogInformation("Waiting for batch id: {bid} to commit", this.GrainReference, bid);
-            await batchCommit[bid].Task;
+            this.logger.LogInformation("Waiting for bid: {bid} to commit", this.GrainReference, bid);
+            await this.batchCommit[bid].Task;
         }
 
         /// <summary> A local coordinator calls this interface to notify the commitment of a local batch </summary>
         public Task AckBatchCommit(long bid)
         {
-            this.logger.LogInformation("DetTxnExecutor.AckBatchCommit is called on batch id: {bid} by local coordinator", this.GrainReference, bid);
+            this.logger.LogInformation("AckBatchCommit is called on batch id: {bid} by local coordinator", this.GrainReference, bid);
             if (this.highestCommittedLocalBid < bid)
             {
                 this.highestCommittedLocalBid = bid;
-                this.transactionScheduler.AckBatchCommit(highestCommittedLocalBid);
+                this.transactionScheduler.GarbageCollection(highestCommittedLocalBid);
             }
 
+            this.logger.LogInformation("Setting bid: {bid} to commit, these are the bid waiting: {bids}", this.GrainReference, bid, string.Join(", ", this.batchCommit.Select(kv => kv.Key + " : " + kv.Value.ToString())));
+
             this.batchCommit[bid].SetResult(true);
+
             this.batchCommit.Remove(bid);
             //myScheduler.AckBatchCommit(highestCommittedBid);
             return Task.CompletedTask;
@@ -188,11 +192,13 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
         {
-            this.logger.LogInformation($"detTxnExecutor.WaitForTurn(cxt)", this.GrainReference);
+            this.logger.LogInformation("ExecutingDeterministicTransaction: Function input: {functionName} and transaction context {context}",
+                                        this.GrainReference, call.funcName, context);
+
             await this.detTxnExecutor.WaitForTurn(context);
             var time = DateTime.Now;
 
-            this.logger.LogInformation($"InvokeFunction(call, cxt)", this.GrainReference);
+            this.logger.LogInformation("InvokeFunction(call, cxt)", this.GrainReference);
             var transactionResult = await InvokeFunction(call, context);   // execute the function call;
             this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
 

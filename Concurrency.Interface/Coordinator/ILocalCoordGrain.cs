@@ -11,7 +11,7 @@ namespace Concurrency.Interface.Coordinator
     {
         Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor);
 
-        Task<TransactionRegisterInfo> NewTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegisterInfo> NewLocalTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
 
         Task PassToken(LocalToken token);
 

@@ -45,7 +45,7 @@ namespace SmallBank.Grains
                 if (accountID != myState.accountID)
                 {
                     var funcCall = new FunctionCall("Deposit", money, typeof(SnapperTransactionalAccountGrain));
-                    var t = CallGrain(context, accountID, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
+                    var t = this.CallGrain(context, accountID, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
                     task.Add(t);
                 }
                 // This logic is weird, one of the recipients could be it self

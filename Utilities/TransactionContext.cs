@@ -4,15 +4,14 @@ using System.Diagnostics;
 namespace Utilities
 {
     [Serializable]
-    public class TransactionContext
+    public record TransactionContext
     {
         // only for PACT
         public long localBid;
         public long localTid;
-        public readonly long globalBid;
-
+        public readonly long regionalBid;
         // for global PACT and all ACT
-        public readonly long globalTid;
+        public readonly long regionalTid;
 
 
         /// <summary> This constructor is only for local PACT </summary>
@@ -20,8 +19,8 @@ namespace Utilities
         {
             this.localTid = localTid;
             this.localBid = localBid;
-            globalBid = -1;
-            globalTid = -1;
+            regionalBid = -1;
+            regionalTid = -1;
         }
 
         /// <summary> This constructor is only for global PACT </summary>
@@ -29,8 +28,13 @@ namespace Utilities
         {
             this.localBid = localBid;
             this.localTid = localTid;
-            this.globalBid = globalBid;
-            this.globalTid = globalTid;
+            this.regionalBid = globalBid;
+            this.regionalTid = globalTid;
+        }
+
+        public override string ToString()
+        {
+            return $"regionalBid: {this.regionalBid}, regionalTid: {this.regionalTid}, localBid: {this.localBid}, localTid: {this.localTid}";
         }
     }
 }

@@ -47,6 +47,7 @@ namespace Concurrency.Implementation.Configuration
 
                 for (int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
+                    // TODO: we might need to change the ids from coordinators and transaction execution grains since their keys overlap.
                     coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, regionAndServerKey);
                     nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, regionAndServerKey);
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));

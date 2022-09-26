@@ -78,24 +78,24 @@ namespace GeoSnapperDeployment
             await client.Connect();
 
             IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-            IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
+            // IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 
-            
-            var task1 = regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            var task2 = regionalConfigGrainEU.InitializeRegionalCoordinators("US");
+            await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+            // await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
 
             ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-            ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-            var task3 = localConfigGrainEU.InitializeLocalCoordinators("EU");
-            var task4 = localConfigGrainUS.InitializeLocalCoordinators("US");
-            List<Task> configureAllConfigAndCoordinators = new List<Task>()
-            {
-                task1, task2, task3, task4
+            // ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
+            await localConfigGrainEU.InitializeLocalCoordinators("EU");
+            // await localConfigGrainUS.InitializeLocalCoordinators("US");
+            // List<Task> configureAllConfigAndCoordinators = new List<Task>()
+            // {
+            //     task1, task2, task3, task4
 
-            };
-            await Task.WhenAll(configureAllConfigAndCoordinators);
+            // };
 
-            await client.Close();
+            // await Task.WhenAll(configureAllConfigAndCoordinators);
+
+            client.Close();
 
             Console.WriteLine("All silos created successfully");
             Console.WriteLine("Press Enter to terminate all silos...");
