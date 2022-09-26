@@ -73,6 +73,10 @@ namespace GeoSnapperDeployment
                 options.ClusterId = "Snapper";
                 options.ServiceId = "Snapper";
             })
+            .Configure<ClientMessagingOptions>(options => 
+            {
+                options.ResponseTimeout = new TimeSpan(0, 5, 0);
+            })
             .Build();
 
             await client.Connect();

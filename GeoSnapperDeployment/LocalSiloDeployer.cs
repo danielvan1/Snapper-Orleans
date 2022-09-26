@@ -177,6 +177,11 @@ namespace GeoSnapperDeployment
                            {
                                options.AdvertisedIPAddress = IPAddress.Loopback;
                            })
+                           .Configure<ClientMessagingOptions>(options => 
+                           {
+                               options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                               options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
+                           })
                            .Configure<ClusterOptions>(options =>
                            {
                                options.ClusterId = clusterId;
