@@ -105,11 +105,11 @@ namespace Concurrency.Implementation.Coordinator
             }
 
             // assign bid and tid to waited PACTs
-            var currentBatchID = token.lastEmitTid + 1;
+            var currentBatchID = token.previousEmitTid + 1;
 
             for (int i = 0; i < this.deterministicRequests.Count; i++)
             {
-                var tid = ++token.lastEmitTid;
+                var tid = ++token.previousEmitTid;
                 this.GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
                 var herp = new Tuple<long, long>(currentBatchID, tid);
                 this.deterministicRequestPromise[i].SetResult(herp);
@@ -167,46 +167,52 @@ namespace Concurrency.Implementation.Coordinator
             }
         }
 
-        public void UpdateToken(BasicToken token, long curBatchID, long globalBid)
+        public void UpdateToken(BasicToken token, long currentBatchId, long globalBid)
         {
-            Dictionary<Tuple<int, string>, SubBatch> serviceIDToSubBatch = bidToSubBatches[curBatchID];
-            this.expectedAcksPerBatch.Add(curBatchID, serviceIDToSubBatch.Count);
+            Dictionary<Tuple<int, string>, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
+            this.expectedAcksPerBatch.Add(currentBatchId, serviceIDToSubBatch.Count);
+            this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.grainReference, currentBatchId, token);
 
-            // update the last batch ID for each service accessed by this batch
+
+            // update the previous batch ID for each service accessed by this batch
             foreach (var serviceInfo in serviceIDToSubBatch)
             {
-                var serviceID = serviceInfo.Key;
-                var subBatch = serviceInfo.Value;
+                Tuple<int, string> serviceId = serviceInfo.Key;
+                SubBatch subBatch = serviceInfo.Value;
+                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.grainReference, serviceId, subBatch);
 
-                if (token.lastBidPerService.ContainsKey(serviceID))
+                if (token.previousBidPerService.ContainsKey(serviceId))
                 {
-                    subBatch.PreviousBid = token.lastBidPerService[serviceID];
+                    this.logger.LogInformation("New subbatch previousBid value: {value}", this.grainReference, token.previousBidPerService[serviceId]);
+                    subBatch.PreviousBid = token.previousBidPerService[serviceId];
                     // TODO: Consider this: token.lastGlobalBidPerGrain[new Tuple<int, string>(this.myID, serviceID)];
                     // the old code just used token.lastGlobalBidPerGrain[serviceID];
                     if (!this.isRegionalCoordinator)
                     {
-                        subBatch.lastGlobalBid = token.lastGlobalBidPerGrain[serviceID];
+                        subBatch.previousGlobalBid = token.previousRegionalBidPerGrain[serviceId];
                     }
                 }
                 // else, the default value is -1
 
                 Debug.Assert(subBatch.Bid > subBatch.PreviousBid);
-                token.lastBidPerService[serviceID] = subBatch.Bid;
+                token.previousBidPerService[serviceId] = subBatch.Bid;
                 if (!this.isRegionalCoordinator)
                 {
-                    token.lastGlobalBidPerGrain[serviceID] = globalBid;
+                    token.previousRegionalBidPerGrain[serviceId] = globalBid;
                 }
             }
-            this.bidToLastBid.Add(curBatchID, token.lastEmitBid);
+            this.bidToLastBid.Add(currentBatchId, token.previousEmitBid);
 
-            if (token.lastEmitBid != -1)
+            if (token.previousEmitBid != -1)
             {
-                this.bidToLastCoordID.Add(curBatchID, token.lastCoordID);
+                this.bidToLastCoordID.Add(currentBatchId, token.previousCoordID);
             }
 
-            token.lastEmitBid = curBatchID;
+            token.previousEmitBid = currentBatchId;
             token.isLastEmitBidGlobal = globalBid != -1;
-            token.lastCoordID = this.myId;
+            token.previousCoordID = this.myId;
+
+            this.logger.LogInformation("updated token: {token}", this.grainReference, token);
         }
 
 
@@ -284,7 +290,7 @@ namespace Concurrency.Implementation.Coordinator
             var expiredGrains = new HashSet<Tuple<int, string>>();
 
             // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.lastBidPerService)
+            foreach (var item in token.previousBidPerService)
             {
                 if (item.Value <= highestCommittedBid)
                 {
@@ -294,8 +300,8 @@ namespace Concurrency.Implementation.Coordinator
 
             foreach (var item in expiredGrains)
             {
-                token.lastBidPerService.Remove(item);
-                token.lastGlobalBidPerGrain.Remove(item);
+                token.previousBidPerService.Remove(item);
+                token.previousRegionalBidPerGrain.Remove(item);
             }
 
             token.highestCommittedBid = highestCommittedBid;

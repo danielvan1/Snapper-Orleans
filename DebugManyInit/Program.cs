@@ -15,10 +15,6 @@ var client = new ClientBuilder()
     options.ClusterId = "Snapper";
     options.ServiceId = "Snapper";
 })
-.Configure<ClientMessagingOptions>(options => 
-{
-    options.ResponseTimeout = new TimeSpan(0, 5, 0);
-})
 .Build();
 
 await client.Connect();
@@ -37,6 +33,7 @@ var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccounts
 var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1);
 var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
 var initTasks = new List<Task>();
+
 Console.WriteLine("Starting with inits");
 foreach (var accountId in accountIds)
 {

@@ -21,7 +21,7 @@ namespace Concurrency.Interface.Models
 
         public override string ToString()
         {
-            return $"GlobalBid: {this.RegionalBid}, HighestCommittedBid: {this.HighestCommittedBid}, {base.ToString()}";
+            return $"RegionalBid: {this.RegionalBid}, HighestCommittedBid: {this.HighestCommittedBid}, {base.ToString()}";
         }
     }
 }

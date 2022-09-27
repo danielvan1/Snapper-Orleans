@@ -62,6 +62,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger = logger;
             this.grainReference = grainReference;
             this.myId = myId;
+
             this.myID = myID;
             this.siloID = siloID;
             this.myLocalCoordID = myLocalCoordID;
@@ -93,6 +94,7 @@ namespace Concurrency.Implementation.TransactionExecution
             for (int i = 0; i < grainAccessInfos.Count; i++)
             {
                 var grainId = grainAccessInfos[i];
+
                 if (!grainListPerSilo.ContainsKey(grainId.Item2))
                 {
                     silos.Add(grainId);
@@ -123,6 +125,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 // send corresponding grainAccessInfo to local coordinators in different silos
                 Debug.Assert(grainListPerSilo.ContainsKey(siloID));
                 Task<TransactionRegisterInfo> task = null;
+
                 for (int i = 0; i < silos.Count; i++)
                 {
                     var siloId = silos[i];
@@ -144,8 +147,6 @@ namespace Concurrency.Implementation.TransactionExecution
 
                         _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId.Item2], grainNamePerSilo[siloId.Item2]);
                     }
-
-
                 }
 
                 Debug.Assert(task != null);

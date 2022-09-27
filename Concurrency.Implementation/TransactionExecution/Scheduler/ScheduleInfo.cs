@@ -76,7 +76,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
                 {
                     var prevNode = new ScheduleNode(subBatch.PreviousBid, true);
                     this.deterministicNodes.Add(subBatch.PreviousBid, prevNode);
-                    this.localBidToRegionalBid.Add(subBatch.PreviousBid, subBatch.lastGlobalBid);
+                    this.localBidToRegionalBid.Add(subBatch.PreviousBid, subBatch.previousGlobalBid);
                     prevNode.Next = node;
                     node.Previous = prevNode;
                     Debug.Assert(prevNode.Previous == null);

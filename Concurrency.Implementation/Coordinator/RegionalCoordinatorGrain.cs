@@ -50,6 +50,7 @@ namespace Concurrency.Implementation.Coordinator
                 this.bidToSubBatches,
                 this.GrainFactory,
                 this.localCoordinatorPerSiloPerBatch);
+
             return base.OnActivateAsync();
         }
 
@@ -80,6 +81,7 @@ namespace Concurrency.Implementation.Coordinator
             if (elapsedTime >= batchSizeInMSecs)
             {
                 curBatchId = detTxnProcessor.GenerateBatch(token);
+
                 if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
             }
 
@@ -94,7 +96,7 @@ namespace Concurrency.Implementation.Coordinator
 
             _ = this.neighborCoord.PassToken(token);
 
-            if (curBatchId != -1) _ = EmitBatch(curBatchId);
+            if (curBatchId != -1) await EmitBatch(curBatchId);
         }
 
         private async Task EmitBatch(long bid)
@@ -109,8 +111,8 @@ namespace Concurrency.Implementation.Coordinator
                 var localCoordID = coordinators[id];
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
-                this.logger.LogInformation("Emit batch to {localCoordinatorRegionAndServer} with localCoordinator: {localCoordinatorID}, {subbatch}",
-                                            this.GrainReference, localCoordinatorRegionAndServer, localCoordinatorID, string.Join(", ", subBatch));
+                this.logger.LogInformation("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",
+                                            this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer, subBatch);
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.ReceiveBatchSchedule(subBatch);
             }

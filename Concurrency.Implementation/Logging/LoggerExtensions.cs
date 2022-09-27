@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Orleans;
 using Orleans.Runtime;
 
 namespace Concurrency.Implementation.Logging
@@ -58,8 +59,7 @@ namespace Concurrency.Implementation.Logging
         public static void LogError(this ILogger logger, string message, GrainReference grainReference)
         {
             var grainIdentity = grainReference.GrainIdentity;
-
-            long id = grainIdentity.GetPrimaryKeyLong(out string region);
+            long id = grainReference.GetPrimaryKeyLong(out string region);
             string identityString = grainIdentity.IdentityString;
 
             logger.LogError($"[{{id}}-{{region}}-{{ClassName}}]: {message}", id, region, GetClassName(identityString));
