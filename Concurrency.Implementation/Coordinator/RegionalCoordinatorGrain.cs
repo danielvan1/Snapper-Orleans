@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -25,9 +24,9 @@ namespace Concurrency.Implementation.Coordinator
         // PACT
         private DetTxnProcessor detTxnProcessor;
         private Dictionary<long, int> expectedAcksPerBatch;
-        private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches;
+        private Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches;
         // only for global batches (Hierarchical Architecture)
-        private Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch;        // <global bid, siloID, chosen local Coord ID>
+        private Dictionary<long, Dictionary<string, Tuple<int, string>>> localCoordinatorPerSiloPerBatch;        // <global bid, siloID, chosen local Coord ID>
 
         private DateTime timeOfBatchGeneration;
         private double batchSizeInMSecs;
@@ -40,8 +39,8 @@ namespace Concurrency.Implementation.Coordinator
         public override Task OnActivateAsync()
         {
             this.expectedAcksPerBatch = new Dictionary<long, int>();
-            this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
-            this.localCoordinatorPerSiloPerBatch = new Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>>();
+            this.bidToSubBatches = new Dictionary<long, Dictionary<string, SubBatch>>();
+            this.localCoordinatorPerSiloPerBatch = new Dictionary<long, Dictionary<string, Tuple<int, string>>>();
             this.detTxnProcessor = new DetTxnProcessor(
                 this.logger,
                 this.GrainReference,
@@ -56,24 +55,24 @@ namespace Concurrency.Implementation.Coordinator
 
 
         // for PACT
-        public async Task<Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>> NewRegionalTransaction(List<Tuple<int, string>> silos)
+        public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>>> NewRegionalTransaction(List<string> silos)
         {
             this.logger.LogInformation("New Regional transaction received. The silos involved in the trainsaction: [{silos}]  ",
                                         this.GrainReference, string.Join(", ", silos));
 
-            Tuple<long, long> BidAndTid = await detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);
-            long bid = BidAndTid.Item1;
-            long tid = BidAndTid.Item2;
+            Tuple<long, long> bidAndTid = await detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);
+            long bid = bidAndTid.Item1;
+            long tid = bidAndTid.Item2;
             Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(bid));
 
             this.logger.LogInformation("Returning transaction registration info with bid {bid} and tid {tid}", this.GrainReference, bid, tid);
 
             var transactionRegisterInfo = new TransactionRegisterInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
 
-            return new Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>>(transactionRegisterInfo, this.localCoordinatorPerSiloPerBatch[bid]);
+            return new Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>>(transactionRegisterInfo, this.localCoordinatorPerSiloPerBatch[bid]);
         }
 
-        public async Task PassToken(BasicToken token)
+        public async Task PassToken(RegionalToken token)
         {
             long curBatchId = -1;
 
@@ -85,13 +84,13 @@ namespace Concurrency.Implementation.Coordinator
                 if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
             }
 
-            if (this.detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
+            if (this.detTxnProcessor.highestCommittedBid > token.HighestCommittedBid)
             {
-                token.highestCommittedBid = this.detTxnProcessor.highestCommittedBid;
+                token.HighestCommittedBid = this.detTxnProcessor.highestCommittedBid;
             }
             else
             {
-                this.detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
+                this.detTxnProcessor.highestCommittedBid = token.HighestCommittedBid;
             }
 
             _ = this.neighborCoord.PassToken(token);
@@ -102,9 +101,9 @@ namespace Concurrency.Implementation.Coordinator
         private async Task EmitBatch(long bid)
         {
             this.logger.LogInformation("Going to emit batch {bid}", this.GrainReference, bid);
-            Dictionary<Tuple<int, string>, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<string, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
 
-            Dictionary<Tuple<int, string>, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
+            Dictionary<string, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
 
             foreach (( var id,  SubBatch subBatch) in currentScheduleMap)
             {
@@ -135,8 +134,8 @@ namespace Concurrency.Implementation.Coordinator
             this.detTxnProcessor.AckBatchCommit(bid);
 
             // send ACKs to local coordinators
-            Dictionary<Tuple<int, string>, SubBatch> curScheduleMap = this.bidToSubBatches[bid];
-            Dictionary<Tuple<int, string>, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
+            Dictionary<string, SubBatch> curScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<string, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
 
             foreach (var item in curScheduleMap)
             {

@@ -22,7 +22,7 @@ namespace Concurrency.Implementation.Coordinator
         IGlobalCoordinatorGrain neighborCoord;
 
         // PACT
-        DetTxnProcessor detTxnProcessor;
+        // DetTxnProcessor detTxnProcessor;
         Dictionary<long, int> expectedAcksPerBatch;
         Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches;
         // only for global batches (Hierarchical Architecture)
@@ -46,29 +46,29 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // for PACT
-        public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList)
-        {
-            var id = await detTxnProcessor.GetDeterministicTransactionBidAndTid(siloList);
-            Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
-            var info = new TransactionRegisterInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
-            return new Tuple<TransactionRegisterInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
-        }
+        // public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<string> siloList)
+        // {
+        //     // var id = await detTxnProcessor.GetDeterministicTransactionBidAndTid(siloList);
+        //     // Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
+        //     // var info = new TransactionRegisterInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
+        //     // return new Tuple<TransactionRegisterInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
+        // }
 
-        public Task PassToken(BasicToken token)
+        public Task PassToken(TokenBase token)
         {
             long curBatchID = -1;
             var elapsedTime = (DateTime.Now - timeOfBatchGeneration).TotalMilliseconds;
-            if (elapsedTime >= batchSizeInMSecs)
-            {
-                curBatchID = detTxnProcessor.GenerateBatch(token);
-                if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
-            }
+            // if (elapsedTime >= batchSizeInMSecs)
+            // {
+            //     curBatchID = detTxnProcessor.GenerateBatch(token);
+            //     if (curBatchID != -1) timeOfBatchGeneration = DateTime.Now;
+            // }
 
-            if (detTxnProcessor.highestCommittedBid > token.highestCommittedBid)
-                token.highestCommittedBid = detTxnProcessor.highestCommittedBid;
-            else detTxnProcessor.highestCommittedBid = token.highestCommittedBid;
+            // if (detTxnProcessor.highestCommittedBid > token.HighestCommittedBid)
+            //     token.HighestCommittedBid = detTxnProcessor.highestCommittedBid;
+            // else detTxnProcessor.highestCommittedBid = token.HighestCommittedBid;
 
-            _ = neighborCoord.PassToken(token);
+            // _ = neighborCoord.PassToken(token);
             if (curBatchID != -1) _ = EmitBatch(curBatchID);
             return Task.CompletedTask;
         }
@@ -86,40 +86,40 @@ namespace Concurrency.Implementation.Coordinator
             }
         }
 
-        public async Task AckBatchCompletion(long bid)
-        {
-            // count down the number of expected ACKs from different silos
-            expectedAcksPerBatch[bid]--;
-            if (expectedAcksPerBatch[bid] != 0) return;
+        // public async Task AckBatchCompletion(long bid)
+        // {
+        //     // count down the number of expected ACKs from different silos
+        //     expectedAcksPerBatch[bid]--;
+        //     if (expectedAcksPerBatch[bid] != 0) return;
 
-            // commit the batch
-            await detTxnProcessor.WaitPrevBatchToCommit(bid);
-            detTxnProcessor.AckBatchCommit(bid);
+        //     // commit the batch
+        //     await detTxnProcessor.WaitPrevBatchToCommit(bid);
+        //     detTxnProcessor.AckBatchCommit(bid);
 
-            // send ACKs to local coordinators
-            var curScheduleMap = bidToSubBatches[bid];
-            var coords = coordPerBatchPerSilo[bid];
-            foreach (var item in curScheduleMap)
-            {
-                var localCoordID = coords[item.Key];
-                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
-                _ = dest.AckRegionalBatchCommit(bid);
-            }
+        //     // send ACKs to local coordinators
+        //     var curScheduleMap = bidToSubBatches[bid];
+        //     var coords = coordPerBatchPerSilo[bid];
+        //     foreach (var item in curScheduleMap)
+        //     {
+        //         var localCoordID = coords[item.Key];
+        //         var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
+        //         _ = dest.AckRegionalBatchCommit(bid);
+        //     }
 
-            // garbage collection
-            bidToSubBatches.Remove(bid);
-            coordPerBatchPerSilo.Remove(bid);
-            expectedAcksPerBatch.Remove(bid);
-        }
+        //     // garbage collection
+        //     bidToSubBatches.Remove(bid);
+        //     coordPerBatchPerSilo.Remove(bid);
+        //     expectedAcksPerBatch.Remove(bid);
+        // }
 
-        public async Task WaitBatchCommit(long bid)
-        {
-            await detTxnProcessor.WaitBatchCommit(bid);
-        }
+        // public async Task WaitBatchCommit(long bid)
+        // {
+        //     await detTxnProcessor.WaitBatchCommit(bid);
+        // }
 
         public Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor)
         {
-            this.detTxnProcessor.Init();
+            // this.detTxnProcessor.Init();
 
             this.neighborCoord = neighbor;
 

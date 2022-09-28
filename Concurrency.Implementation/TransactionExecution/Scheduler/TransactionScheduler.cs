@@ -36,8 +36,8 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             {
                 var tid = batch.Transactions[i];
                 // TODO: Change it to look nicer
-                if (i == 0) tidToLastTid.Add(tid, -1);
-                else tidToLastTid.Add(tid, batch.Transactions[i - 1]);
+                if (i == 0) this.tidToLastTid.Add(tid, -1);
+                else this.tidToLastTid.Add(tid, batch.Transactions[i - 1]);
 
                 if (i == batch.Transactions.Count - 1) break;
 
@@ -75,7 +75,8 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         public long IsBatchComplete(long bid, long tid)
         {
             // TODO: Can be optimized to use a Queue. This is O(n^2).
-            var transactions = this.batchInfo[bid].Transactions;
+            List<long> transactions = this.batchInfo[bid].Transactions;
+
             Debug.Assert(transactions.First() == tid);
             transactions.RemoveAt(0);
             this.tidToLastTid.Remove(tid);
@@ -89,6 +90,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             }
             else
             {
+                // The next Tid can continue after this.
                 this.deterministicExecutionPromise[tid].SetResult(true);
             }
 

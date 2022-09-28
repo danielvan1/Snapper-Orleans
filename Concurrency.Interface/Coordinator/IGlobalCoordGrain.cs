@@ -11,12 +11,12 @@ namespace Concurrency.Interface.Coordinator
     {
         Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor);
 
-        Task PassToken(BasicToken token);
+        Task PassToken(TokenBase token);
 
-        Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList);
+        // Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<Tuple<int, string>> siloList);
 
-        Task AckBatchCompletion(long bid);
+        // Task AckBatchCompletion(long bid);
 
-        Task WaitBatchCommit(long bid);
+        // Task WaitBatchCommit(long bid);
     }
 }

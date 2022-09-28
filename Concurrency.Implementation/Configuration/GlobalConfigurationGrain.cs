@@ -71,7 +71,7 @@ namespace Concurrency.Implementation.Configuration
             if (!this.tokenEnabled)
             {
                 var coordinator0 = GrainFactory.GetGrain<IGlobalCoordinatorGrain>(0, deploymentRegion);
-                BasicToken token = new BasicToken();
+                TokenBase token = new TokenBase();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;
 

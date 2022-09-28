@@ -3,7 +3,7 @@ using System;
 namespace Concurrency.Interface.Models
 {
     [Serializable]
-    public class LocalToken : BasicToken
+    public class LocalToken : TokenBase
     {
         // for global info
         public long lastEmitGlobalBid;

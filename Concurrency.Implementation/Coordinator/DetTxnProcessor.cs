@@ -18,39 +18,37 @@ namespace Concurrency.Implementation.Coordinator
         private readonly GrainReference grainReference;
         private readonly Random random;
         private readonly long myId;
-        private readonly bool isRegionalCoordinator;
+        private readonly bool isRegionalCoordinator = true;
         public long highestCommittedBid;
-        readonly ICoordMap coordMap;
 
         // transaction processing
-        private IList<List<Tuple<int, string>>> deterministicRequests;
+        private IList<List<string>> deterministicRequests;
         private List<TaskCompletionSource<Tuple<long, long>>> deterministicRequestPromise; // <local bid, local tid>
 
         // batch processing
         private Dictionary<long, long> bidToLastBid;
         private Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
         private Dictionary<long, int> expectedAcksPerBatch;
-        private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
+        private Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
         private readonly IGrainFactory grainFactory;
         private Dictionary<long, TaskCompletionSource<bool>> batchCommit;
 
         // only for global batch
-        private Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // regional bid, silo ID, chosen local coord ID
+        private Dictionary<long, Dictionary<string, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // regional bid, silo ID, chosen local coord ID
 
         public DetTxnProcessor(
             ILogger logger,
             GrainReference grainReference,
             long myID,
             Dictionary<long, int> expectedAcksPerBatch,
-            Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches,
+            Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches,
             IGrainFactory grainFactory,
-            Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch = null)
+            Dictionary<long, Dictionary<string, Tuple<int, string>>> localCoordinatorPerSiloPerBatch)
         {
             this.logger = logger;
             this.grainReference = grainReference;
             this.random = new Random();
             this.myId = myID;
-            this.coordMap = coordMap;
             this.bidToLastBid = new Dictionary<long, long>();
             this.bidToLastCoordID = new Dictionary<long, long>();
             this.expectedAcksPerBatch = expectedAcksPerBatch;
@@ -59,7 +57,6 @@ namespace Concurrency.Implementation.Coordinator
 
             // TODO: Consider if this following two lines are equivalent
             // to the previous code, I think it is.
-            this.isRegionalCoordinator = localCoordinatorPerSiloPerBatch != null;
             this.localCoordinatorPerSiloPerBatch = localCoordinatorPerSiloPerBatch;
 
             this.Init();
@@ -68,13 +65,13 @@ namespace Concurrency.Implementation.Coordinator
         public void Init()
         {
             this.highestCommittedBid = -1;
-            this.deterministicRequests = new List<List<Tuple<int, string>>>();
+            this.deterministicRequests = new List<List<string>>();
             this.deterministicRequestPromise = new List<TaskCompletionSource<Tuple<long, long>>>();
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
         }
 
         // for PACT
-        public async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<Tuple<int, string>> serviceList)   // returns a Tuple<bid, tid>
+        public async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<string> serviceList)   // returns a Tuple<bid, tid>
         {
             this.deterministicRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
@@ -97,7 +94,7 @@ namespace Concurrency.Implementation.Coordinator
         /// This is called every time the corresponding coordinator receives the token.
         /// </summary>
         /// <returns>batchId</returns>
-        public long GenerateBatch(BasicToken token)
+        public long GenerateBatch(RegionalToken token)
         {
             if (this.deterministicRequests.Count == 0)
             {
@@ -105,11 +102,11 @@ namespace Concurrency.Implementation.Coordinator
             }
 
             // assign bid and tid to waited PACTs
-            var currentBatchID = token.previousEmitTid + 1;
+            var currentBatchID = token.PreviousEmitTid + 1;
 
             for (int i = 0; i < this.deterministicRequests.Count; i++)
             {
-                var tid = ++token.previousEmitTid;
+                var tid = ++token.PreviousEmitTid;
                 this.GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
                 var herp = new Tuple<long, long>(currentBatchID, tid);
                 this.deterministicRequestPromise[i].SetResult(herp);
@@ -131,45 +128,45 @@ namespace Concurrency.Implementation.Coordinator
         //
         // This is why we differentiate between the two with isRegionalCoordinator
         // This method creates the subbatch for each of the executiongrains
-        public void GenerateSchedulePerService(long tid, long currentBatchId, List<Tuple<int, string>> deterministicRequests)
+        public void GenerateSchedulePerService(long tid, long currentBatchId, List<string> deterministicRequests)
         {
             if (!this.bidToSubBatches.ContainsKey(currentBatchId))
             {
-                this.bidToSubBatches.Add(currentBatchId, new Dictionary<Tuple<int, string>, SubBatch>());
+                this.bidToSubBatches.Add(currentBatchId, new Dictionary<string, SubBatch>());
                 if (this.isRegionalCoordinator)
                 {
                     // Maps: currentbatchID => <region, <local coordinator Tuple(id, region)>>
-                    this.localCoordinatorPerSiloPerBatch.Add(currentBatchId, new Dictionary<Tuple<int, string>, Tuple<int, string>>());
+                    this.localCoordinatorPerSiloPerBatch.Add(currentBatchId, new Dictionary<string, Tuple<int, string>>());
                 }
             }
 
-            Dictionary<Tuple<int, string>, SubBatch> deterministicRequestToSubBatch = this.bidToSubBatches[currentBatchId];
+            Dictionary<string, SubBatch> siloToSubBatch = this.bidToSubBatches[currentBatchId];
 
             for (int i = 0; i < deterministicRequests.Count; i++)
             {
-                var grainId = deterministicRequests[i];
+                var siloId = deterministicRequests[i];
 
-                if (!deterministicRequestToSubBatch.ContainsKey(grainId))
+                if (!siloToSubBatch.ContainsKey(siloId))
                 {
-                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(currentBatchId, myId));
+                    siloToSubBatch.Add(siloId, new SubBatch(currentBatchId, myId));
 
                     if (this.isRegionalCoordinator)
                     {
                         // randomly choose a local coord as the coordinator for this batch on that silo
                         int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
-                        string localCoordinatorSilo = grainId.Item2;
-                        this.localCoordinatorPerSiloPerBatch[currentBatchId].Add(grainId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorSilo));
+                        string localCoordinatorSiloId = siloId;
+                        this.localCoordinatorPerSiloPerBatch[currentBatchId].Add(siloId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorSiloId));
                     }
                 }
 
                 // TODO: This seems pretty sketchy. Why do we add the same tid so many times?
-                deterministicRequestToSubBatch[grainId].Transactions.Add(tid);
+                siloToSubBatch[siloId].Transactions.Add(tid);
             }
         }
 
-        public void UpdateToken(BasicToken token, long currentBatchId, long globalBid)
+        public void UpdateToken(RegionalToken token, long currentBatchId, long globalBid)
         {
-            Dictionary<Tuple<int, string>, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
+            Dictionary<string, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
             this.expectedAcksPerBatch.Add(currentBatchId, serviceIDToSubBatch.Count);
             this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.grainReference, currentBatchId, token);
 
@@ -177,40 +174,30 @@ namespace Concurrency.Implementation.Coordinator
             // update the previous batch ID for each service accessed by this batch
             foreach (var serviceInfo in serviceIDToSubBatch)
             {
-                Tuple<int, string> serviceId = serviceInfo.Key;
+                string siloId = serviceInfo.Key;
                 SubBatch subBatch = serviceInfo.Value;
-                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.grainReference, serviceId, subBatch);
+                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.grainReference, siloId, subBatch);
 
-                if (token.previousBidPerService.ContainsKey(serviceId))
+                if (token.PreviousBidPerSilo.ContainsKey(siloId))
                 {
-                    this.logger.LogInformation("New subbatch previousBid value: {value}", this.grainReference, token.previousBidPerService[serviceId]);
-                    subBatch.PreviousBid = token.previousBidPerService[serviceId];
-                    // TODO: Consider this: token.lastGlobalBidPerGrain[new Tuple<int, string>(this.myID, serviceID)];
-                    // the old code just used token.lastGlobalBidPerGrain[serviceID];
-                    if (!this.isRegionalCoordinator)
-                    {
-                        subBatch.previousGlobalBid = token.previousRegionalBidPerGrain[serviceId];
-                    }
+                    this.logger.LogInformation("New subbatch previousBid value: {value}", this.grainReference, token.PreviousBidPerSilo[siloId]);
+                    subBatch.PreviousBid = token.PreviousBidPerSilo[siloId];
                 }
                 // else, the default value is -1
 
                 Debug.Assert(subBatch.Bid > subBatch.PreviousBid);
-                token.previousBidPerService[serviceId] = subBatch.Bid;
-                if (!this.isRegionalCoordinator)
-                {
-                    token.previousRegionalBidPerGrain[serviceId] = globalBid;
-                }
+                token.PreviousBidPerSilo[siloId] = subBatch.Bid;
             }
-            this.bidToLastBid.Add(currentBatchId, token.previousEmitBid);
+            this.bidToLastBid.Add(currentBatchId, token.PreviousEmitBid);
 
-            if (token.previousEmitBid != -1)
+            if (token.PreviousEmitBid != -1)
             {
-                this.bidToLastCoordID.Add(currentBatchId, token.previousCoordID);
+                this.bidToLastCoordID.Add(currentBatchId, token.PreviousCoordID);
             }
 
-            token.previousEmitBid = currentBatchId;
-            token.isLastEmitBidGlobal = globalBid != -1;
-            token.previousCoordID = this.myId;
+            token.PreviousEmitBid = currentBatchId;
+            token.IsLastEmitBidGlobal = globalBid != -1;
+            token.PreviousCoordID = this.myId;
 
             this.logger.LogInformation("updated token: {token}", this.grainReference, token);
         }
@@ -284,27 +271,27 @@ namespace Concurrency.Implementation.Coordinator
             }
         }
 
-        public void GarbageCollectTokenInfo(BasicToken token)
+        public void GarbageCollectTokenInfo(RegionalToken token)
         {
             Debug.Assert(!this.isRegionalCoordinator);
-            var expiredGrains = new HashSet<Tuple<int, string>>();
+            var expiredSilos = new HashSet<string>();
 
             // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.previousBidPerService)
+            foreach (var item in token.PreviousBidPerSilo)
             {
                 if (item.Value <= highestCommittedBid)
                 {
-                     expiredGrains.Add(item.Key);
+                     expiredSilos.Add(item.Key);
                 }
             }
 
-            foreach (var item in expiredGrains)
+            foreach (var item in expiredSilos)
             {
-                token.previousBidPerService.Remove(item);
-                token.previousRegionalBidPerGrain.Remove(item);
+                token.PreviousBidPerSilo.Remove(item);
+                // token.previousRegionalBidPerGrain.Remove(item);
             }
 
-            token.highestCommittedBid = highestCommittedBid;
+            token.HighestCommittedBid = highestCommittedBid;
         }
     }
 }

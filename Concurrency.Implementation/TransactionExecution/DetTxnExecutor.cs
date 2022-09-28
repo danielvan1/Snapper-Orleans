@@ -38,12 +38,13 @@ namespace Concurrency.Implementation.TransactionExecution
 
         // PACT execution
         private Dictionary<long, TaskCompletionSource<bool>> localBatchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
+        private Dictionary<long, TaskCompletionSource<bool>> regionalBatchInfoPromise;      // key: global bid, use to check if the SubBatch has arrived or not
+
         private Dictionary<long, BasicFuncResult> determinsticFunctionResults;       // key: local PACT tid, this can only work when a transaction do not concurrently access one grain multiple times
 
-        // only for global PACT
+        // only for regional PACT
         private Dictionary<long, long> regionalBidToLocalBid;
         private Dictionary<long, Dictionary<long, long>> regionalBidToRegionalTidToLocalTidPerBatch;    // key: global bid, <global tid, local tid>
-        private Dictionary<long, TaskCompletionSource<bool>> regionalBatchInfoPromise;      // key: global bid, use to check if the SubBatch has arrived or not
 
         public DetTxnExecutor(
             ILogger logger,
@@ -80,30 +81,40 @@ namespace Concurrency.Implementation.TransactionExecution
         }
 
         // int: the highestCommittedBid get from local coordinator
+        /// <summary>
+        /// This returns the Bid and TransactionContext. Also start the process of starting to create the (sub)batches
+        /// in the RegionalCoordinator (if it is a regional transaction) and also in the LocalCoordinator.
+        /// We also figure out whether the transaction is a multi-server or single server transacation.
+        /// </summary>
+        /// <param name="grainAccessInfos"></param>
+        /// <param name="grainClassNames"></param>
+        /// <returns></returns>
+
+        // TODO: Figure out whether or not the current transaction .
         public async Task<Tuple<long, TransactionContext>> GetDetContext(List<Tuple<int, string>> grainAccessInfos, List<string> grainClassNames)
         {
             this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
                                        this.grainReference, string.Join(", ", grainAccessInfos), string.Join(", ", grainClassNames));
 
             // check if the transaction will access multiple silos
-            var silos = new List<Tuple<int, string>>();
+            var silos = new List<string>();
             var grainListPerSilo = new Dictionary<string, List<Tuple<int, string>>>();
             var grainNamePerSilo = new Dictionary<string, List<string>>();
 
             // This is the placement manager(PM) code described in the paper
             for (int i = 0; i < grainAccessInfos.Count; i++)
             {
-                var grainId = grainAccessInfos[i];
+                var siloId = grainAccessInfos[i].Item2;
 
-                if (!grainListPerSilo.ContainsKey(grainId.Item2))
+                if (!grainListPerSilo.ContainsKey(siloId))
                 {
-                    silos.Add(grainId);
-                    grainListPerSilo.Add(grainId.Item2, new List<Tuple<int, string>>());
-                    grainNamePerSilo.Add(grainId.Item2, new List<string>());
+                    silos.Add(siloId);
+                    grainListPerSilo.Add(siloId, new List<Tuple<int, string>>());
+                    grainNamePerSilo.Add(siloId, new List<string>());
                 }
 
-                grainListPerSilo[grainId.Item2].Add(grainId);
-                grainNamePerSilo[grainId.Item2].Add(grainClassNames[i]);
+                grainListPerSilo[siloId].Add(grainAccessInfos[i]);
+                grainNamePerSilo[siloId].Add(grainClassNames[i]);
             }
 
 
@@ -115,12 +126,12 @@ namespace Concurrency.Implementation.TransactionExecution
                 // Note the Dictionary<string, Tuple<int, string>> part of the
                 // return type of NewTransaction(..) is a map between the region
                 // and which local coordinators
-                Tuple<TransactionRegisterInfo, Dictionary<Tuple<int, string>, Tuple<int, string>>> regionalInfo =
+                Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>> regionalInfo =
                     await this.regionalCoordinator.NewRegionalTransaction(silos);
 
                 var regionalTid = regionalInfo.Item1.Tid;
                 var regionalBid = regionalInfo.Item1.Bid;
-                Dictionary<Tuple<int, string>, Tuple<int, string>> siloIDToLocalCoordID = regionalInfo.Item2;
+                Dictionary<string, Tuple<int, string>> siloIDToLocalCoordID = regionalInfo.Item2;
 
                 // send corresponding grainAccessInfo to local coordinators in different silos
                 Debug.Assert(grainListPerSilo.ContainsKey(siloID));
@@ -139,13 +150,13 @@ namespace Concurrency.Implementation.TransactionExecution
                     if (coordId.Item2 == this.siloID)
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/ task", this.grainReference);
-                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId.Item2], grainNamePerSilo[siloId.Item2]);
+                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
                     }
                     else
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/o task", this.grainReference);
 
-                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId.Item2], grainNamePerSilo[siloId.Item2]);
+                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
                     }
                 }
 
@@ -168,6 +179,13 @@ namespace Concurrency.Implementation.TransactionExecution
             return localContext;
         }
 
+        /// <summary>
+        ///  Method used from TransactionExecutionGrain to wait for the batch to arrive.
+        ///  Then after the batch arrives then we will wait until it is the turn of the current
+        ///  TransactionContext to execute. This is based on bid and tid.
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
         public async Task WaitForTurn(TransactionContext context)
         {
             this.logger.LogInformation("Waiting for turn for {context}", this.grainReference, context);
@@ -179,6 +197,8 @@ namespace Concurrency.Implementation.TransactionExecution
                 {
                     this.regionalBatchInfoPromise.Add(context.regionalBid, new TaskCompletionSource<bool>());
                 }
+
+                // First wait for the batch to arrive and that we can start executing the transactions in this specific batch.
                 await this.regionalBatchInfoPromise[context.regionalBid].Task;
 
                 // need to map global info to the corresponding local tid and bid
@@ -194,6 +214,7 @@ namespace Concurrency.Implementation.TransactionExecution
                     this.localBatchInfoPromise.Add(context.localBid, new TaskCompletionSource<bool>());
                 }
 
+                // First wait for the batch to arrive and that we can start executing the transactions in this specific batch.
                 await this.localBatchInfoPromise[context.localBid].Task;
 
                 this.logger.LogInformation("WaitForturn finished", this.grainReference);
@@ -202,17 +223,30 @@ namespace Concurrency.Implementation.TransactionExecution
             Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
             this.determinsticFunctionResults.Add(context.localTid, new BasicFuncResult());
 
+            // After the batch is arrived we are waiting for the turn of the current transaction.
             await this.myScheduler.WaitForTurn(context.localBid, context.localTid);
         }
 
+        /// <summary>
+        /// Decides whether the batch is complete. If the batch is not complete then we will signal that the next transaction can
+        /// execute in the batch. This done by signaling a TaskCompletetionSource in the <see cref="TransactionScheduler"/>.
+        /// If the batch is finished then we notify the coordinator that sent the batch that we are done with the current subbatch.
+        /// Then, we will return the LocalCoordinatorId. Notice, that the LocalCoordinator,
+        /// does not have to be the one that we assigned when initializing the TransactionExecutionGrain. Also the LocalCoordinator
+        /// int id is sufficient, since we assume that we always communicate with a LocalCoordinator in the same silo. Hence, the
+        /// string (region Id) is equivalent for the LocalCoordinator and TransactionExecutionGrain.
+        /// </summary>
+        /// <param name="transactionContext"></param>
+        /// <returns></returns>
         public async Task FinishExecuteDeterministicTransaction(TransactionContext transactionContext)
         {
             // This is the coordinatorId that sent the subbatch containing the current transaction.
-            var coordinatorId = this.myScheduler.IsBatchComplete(transactionContext.localBid, transactionContext.localTid);
-            this.logger.LogInformation("FinishExecuteDeterministicTransaction: the coordinator that sent the subbatch: {coordinatorId}",
-                                        this.grainReference, coordinatorId);
+            var localCoordinatorId = this.myScheduler.IsBatchComplete(transactionContext.localBid, transactionContext.localTid);
 
-            if (coordinatorId != -1)   // the current batch has completed on this grain
+            this.logger.LogInformation("FinishExecuteDeterministicTransaction: the coordinator that sent the subbatch: {coordinatorId}",
+                                        this.grainReference, localCoordinatorId);
+
+            if (localCoordinatorId != -1)   // the current batch has completed on this grain
             {
                 this.localBatchInfoPromise.Remove(transactionContext.localBid);
 
@@ -229,31 +263,40 @@ namespace Concurrency.Implementation.TransactionExecution
                 var localCoordinatorRegion = this.myId.StringId;
 
                 this.logger.LogInformation("Send the local coordinator {localCoordinatorId}-{localCoordinatorRegion} the acknowledgement of the batch completion for batch id: {localBid}",
-                                            this.grainReference, coordinatorId, localCoordinatorRegion, transactionContext.localBid);
+                                            this.grainReference, localCoordinatorId, localCoordinatorRegion, transactionContext.localBid);
 
                 // TODO: This coordinator should be the one that sent the batch
-                var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordinatorId, localCoordinatorRegion);
+                var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
 
                 _ = coordinator.AckBatchCompletion(transactionContext.localBid);
             }
         }
 
+        /// <summary>
+        /// This is called when we receive the batch from the <see cref="LocalCoordinatorGrain"/>.
+        /// Signal the batchinfo promise that the batch arrived, so the transaction corresponding to this subbatch
+        /// can continue the transaction to the next step of waiting again.
+        /// </summary>
+        /// <param name="batch"></param>
         public void BatchArrive(LocalSubBatch batch)
         {
             this.logger.LogInformation("Batch arrived, batch: {batch}", this.grainReference, batch);
 
+            // If the batch arrives before the transactions actually reaches the point of localBatchInfoPromise.
             if (!this.localBatchInfoPromise.ContainsKey(batch.Bid))
             {
                 this.localBatchInfoPromise.Add(batch.Bid, new TaskCompletionSource<bool>());
             }
 
-            this.logger.LogInformation("BatchArrive: localBtchInfoPromise: {localBatchInfoPromise}", this.grainReference, localBatchInfoPromise[batch.Bid]);
+            this.logger.LogInformation("BatchArrive: localBtchInfoPromise: {localBatchInfoPromise}",
+                                       this.grainReference, this.localBatchInfoPromise[batch.Bid]);
 
             this.localBatchInfoPromise[batch.Bid].SetResult(true);
 
             // register global info mapping if necessary
             if (batch.RegionalBid != -1)
             {
+                // Mapping the regional bid to the to the local bid
                 this.regionalBidToLocalBid.Add(batch.RegionalBid, batch.Bid);
                 this.regionalBidToRegionalTidToLocalTidPerBatch.Add(batch.RegionalBid, batch.RegionalTidToLocalTid);
 
