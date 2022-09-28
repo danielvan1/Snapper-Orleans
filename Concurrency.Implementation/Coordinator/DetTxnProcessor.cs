@@ -18,7 +18,6 @@ namespace Concurrency.Implementation.Coordinator
         private readonly GrainReference grainReference;
         private readonly Random random;
         private readonly long myId;
-        private readonly bool isRegionalCoordinator = true;
         public long highestCommittedBid;
 
         // transaction processing
@@ -133,11 +132,9 @@ namespace Concurrency.Implementation.Coordinator
             if (!this.bidToSubBatches.ContainsKey(currentBatchId))
             {
                 this.bidToSubBatches.Add(currentBatchId, new Dictionary<string, SubBatch>());
-                if (this.isRegionalCoordinator)
-                {
-                    // Maps: currentbatchID => <region, <local coordinator Tuple(id, region)>>
-                    this.localCoordinatorPerSiloPerBatch.Add(currentBatchId, new Dictionary<string, Tuple<int, string>>());
-                }
+
+                // Maps: currentbatchID => <region, <local coordinator Tuple(id, region)>>
+                this.localCoordinatorPerSiloPerBatch.Add(currentBatchId, new Dictionary<string, Tuple<int, string>>());
             }
 
             Dictionary<string, SubBatch> siloToSubBatch = this.bidToSubBatches[currentBatchId];
@@ -150,13 +147,10 @@ namespace Concurrency.Implementation.Coordinator
                 {
                     siloToSubBatch.Add(siloId, new SubBatch(currentBatchId, myId));
 
-                    if (this.isRegionalCoordinator)
-                    {
-                        // randomly choose a local coord as the coordinator for this batch on that silo
-                        int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
-                        string localCoordinatorSiloId = siloId;
-                        this.localCoordinatorPerSiloPerBatch[currentBatchId].Add(siloId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorSiloId));
-                    }
+                    // randomly choose a local coord as the coordinator for this batch on that silo
+                    int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
+                    string localCoordinatorSiloId = siloId;
+                    this.localCoordinatorPerSiloPerBatch[currentBatchId].Add(siloId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorSiloId));
                 }
 
                 // TODO: This seems pretty sketchy. Why do we add the same tid so many times?
@@ -192,12 +186,12 @@ namespace Concurrency.Implementation.Coordinator
 
             if (token.PreviousEmitBid != -1)
             {
-                this.bidToLastCoordID.Add(currentBatchId, token.PreviousCoordID);
+                this.bidToLastCoordID.Add(currentBatchId, token.PreviousCoordinatorId);
             }
 
             token.PreviousEmitBid = currentBatchId;
             token.IsLastEmitBidGlobal = globalBid != -1;
-            token.PreviousCoordID = this.myId;
+            token.PreviousCoordinatorId = this.myId;
 
             this.logger.LogInformation("updated token: {token}", this.grainReference, token);
         }
@@ -214,29 +208,20 @@ namespace Concurrency.Implementation.Coordinator
                 var coordinator = this.bidToLastCoordID[bid];
                 if (coordinator == this.myId)
                 {
-                    await WaitBatchCommit(previousBid);
+                    await this.WaitBatchCommit(previousBid);
                 }
                 else
                 {
                     this.logger.LogInformation("FUCKING HERP DERP", this.grainReference);
-                    if (this.isRegionalCoordinator)
-                    {
-                        this.grainReference.GetPrimaryKeyLong(out string region);
-                        string regionalCoordinatorRegion = region.Substring(0, 2);
-                        var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, regionalCoordinatorRegion);
-                        await previousBatchRegionalCoordinator.WaitBatchCommit(previousBid);
-                    }
-                    else // if it is a local coordinator
-                    {
-                        this.grainReference.GetPrimaryKeyLong(out string region);
-                        var previousBatchCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordinator, region);
-                        await previousBatchCoordinator.WaitBatchCommit(previousBid);
-                    }
+                    this.grainReference.GetPrimaryKeyLong(out string region);
+                    string regionalCoordinatorRegion = region.Substring(0, 2);
+                    var previousBatchRegionalCoordinator = this.grainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, regionalCoordinatorRegion);
+                    await previousBatchRegionalCoordinator.WaitBatchCommit(previousBid);
                 }
             }
             else
             {
-                Debug.Assert(highestCommittedBid == previousBid);
+                Debug.Assert(this.highestCommittedBid == previousBid);
             }
 
             this.logger.LogInformation("Finished waiting for previous batch: {prevBid} to finish. Current bid: {bid}", this.grainReference, previousBid, bid);
@@ -269,29 +254,6 @@ namespace Concurrency.Implementation.Coordinator
                 this.batchCommit[bid].SetResult(true);
                 this.batchCommit.Remove(bid);
             }
-        }
-
-        public void GarbageCollectTokenInfo(RegionalToken token)
-        {
-            Debug.Assert(!this.isRegionalCoordinator);
-            var expiredSilos = new HashSet<string>();
-
-            // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.PreviousBidPerSilo)
-            {
-                if (item.Value <= highestCommittedBid)
-                {
-                     expiredSilos.Add(item.Key);
-                }
-            }
-
-            foreach (var item in expiredSilos)
-            {
-                token.PreviousBidPerSilo.Remove(item);
-                // token.previousRegionalBidPerGrain.Remove(item);
-            }
-
-            token.HighestCommittedBid = highestCommittedBid;
         }
     }
 }

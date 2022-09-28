@@ -53,7 +53,6 @@ namespace Concurrency.Implementation.Coordinator
             return base.OnActivateAsync();
         }
 
-
         // for PACT
         public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>>> NewRegionalTransaction(List<string> silos)
         {
