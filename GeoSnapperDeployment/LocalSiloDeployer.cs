@@ -1,6 +1,9 @@
 using System.Net;
+using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
@@ -211,6 +214,9 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(globalSiloInfo);
                 // serviceCollection.AddSingleton(logger);
 
+                serviceCollection.AddSingleton<ICoordinatorProvider<IRegionalCoordinatorGrain>, CoordinatorProvider<IRegionalCoordinatorGrain>>();
+                serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
+
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigurationGrainPlacement>(typeof(GlobalConfigurationGrainPlacementStrategy));
 
@@ -231,6 +237,9 @@ namespace GeoSnapperDeployment
                 {
                     builder.AddSerilog(this.logger);
                 });
+
+                serviceCollection.AddSingleton<ICoordinatorProvider<IRegionalCoordinatorGrain>, CoordinatorProvider<IRegionalCoordinatorGrain>>();
+                serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
 
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(regionalConfiguration);
@@ -278,6 +287,8 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(localSilos);
                 // serviceCollection.AddSingleton(logger);
 
+                serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
+                serviceCollection.AddSingleton<ICoordinatorProvider<IRegionalCoordinatorGrain>, CoordinatorProvider<IRegionalCoordinatorGrain>>();
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, LocalConfigurationGrainPlacementStrategy>(nameof(LocalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigurationGrainPlacement>(typeof(LocalConfigurationGrainPlacementStrategy));
 

@@ -9,21 +9,22 @@ namespace Concurrency.Interface.Coordinator
 {
     public interface ILocalCoordinatorGrain : IGrainWithIntegerCompoundKey
     {
-        Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor);
 
-        Task<TransactionRegisterInfo> NewLocalTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegisterInfo> NewLocalTransaction(List<GrainAccessInfo> grainAccessInfos);
+
+        Task<TransactionRegisterInfo> NewRegionalTransaction(long globalBid, long globalTid, List<GrainAccessInfo> grainAccessInfos);
 
         Task PassToken(LocalToken token);
 
-        Task AckBatchCompletion(long bid);
+        Task BatchCompletionAcknowledgement(long bid);
 
-        Task WaitBatchCommit(long bid);
+        Task WaitForBatchToCommit(long bid);
 
-        Task AckRegionalBatchCommit(long globalBid);
+        Task RegionalBatchCommitAcknowledgement(long globalBid);
 
         // for global transactions (hierarchical architecture)
-        Task<TransactionRegisterInfo> NewRegionalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
-
         Task ReceiveBatchSchedule(SubBatch batch);
+
+        Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor);
     }
 }

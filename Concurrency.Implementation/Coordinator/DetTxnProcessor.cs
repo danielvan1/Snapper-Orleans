@@ -26,7 +26,7 @@ namespace Concurrency.Implementation.Coordinator
 
         // batch processing
         private Dictionary<long, long> bidToLastBid;
-        private Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
+        private Dictionary<long, long> bidToPreviousCoordinatorId; // <bid, coordID who emit this bid's lastBid>
         private Dictionary<long, int> expectedAcksPerBatch;
         private Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches; // <bid, Service ID, subBatch>
         private readonly IGrainFactory grainFactory;
@@ -49,7 +49,7 @@ namespace Concurrency.Implementation.Coordinator
             this.random = new Random();
             this.myId = myID;
             this.bidToLastBid = new Dictionary<long, long>();
-            this.bidToLastCoordID = new Dictionary<long, long>();
+            this.bidToPreviousCoordinatorId = new Dictionary<long, long>();
             this.expectedAcksPerBatch = expectedAcksPerBatch;
             this.bidToSubBatches = bidToSubBatches;
             this.grainFactory = grainFactory;
@@ -186,7 +186,7 @@ namespace Concurrency.Implementation.Coordinator
 
             if (token.PreviousEmitBid != -1)
             {
-                this.bidToLastCoordID.Add(currentBatchId, token.PreviousCoordinatorId);
+                this.bidToPreviousCoordinatorId.Add(currentBatchId, token.PreviousCoordinatorId);
             }
 
             token.PreviousEmitBid = currentBatchId;
@@ -205,7 +205,7 @@ namespace Concurrency.Implementation.Coordinator
 
             if (this.highestCommittedBid < previousBid)
             {
-                var coordinator = this.bidToLastCoordID[bid];
+                var coordinator = this.bidToPreviousCoordinatorId[bid];
                 if (coordinator == this.myId)
                 {
                     await this.WaitBatchCommit(previousBid);
@@ -226,7 +226,7 @@ namespace Concurrency.Implementation.Coordinator
 
             this.logger.LogInformation("Finished waiting for previous batch: {prevBid} to finish. Current bid: {bid}", this.grainReference, previousBid, bid);
 
-            if (this.bidToLastCoordID.ContainsKey(bid)) this.bidToLastCoordID.Remove(bid);
+            if (this.bidToPreviousCoordinatorId.ContainsKey(bid)) this.bidToPreviousCoordinatorId.Remove(bid);
         }
 
         public async Task WaitBatchCommit(long bid)

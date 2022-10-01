@@ -147,7 +147,7 @@ namespace Concurrency.Implementation.Coordinator
                                            this.GrainReference, localCoordinatorID+localCoordinatorRegionAndServer,bid);
 
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
-                _ = dest.AckRegionalBatchCommit(bid);
+                _ = dest.RegionalBatchCommitAcknowledgement(bid);
             }
 
             // garbage collection

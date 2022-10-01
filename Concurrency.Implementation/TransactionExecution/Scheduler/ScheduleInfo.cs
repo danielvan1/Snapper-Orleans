@@ -55,7 +55,6 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             }
             else
             {
-                // TODO: What is the logic for this?
                 // last node is already deleted because it's committed
                 if (highestCommittedBid >= subBatch.PreviousBid)
                 {

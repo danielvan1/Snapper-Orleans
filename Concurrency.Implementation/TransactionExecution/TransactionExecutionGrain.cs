@@ -81,7 +81,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 this.GrainReference,
                 this.myId,
                 this.myId.IntId,
-                mySiloID,
+                this.mySiloID,
                 myLocalCoordID,
                 myLocalCoord,
                 regionalCoordinator,

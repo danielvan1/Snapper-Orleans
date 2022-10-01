@@ -57,8 +57,7 @@ namespace Concurrency.Implementation.TransactionExecution
             IRegionalCoordinatorGrain myRegionalCoordinator,
             IGrainFactory grainFactory,
             TransactionScheduler myScheduler,
-            ITransactionalState<TState> state
-            )
+            ITransactionalState<TState> state)
         {
             this.logger = logger;
             this.grainReference = grainReference;
@@ -98,23 +97,30 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // check if the transaction will access multiple silos
             var silos = new List<string>();
-            var grainListPerSilo = new Dictionary<string, List<Tuple<int, string>>>();
-            var grainNamePerSilo = new Dictionary<string, List<string>>();
+            var grainListPerSilo = new Dictionary<string, List<GrainAccessInfo>>();
 
             // This is the placement manager(PM) code described in the paper
             for (int i = 0; i < grainAccessInfos.Count; i++)
             {
-                var siloId = grainAccessInfos[i].Item2;
+                var siloId = grainAccessInfos[i].Item2.Split("-")[0];
+                this.logger.LogInformation("SiloId: {siloId}", this.grainReference, siloId);
 
                 if (!grainListPerSilo.ContainsKey(siloId))
                 {
                     silos.Add(siloId);
-                    grainListPerSilo.Add(siloId, new List<Tuple<int, string>>());
-                    grainNamePerSilo.Add(siloId, new List<string>());
+                    grainListPerSilo.Add(siloId, new List<GrainAccessInfo>());
                 }
 
-                grainListPerSilo[siloId].Add(grainAccessInfos[i]);
-                grainNamePerSilo[siloId].Add(grainClassNames[i]);
+                GrainAccessInfo grainAccessInfo = new GrainAccessInfo()
+                {
+                    Id = grainAccessInfos[i].Item1,
+                    Region = grainAccessInfos[i].Item2,
+                    GrainClassName = grainClassNames[i],
+                };
+
+                grainListPerSilo[siloId].Add(grainAccessInfo);
+                // grainAccessInfos[i]
+                // grainListPerSilo[siloId].Add();
             }
 
 
@@ -150,13 +156,13 @@ namespace Concurrency.Implementation.TransactionExecution
                     if (coordId.Item2 == this.siloID)
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/ task", this.grainReference);
-                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
+                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
                     }
                     else
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/o task", this.grainReference);
 
-                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
+                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
                     }
                 }
 
@@ -170,7 +176,20 @@ namespace Concurrency.Implementation.TransactionExecution
                 return new Tuple<long, TransactionContext>(-1, regionalContext) ;
             }
 
-            TransactionRegisterInfo info = await myLocalCoord.NewLocalTransaction(grainAccessInfos, grainClassNames);
+            var herpderp = new List<GrainAccessInfo>();
+
+            for (int i = 0; i < grainAccessInfos.Count; i++)
+            {
+                herpderp.Add(new GrainAccessInfo()
+                            {
+                                Id = grainAccessInfos[i].Item1,
+                                Region = grainAccessInfos[i].Item2,
+                                GrainClassName = grainClassNames[i]
+                            }
+                );
+            }
+
+            TransactionRegisterInfo info = await myLocalCoord.NewLocalTransaction(herpderp);
             this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.myLocalCoord);
 
             var cxt2 = new TransactionContext(info.Tid, info.Bid);
@@ -268,7 +287,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 // TODO: This coordinator should be the one that sent the batch
                 var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
 
-                _ = coordinator.AckBatchCompletion(transactionContext.localBid);
+                _ = coordinator.BatchCompletionAcknowledgement(transactionContext.localBid);
             }
         }
 

@@ -26,12 +26,12 @@ int actorId0 = 0;
 int actorId1 = 1;
 var regionAndServer = "EU-EU-0";
 
-var actorAccessInfo0 = new List<Tuple<int, string>>() 
+var actorAccessInfo0 = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId0, regionAndServer),
 };
 
-var actorAccessInfo1 = new List<Tuple<int, string>>() 
+var actorAccessInfo1 = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId1, regionAndServer),
 };
@@ -48,7 +48,7 @@ var grainClassNamesForMultiTransfer = new List<string>();                       
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>() 
+var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId0, regionAndServer),
     new Tuple<int, string>(actorId1, regionAndServer),
@@ -59,7 +59,7 @@ var amountToDeposit = 50;
 var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
     amountToDeposit,
     new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer) 
-}); 
+});
 
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 namespace Concurrency.Interface.Models
 {
+    //TODO: Build Compare to be able to sort on BID
     [Serializable]
     public record SubBatch   // sent from global coordinator to local coordinator
     {
