@@ -1,3 +1,5 @@
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
@@ -70,7 +72,7 @@ namespace Concurrency.Implementation.Logging
             // IdentityString is on the form xxx/my.namespace.class/yyyyy
             var split = identityString.Split("/")[1].Split(".");
 
-            return split[split.Length - 1];
+            return split.LastOrDefault(string.Empty);
         }
     }
 }

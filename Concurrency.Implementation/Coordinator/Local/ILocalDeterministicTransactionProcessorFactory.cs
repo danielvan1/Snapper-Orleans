@@ -1,11 +1,7 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Orleans;
 using Orleans.Runtime;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Local
 {
     public interface ILocalDeterministicTransactionProcessorFactory
     {

@@ -2,7 +2,7 @@ using System.Diagnostics.Contracts;
 
 namespace Concurrency.Interface.Models
 {
-    public class GrainAccessInfo
+    public record GrainAccessInfo
     {
         public int Id { get; init; }
 
@@ -14,6 +14,5 @@ namespace Concurrency.Interface.Models
         {
             return $"Id: {this.Id}, Region {this.Region}, GrainClassName: {this.GrainClassName}";
         }
-
     }
 }

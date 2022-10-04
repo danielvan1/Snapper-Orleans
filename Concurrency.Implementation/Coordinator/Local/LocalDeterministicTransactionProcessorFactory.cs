@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Local
 {
     public class LocalDeterministicTransactionProcessorFactory : ILocalDeterministicTransactionProcessorFactory
     {

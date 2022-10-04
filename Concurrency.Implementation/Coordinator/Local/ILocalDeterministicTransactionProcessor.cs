@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 using Utilities;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Local
 {
     public interface ILocalDeterministicTransactionProcessor
     {
@@ -19,7 +19,7 @@ namespace Concurrency.Implementation.Coordinator
 
         Task WaitForBatchToCommit(long bid);
 
-        Task AckBatchCompletion(long bid);
+        Task BatchCompletionAcknowledgement(long bid);
 
         Task AckRegionalBatchCommit(long regionalBid);
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
-using Concurrency.Implementation.LoadBalancing;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
@@ -11,7 +11,7 @@ using Orleans;
 using Orleans.Concurrency;
 using Utilities;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Local
 {
     /// <summary>
     /// Class for the API of the LocalCoordinator. The LocalCoordinator needs to be able to talk with both the TransactionExecutionGrain and
@@ -61,7 +61,7 @@ namespace Concurrency.Implementation.Coordinator
         /// <returns></returns>
         public async Task BatchCompletionAcknowledgement(long bid)
         {
-            await this.localDeterministicTransactionProcessor.AckBatchCompletion(bid);
+            await this.localDeterministicTransactionProcessor.BatchCompletionAcknowledgement(bid);
         }
 
         #endregion
@@ -79,7 +79,7 @@ namespace Concurrency.Implementation.Coordinator
             Thread.Sleep(10);
 
             // TODO: Why do we need to do it like this?
-            if (token.IsLastEmitBidGlobal)
+            if (token.IsLastEmitBidRegional)
             {
                 currentBatchIds = this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
                 currentBatchId = this.localDeterministicTransactionProcessor.GenerateLocalBatch(token);
@@ -101,6 +101,11 @@ namespace Concurrency.Implementation.Coordinator
 
             _ = this.neighbor.PassToken(token);
             if (currentBatchId != -1) await this.localDeterministicTransactionProcessor.EmitBatch(currentBatchId);
+
+            if (currentBatchIds.Count > 0)
+            {
+                this.logger.LogInformation("BatchIds: {ids}", this.GrainReference, string.Join(", ", currentBatchIds));
+            }
 
             foreach (var bid in currentBatchIds)
             {

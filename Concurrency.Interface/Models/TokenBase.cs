@@ -11,7 +11,7 @@ namespace Concurrency.Interface.Models
         public long PreviousEmitTid { get; set; }
         public long PreviousCoordinatorId { get; set; }
         public long HighestCommittedBid { get; set; }
-        public bool IsLastEmitBidGlobal { get; set; }
+        public bool IsLastEmitBidRegional { get; set; }
 
         public TokenBase()
         {
@@ -19,12 +19,12 @@ namespace Concurrency.Interface.Models
             this.PreviousEmitTid = -1;
             this.PreviousCoordinatorId = -1;
             this.HighestCommittedBid = -1;
-            this.IsLastEmitBidGlobal = false;
+            this.IsLastEmitBidRegional = false;
         }
 
         public override string ToString()
         {
-            return $"lastEmitBid: {this.PreviousEmitBid}, lastEmitTid: {this.PreviousEmitTid}, lastCoordId: {this.PreviousCoordinatorId}, highestCommittedBid: {HighestCommittedBid}, isLastEmitBidGlobal: {this.IsLastEmitBidGlobal}";
+            return $"lastEmitBid: {this.PreviousEmitBid}, lastEmitTid: {this.PreviousEmitTid}, lastCoordId: {this.PreviousCoordinatorId}, highestCommittedBid: {HighestCommittedBid}, isLastEmitBidGlobal: {this.IsLastEmitBidRegional}";
         }
     }
 }

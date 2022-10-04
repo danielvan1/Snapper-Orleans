@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Concurrency.Implementation.Coordinator;
+using Concurrency.Implementation.Coordinator.Regional;
 using Concurrency.Implementation.Exceptions;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;

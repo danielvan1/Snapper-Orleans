@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Coordinator;
@@ -10,7 +9,7 @@ using Orleans;
 using Orleans.Concurrency;
 using Utilities;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Global
 {
     [Reentrant]
     [GlobalCoordinatorGrainPlacementStrategy]

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Models
 {
     public class RegionalBatchProcessInfo
     {

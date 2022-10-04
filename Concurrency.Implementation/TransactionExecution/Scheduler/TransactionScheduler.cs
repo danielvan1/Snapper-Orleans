@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
+using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
@@ -12,13 +13,15 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         private readonly Dictionary<long, SubBatch> batchInfo;                               // key: local bid
         private readonly Dictionary<long, long> tidToLastTid;
         private readonly Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
+        private readonly ILogger logger;
 
-        public TransactionScheduler()
+        public TransactionScheduler(ILogger logger)
         {
             this.scheduleInfoManager = new ScheduleInfoManager();
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         }
 
         public void CompleteDeterministicBatch(long bid)
@@ -30,12 +33,13 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         {
             this.scheduleInfoManager.InsertDeterministicBatch(batch, regionalBid, highestCommittedBid);
             this.batchInfo.Add(batch.Bid, batch);
+            this.logger.LogInformation("batch transactions: [{transactions}]", string.Join(", ", batch));
 
             // TODO: This logic can be improved
             for (int i = 0; i < batch.Transactions.Count; i++)
             {
                 var tid = batch.Transactions[i];
-                // TODO: Change it to look nicer
+                // TODO: rafactor
                 if (i == 0) this.tidToLastTid.Add(tid, -1);
                 else this.tidToLastTid.Add(tid, batch.Transactions[i - 1]);
 
@@ -47,6 +51,8 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
                     this.deterministicExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
                 }
             }
+
+            this.logger.LogInformation("tidToLastTid: {herp}", string.Join(";; ", tidToLastTid.Select(kv => kv.Key + ": " + kv.Value)));
         }
 
         public async Task WaitForTurn(long bid, long tid)

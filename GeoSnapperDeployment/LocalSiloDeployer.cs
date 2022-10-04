@@ -1,5 +1,6 @@
 using System.Net;
 using Concurrency.Implementation.Coordinator;
+using Concurrency.Implementation.Coordinator.Local;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Interface.Configuration;
@@ -207,7 +208,7 @@ namespace GeoSnapperDeployment
             {
                 serviceCollection.AddLogging(builder =>
                 {
-                    builder.AddSerilog(this.logger);
+                    builder.AddSerilog(CreateLogger());
                 });
 
                 serviceCollection.AddSingleton(globalConfiguration);
@@ -235,7 +236,7 @@ namespace GeoSnapperDeployment
             {
                 serviceCollection.AddLogging(builder =>
                 {
-                    builder.AddSerilog(this.logger);
+                    builder.AddSerilog(CreateLogger());
                 });
 
                 serviceCollection.AddSingleton<ICoordinatorProvider<IRegionalCoordinatorGrain>, CoordinatorProvider<IRegionalCoordinatorGrain>>();
@@ -281,7 +282,7 @@ namespace GeoSnapperDeployment
             {
                 serviceCollection.AddLogging(builder =>
                 {
-                    builder.AddSerilog(this.logger);
+                    builder.AddSerilog(CreateLogger());
                 });
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(localSilos);

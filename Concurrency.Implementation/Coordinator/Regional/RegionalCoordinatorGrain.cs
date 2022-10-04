@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -11,7 +12,7 @@ using Orleans;
 using Orleans.Concurrency;
 using Utilities;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Regional
 {
     [Reentrant]
     [RegionalCoordinatorGrainPlacementStrategy]
@@ -41,6 +42,7 @@ namespace Concurrency.Implementation.Coordinator
             this.expectedAcksPerBatch = new Dictionary<long, int>();
             this.bidToSubBatches = new Dictionary<long, Dictionary<string, SubBatch>>();
             this.localCoordinatorPerSiloPerBatch = new Dictionary<long, Dictionary<string, Tuple<int, string>>>();
+
             this.detTxnProcessor = new DetTxnProcessor(
                 this.logger,
                 this.GrainReference,
@@ -59,14 +61,14 @@ namespace Concurrency.Implementation.Coordinator
             this.logger.LogInformation("New Regional transaction received. The silos involved in the trainsaction: [{silos}]  ",
                                         this.GrainReference, string.Join(", ", silos));
 
-            Tuple<long, long> bidAndTid = await detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);
+            Tuple<long, long> bidAndTid = await this.detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);
             long bid = bidAndTid.Item1;
             long tid = bidAndTid.Item2;
             Debug.Assert(this.localCoordinatorPerSiloPerBatch.ContainsKey(bid));
 
             this.logger.LogInformation("Returning transaction registration info with bid {bid} and tid {tid}", this.GrainReference, bid, tid);
 
-            var transactionRegisterInfo = new TransactionRegisterInfo(bid, tid, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
+            var transactionRegisterInfo = new TransactionRegisterInfo(bid, tid, this.detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
 
             return new Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>>(transactionRegisterInfo, this.localCoordinatorPerSiloPerBatch[bid]);
         }
@@ -74,6 +76,7 @@ namespace Concurrency.Implementation.Coordinator
         public async Task PassToken(RegionalToken token)
         {
             long curBatchId = -1;
+            Thread.Sleep(10);
 
             var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
             if (elapsedTime >= batchSizeInMSecs)
@@ -104,9 +107,9 @@ namespace Concurrency.Implementation.Coordinator
 
             Dictionary<string, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
 
-            foreach (( var id,  SubBatch subBatch) in currentScheduleMap)
+            foreach ((string siloId,  SubBatch subBatch) in currentScheduleMap)
             {
-                var localCoordID = coordinators[id];
+                var localCoordID = coordinators[siloId];
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
                 this.logger.LogInformation("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",

@@ -39,12 +39,12 @@ var regionAndServer0 = $"{deployedRegion}-{homeRegion}-{server0}";
 var regionAndServer1 = $"{deployedRegion}-{homeRegion}-{server1}";
 
 
-var actorAccessInfo0 = new List<Tuple<int, string>>() 
+var actorAccessInfo0 = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId0, regionAndServer0),
 };
 
-var actorAccessInfo1 = new List<Tuple<int, string>>() 
+var actorAccessInfo1 = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId1, regionAndServer1),
 };
@@ -61,7 +61,7 @@ var grainClassNamesForMultiTransfer = new List<string>();                       
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>() 
+var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
 {
     new Tuple<int, string>(actorId0, regionAndServer0),
     new Tuple<int, string>(actorId1, regionAndServer1),
@@ -82,7 +82,7 @@ try {
 
     var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
         amountToDeposit,
-        new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer1) 
+        new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer1)
     });  // money, List<to account>
     await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
 

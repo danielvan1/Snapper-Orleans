@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Models
 {
     public class LocalBatchProcessInfo
     {
@@ -14,7 +14,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public long PreviousCoordinatorId { get; set; }
 
-        public IDictionary<GrainAccessInfo, SubBatch> SchedulePerGrain { get; } = new Dictionary<GrainAccessInfo, SubBatch>();
+        public IDictionary<GrainAccessInfo, SubBatch> SchedulePerGrain { get; set; } = new Dictionary<GrainAccessInfo, SubBatch>();
 
         public Dictionary<long, long> RegionalToLocalTidMapping { get; } = new Dictionary<long, long>();
 

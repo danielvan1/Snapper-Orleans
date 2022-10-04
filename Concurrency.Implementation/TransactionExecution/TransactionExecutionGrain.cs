@@ -61,7 +61,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // transaction execution
             // loggerGroup.GetLoggingProtocol(myID, out log);
-            this.transactionScheduler = new TransactionScheduler();
+            this.transactionScheduler = new TransactionScheduler(this.logger);
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.state = new DeterministicState<TState>();
 
@@ -122,7 +122,7 @@ namespace Concurrency.Implementation.TransactionExecution
             if (this.highestCommittedLocalBid < transactionContext.Item1)
             {
                 this.highestCommittedLocalBid = transactionContext.Item1;
-                this.transactionScheduler.GarbageCollection(highestCommittedLocalBid);
+                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
             }
 
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
@@ -154,14 +154,13 @@ namespace Concurrency.Implementation.TransactionExecution
             await this.detTxnExecutor.WaitForTurn(context);
             var time = DateTime.Now;
 
-            this.logger.LogInformation("InvokeFunction(call, cxt)", this.GrainReference);
-            var transactionResult = await InvokeFunction(call, context);   // execute the function call;
-            this.logger.LogInformation($"DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
+            var transactionResult = await this.InvokeFunction(call, context);   // execute the function call;
 
             await this.detTxnExecutor.FinishExecuteDeterministicTransaction(context);
 
-            this.logger.LogInformation($"(after) DetTxnExecutor.FinishExecuteDetTxn(cxt);", this.GrainReference);
             this.detTxnExecutor.CleanUp(context.localTid);
+            this.logger.LogInformation("Finished executing deterministic transaction with functioncall {call} and context {context} ",
+                                        this.GrainReference, call, context);
 
             return new Tuple<object, DateTime>(transactionResult.resultObj, time);
         }
@@ -173,7 +172,10 @@ namespace Concurrency.Implementation.TransactionExecution
             if (this.highestCommittedLocalBid >= bid) return;
 
             this.logger.LogInformation("Waiting for bid: {bid} to commit", this.GrainReference, bid);
+
             await this.batchCommit[bid].Task;
+
+            this.logger.LogInformation("Done waiting for bid: {bid} to commit", this.GrainReference, bid);
         }
 
         #region Communication with LocalCoordinator
@@ -188,7 +190,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <returns></returns>
         public Task ReceiveBatchSchedule(LocalSubBatch batch)
         {
-            this.logger.LogInformation("ReceiveBatchSchedule was called with bid",
+            this.logger.LogInformation("Received LocalSubBatch: {batch}",
                                        this.GrainReference, batch);
 
             // do garbage collection for committed local batches
@@ -202,11 +204,8 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // register the local SubBatch info
 
-            this.logger.LogInformation($"ReceiveBatchSchedule: registerBatch", this.GrainReference);
             this.transactionScheduler.RegisterBatch(batch, batch.RegionalBid, this.highestCommittedLocalBid);
-            this.logger.LogInformation($"ReceiveBatchSchedule: batchArrive", this.GrainReference);
             this.detTxnExecutor.BatchArrive(batch);
-            this.logger.LogInformation($"ReceiveBatchSchedule: detTxnExecutor.BatchArrive(batch);", this.GrainReference);
 
             return Task.CompletedTask;
         }
@@ -214,15 +213,17 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> A local coordinator calls this interface to notify the commitment of a local batch </summary>
         public Task AckBatchCommit(long bid)
         {
-            this.logger.LogInformation("AckBatchCommit is called on batch id: {bid} by LocalCoordinator", this.GrainReference, bid);
+            this.logger.LogInformation("AckBatchCommit is called on batch id: {bid} by LocalCoordinator",
+                                       this.GrainReference, bid);
 
             if (this.highestCommittedLocalBid < bid)
             {
                 this.highestCommittedLocalBid = bid;
-                this.transactionScheduler.GarbageCollection(highestCommittedLocalBid);
+                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
             }
 
-            this.logger.LogInformation("Setting bid: {bid} to commit, these are the bid waiting: {bids}", this.GrainReference, bid, string.Join(", ", this.batchCommit.Select(kv => kv.Key + " : " + kv.Value.ToString())));
+            this.logger.LogInformation("Setting bid: {bid} to commit, these are the bid waiting: {bids}",
+                                       this.GrainReference, bid, string.Join(", ", this.batchCommit.Select(kv => kv.Key + " : " + kv.Value.ToString())));
 
             // Sets this to true, so the await in WaitForBatchCommit will continue.
             this.batchCommit[bid].SetResult(true);
@@ -255,17 +256,15 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
         public async Task<TransactionResult> CallGrain(TransactionContext context, Tuple<int, string> grainId, string grainNameSpace, FunctionCall call)
         {
-            var grain = GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Item1, grainId.Item2, grainNameSpace);
+            var grain = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Item1, grainId.Item2, grainNameSpace);
 
-            // Question: How do we detect when our transactions just create
-            // new actors locally because our silo key is not being used as
-            // intended?
-            // Question: do we need this old check isDet = cxt.localBid != 1
-            // if we only run PACTs ?
+            this.logger.LogInformation("Inside CallGrain {i} --- {ii}", 1, this.GrainReference);
+            this.logger.LogInformation("Inside CallGrain, grainId: {id}-{region}", this.GrainReference, grainId.Item1, grainId.Item2);
+            this.logger.LogInformation("Inside CallGrain, going to call grain to execute transaction: {grainId}-{region}", this.GrainReference, grainId.Item1, grainId.Item2);
+            this.logger.LogInformation("Inside CallGrain {i} --- {ii}", this.GrainReference, 2);
 
-            this.logger.LogInformation("Inside CallGrain, going to call (await grain.ExecuteDet(call, cxt))", this.GrainReference);
             var resultObj = (await grain.ExecuteDeterministicTransaction(call, context)).Item1;
-            this.logger.LogInformation("Inside CallGrain, after call to (await grain.ExecuteDet(call, cxt))", this.GrainReference);
+            this.logger.LogInformation("Inside CallGrain, after call to grain: {graindId}-{region}", this.GrainReference);
 
             return new TransactionResult(resultObj);
         }
@@ -279,11 +278,13 @@ namespace Concurrency.Implementation.TransactionExecution
 
             MethodInfo methodInfo = call.grainClassName.GetMethod(call.funcName);
 
-            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
+            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input} and context: {context}", this.GrainReference, call.funcName, call.funcInput, context);
 
             var transactionResult = (Task<TransactionResult>)methodInfo.Invoke(this, new object[] { context, call.funcInput });
 
             var result = await transactionResult;
+
+            this.logger.LogInformation("Finished with invoking function {name} with input: {input}", this.GrainReference, call.funcName, call.funcInput);
 
             return result;
         }

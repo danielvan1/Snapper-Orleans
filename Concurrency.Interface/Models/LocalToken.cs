@@ -19,6 +19,7 @@ namespace Concurrency.Interface.Models
         // in DetTxnProcessor is just using 'serviceId' which is the siloID
         // as the index
         public Dictionary<GrainAccessInfo, long> PreviousRegionalBidPerGrain { get; }   // grainID, the regional bid of the latest emitted local batch
+
         public long LastEmitGlobalBid { get; set; }
 
         public LocalToken() : base()

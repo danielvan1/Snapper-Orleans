@@ -1,7 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Concurrency.Implementation.LoadBalancing;
 using Orleans;
 
@@ -20,6 +17,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public T GetCoordinator(string region)
         {
+            // TODO: Somehow get more information to be able to properly choose a random Coordinator
             int randomId = this.random.Next(3);
 
             return this.grainFactory.GetGrain<T>(randomId, region);

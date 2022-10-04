@@ -1,12 +1,9 @@
-﻿using Concurrency.Interface.Configuration;
-using Orleans;
+﻿using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
-using System.Diagnostics;
-using System.Threading.Tasks;
-using Utilities;
 using SnapperGeoRegionalIntegration.Tests;
+using Utilities;
 
 var client = new ClientBuilder()
 .UseLocalhostClustering()
@@ -23,7 +20,7 @@ await client.Connect();
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
 
-var numberOfAccountsInEachServer = 30;
+var numberOfAccountsInEachServer = 2;
 var accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
 var theOneAccountThatSendsTheMoney = 1;
 var accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer+theOneAccountThatSendsTheMoney);
@@ -51,6 +48,7 @@ var multiTransferTasks = new List<Task>();
 var oneDollar = 1;
 foreach (var accountId in accountIdsServer0)
 {
+    Console.WriteLine($"accountId: {accountId}");
     var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(oneDollar, accountIdsServer1);
     var id = accountId.Item1;
     var regionAndServer = accountId.Item2;

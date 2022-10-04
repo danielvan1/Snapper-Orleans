@@ -10,7 +10,7 @@ using Orleans;
 using Orleans.Runtime;
 using Utilities;
 
-namespace Concurrency.Implementation.Coordinator
+namespace Concurrency.Implementation.Coordinator.Regional
 {
     public class DetTxnProcessor
     {
@@ -38,7 +38,7 @@ namespace Concurrency.Implementation.Coordinator
         public DetTxnProcessor(
             ILogger logger,
             GrainReference grainReference,
-            long myID,
+            long myId,
             Dictionary<long, int> expectedAcksPerBatch,
             Dictionary<long, Dictionary<string, SubBatch>> bidToSubBatches,
             IGrainFactory grainFactory,
@@ -47,7 +47,7 @@ namespace Concurrency.Implementation.Coordinator
             this.logger = logger;
             this.grainReference = grainReference;
             this.random = new Random();
-            this.myId = myID;
+            this.myId = myId;
             this.bidToLastBid = new Dictionary<long, long>();
             this.bidToPreviousCoordinatorId = new Dictionary<long, long>();
             this.expectedAcksPerBatch = expectedAcksPerBatch;
@@ -145,7 +145,7 @@ namespace Concurrency.Implementation.Coordinator
 
                 if (!siloToSubBatch.ContainsKey(siloId))
                 {
-                    siloToSubBatch.Add(siloId, new SubBatch(currentBatchId, myId));
+                    siloToSubBatch.Add(siloId, new SubBatch(currentBatchId, this.myId));
 
                     // randomly choose a local coord as the coordinator for this batch on that silo
                     int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
@@ -160,17 +160,17 @@ namespace Concurrency.Implementation.Coordinator
 
         public void UpdateToken(RegionalToken token, long currentBatchId, long globalBid)
         {
-            Dictionary<string, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
-            this.expectedAcksPerBatch.Add(currentBatchId, serviceIDToSubBatch.Count);
+            Dictionary<string, SubBatch> siloIdToSubBatch = this.bidToSubBatches[currentBatchId];
+            this.expectedAcksPerBatch.Add(currentBatchId, siloIdToSubBatch.Count);
             this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.grainReference, currentBatchId, token);
 
 
             // update the previous batch ID for each service accessed by this batch
-            foreach (var serviceInfo in serviceIDToSubBatch)
+            foreach (var serviceInfo in siloIdToSubBatch)
             {
                 string siloId = serviceInfo.Key;
                 SubBatch subBatch = serviceInfo.Value;
-                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.grainReference, siloId, subBatch);
+                this.logger.LogInformation("SiloId: {siloId} and subbatch: {subbatch}", this.grainReference, siloId, subBatch);
 
                 if (token.PreviousBidPerSilo.ContainsKey(siloId))
                 {
@@ -190,7 +190,7 @@ namespace Concurrency.Implementation.Coordinator
             }
 
             token.PreviousEmitBid = currentBatchId;
-            token.IsLastEmitBidGlobal = globalBid != -1;
+            token.IsLastEmitBidRegional = globalBid != -1;
             token.PreviousCoordinatorId = this.myId;
 
             this.logger.LogInformation("updated token: {token}", this.grainReference, token);

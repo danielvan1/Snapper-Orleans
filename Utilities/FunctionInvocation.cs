@@ -174,5 +174,10 @@ namespace Utilities
             this.funcInput = funcInput;
             this.grainClassName = grainClassName;
         }
+
+        public override string ToString()
+        {
+            return $"FunctionName: {funcName}, FunctionInput: {funcInput}, GrainClassName: {grainClassName}";
+        }
     }
 }

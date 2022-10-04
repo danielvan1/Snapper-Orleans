@@ -42,6 +42,7 @@ namespace SmallBank.Grains
             var task = new List<Task>();
             foreach (var accountID in toAccounts)
             {
+                this.logger.LogInformation("MyState account: {id} and ToAccount: {toId}", this.GrainReference, myState.accountID, accountID);
                 if (accountID != myState.accountID)
                 {
                     var funcCall = new FunctionCall("Deposit", money, typeof(SnapperTransactionalAccountGrain));
