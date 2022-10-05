@@ -1,4 +1,5 @@
 using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Models;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
@@ -11,7 +12,7 @@ var client = new ClientBuilder()
     options.ClusterId = "Snapper";
     options.ServiceId = "Snapper";
 })
-.Configure<ClientMessagingOptions>(options => 
+.Configure<ClientMessagingOptions>(options =>
 {
     options.ResponseTimeout = new TimeSpan(0, 2, 0);
 })
@@ -39,14 +40,24 @@ var regionAndServer0 = $"{deployedRegion}-{homeRegion}-{server0}";
 var regionAndServer1 = $"{deployedRegion}-{homeRegion}-{server1}";
 
 
-var actorAccessInfo0 = new List<Tuple<int, string>>()
+var actorAccessInfo0 = new List<GrainAccessInfo>()
 {
-    new Tuple<int, string>(actorId0, regionAndServer0),
+    new GrainAccessInfo()
+    {
+        Id = actorId0,
+        Region = regionAndServer0,
+        GrainClassName = snapperTransactionalAccountGrainTypeName
+    }
 };
 
-var actorAccessInfo1 = new List<Tuple<int, string>>()
+var actorAccessInfo1 = new List<GrainAccessInfo>()
 {
-    new Tuple<int, string>(actorId1, regionAndServer1),
+    new GrainAccessInfo()
+    {
+        Id = actorId1,
+        Region = regionAndServer1,
+        GrainClassName = snapperTransactionalAccountGrainTypeName
+    }
 };
 
 var grainClassName = new List<string>();
@@ -57,14 +68,21 @@ var accountId = actorId1;
 
 var actor1 = client.GetGrain<ISnapperTransactionalAccountGrain>(actorId1, regionAndServer1);
 
-var grainClassNamesForMultiTransfer = new List<string>();                                             // grainID, grainClassName
-grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
-grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
+var actorAccessInfoForMultiTransfer = new List<GrainAccessInfo>()
 {
-    new Tuple<int, string>(actorId0, regionAndServer0),
-    new Tuple<int, string>(actorId1, regionAndServer1),
+    new GrainAccessInfo()
+    {
+        Id = actorId0,
+        Region = regionAndServer0,
+        GrainClassName = snapperTransactionalAccountGrainTypeName
+    },
+    new GrainAccessInfo()
+    {
+        Id = actorId1,
+        Region = regionAndServer1,
+        GrainClassName = snapperTransactionalAccountGrainTypeName
+    },
 };
 
 var amountToDeposit = 50;
@@ -72,8 +90,8 @@ var amountToDeposit = 50;
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
     var tasks=  new List<Task>();
-    var task1 = actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0, grainClassName);
-    var task2 = actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1, grainClassName);
+    var task1 = actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0);
+    var task2 = actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1);
     tasks.Add(task1);
     tasks.Add(task2);
     await Task.WhenAll(tasks);
@@ -84,14 +102,14 @@ try {
         amountToDeposit,
         new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer1)
     });  // money, List<to account>
-    await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
+    await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer);
 
     Console.WriteLine("Starting balance txs");
 
-    var PACT_balance3 = await actor0.StartTransaction("Balance", null, actorAccessInfo0, grainClassName);
+    var PACT_balance3 = await actor0.StartTransaction("Balance", null, actorAccessInfo0);
     Console.WriteLine($"The PACT balance in actor {actorId0} after giving money: Expected: 50, Actual:{PACT_balance3.resultObj}");
 
-    var PACT_balance4 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
+    var PACT_balance4 = await actor1.StartTransaction("Balance", null, actorAccessInfo1);
     Console.WriteLine($"The PACT balance in actor {actorId1} after receiving money: Expected: 150, Actual:{PACT_balance4.resultObj}");
   } catch (Exception e) {
      Console.WriteLine(e.Message);

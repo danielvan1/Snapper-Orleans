@@ -19,7 +19,7 @@ namespace Concurrency.Implementation.Coordinator.Local
     public class LocalDeterministicTransactionProcessor : ILocalDeterministicTransactionProcessor
     {
         private readonly ILogger<LocalDeterministicTransactionProcessor> logger;
-        private readonly ICoordinatorProvider<IRegionalCoordinatorGrain> regionalCoordinatorProvider;
+        private readonly ICoordinatorProvider coordinatorProvider;
         private readonly IGrainFactory grainFactory;
         private readonly GrainReference grainReference;
 
@@ -37,12 +37,12 @@ namespace Concurrency.Implementation.Coordinator.Local
         private long highestCommittedBid;
 
         public LocalDeterministicTransactionProcessor(ILogger<LocalDeterministicTransactionProcessor> logger,
-                                                      ICoordinatorProvider<IRegionalCoordinatorGrain> regionalCoordinatorProvider,
+                                                      ICoordinatorProvider regionalCoordinatorProvider,
                                                       IGrainFactory grainFactory,
                                                       GrainReference grainReference)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.regionalCoordinatorProvider = regionalCoordinatorProvider ?? throw new ArgumentNullException(nameof(regionalCoordinatorProvider));
+            this.coordinatorProvider = regionalCoordinatorProvider ?? throw new ArgumentNullException(nameof(regionalCoordinatorProvider));
             this.grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
             this.grainReference = grainReference ?? throw new ArgumentNullException(nameof(grainReference));
 

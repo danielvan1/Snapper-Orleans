@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Interface.Configuration;
+using Concurrency.Interface.Models;
+using Microsoft.Extensions.Localization;
 using SmallBank.Interfaces;
 using SnapperGeoReplication.Tests.ClusterSetup;
 using Utilities;
@@ -33,14 +35,24 @@ namespace SnapperGeoRegionalIntegration.Tests
             var regionAndServer1 = $"{deployedRegion}-{homeRegion}-{server1}";
 
 
-            var actorAccessInfo0 = new List<Tuple<int, string>>()
+            var actorAccessInfo0 = new List<GrainAccessInfo>()
             {
-                new Tuple<int, string>(actorId0, regionAndServer0),
+                new GrainAccessInfo()
+                {
+                    Id = actorId0,
+                    Region = regionAndServer0,
+                    GrainClassName = snapperTransactionalAccountGrainTypeName
+                },
             };
 
-            var actorAccessInfo1 = new List<Tuple<int, string>>()
+            var actorAccessInfo1 = new List<GrainAccessInfo>()
             {
-                new Tuple<int, string>(actorId1, regionAndServer1),
+                new GrainAccessInfo()
+                {
+                    Id = actorId1,
+                    Region = regionAndServer1,
+                    GrainClassName = snapperTransactionalAccountGrainTypeName
+                }
             };
 
             var grainClassName = new List<string>();
@@ -55,26 +67,36 @@ namespace SnapperGeoRegionalIntegration.Tests
             grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
             grainClassNamesForMultiTransfer.Add(snapperTransactionalAccountGrainTypeName);
 
-            var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
+            var actorAccessInfoForMultiTransfer = new List<GrainAccessInfo>()
             {
-                new Tuple<int, string>(actorId0, regionAndServer0),
-                new Tuple<int, string>(actorId1, regionAndServer1),
+                new GrainAccessInfo()
+                {
+                    Id = actorId0,
+                    Region = regionAndServer0,
+                    GrainClassName = snapperTransactionalAccountGrainTypeName
+                },
+                new GrainAccessInfo()
+                {
+                    Id = actorId1,
+                    Region = regionAndServer1,
+                    GrainClassName = snapperTransactionalAccountGrainTypeName
+                },
             };
 
             var amountToDeposit = 50;
 
             try
             {
-                await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0, grainClassName);
-                await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1, grainClassName);
+                await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0);
+                await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1);
                 var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
                     amountToDeposit,
                     new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer1)
                 });
-                await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer, grainClassNamesForMultiTransfer);
-                var PACTBalanceActor0 = await actor0.StartTransaction("Balance", null, actorAccessInfo0, grainClassName);
+                await actor0.StartTransaction("MultiTransfer", multiTransferInput, actorAccessInfoForMultiTransfer);
+                var PACTBalanceActor0 = await actor0.StartTransaction("Balance", null, actorAccessInfo0);
                 Xunit.Assert.Equal(9950, Convert.ToInt32(PACTBalanceActor0.resultObj));
-                var PACTBalanceActor1 = await actor1.StartTransaction("Balance", null, actorAccessInfo1, grainClassName);
+                var PACTBalanceActor1 = await actor1.StartTransaction("Balance", null, actorAccessInfo1);
                 Xunit.Assert.Equal(10050, Convert.ToInt32(PACTBalanceActor1.resultObj));
             }
             catch (Exception e)
@@ -95,11 +117,13 @@ namespace SnapperGeoRegionalIntegration.Tests
             int startAccountId0 = 0;
             int startAccountId1 = numberOfAccountsInEachServer;
 
-            List<string> accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
-            List<string> accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer + theOneAccountThatSendsTheMoney);
-            List<Tuple<int, string>> accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0);
-            List<Tuple<int, string>> accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1);
-            List<Tuple<int, string>> accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
+            Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
+            string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
+            List<GrainAccessInfo> accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0, snapperTransactionalAccountGrainTypeName);
+            List<GrainAccessInfo> accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1, snapperTransactionalAccountGrainTypeName);
+            List<Tuple<int, string>> input0 = TestDataGenerator.GetAccountsFromRegion(accountIdsServer0);
+            List<Tuple<int, string>> input1 = TestDataGenerator.GetAccountsFromRegion(accountIdsServer1);
+            List<GrainAccessInfo> accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
 
             Console.WriteLine($"AccountIdsServer0: {string.Join(", ", accountIdsServer0)}");
             Console.WriteLine($"AccountIdsServer1: {string.Join(", ", accountIdsServer1)}");
@@ -109,12 +133,12 @@ namespace SnapperGeoRegionalIntegration.Tests
 
             Console.WriteLine("Starting with inits");
 
-            foreach (Tuple<int, string> accountId in accountIds)
+            foreach (var accountId in accountIds)
             {
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
-                var initTask = actor.StartTransaction("Init", accountId, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                var initTask = actor.StartTransaction("Init", accountId, new List<GrainAccessInfo>() { accountId });
                 initTasks.Add(initTask);
             }
 
@@ -126,16 +150,13 @@ namespace SnapperGeoRegionalIntegration.Tests
 
             foreach (var accountId in accountIdsServer0)
             {
-                var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(oneDollar, accountIdsServer1);
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(oneDollar, input0);
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
-                Xunit.Assert.Equal(11, accessInfoClassNamesMultiTransfer.Count);
-                Xunit.Assert.Equal(10, accountIdsServer1.Count);
-                var accounts = new List<Tuple<int, string>>(accountIdsServer1) { accountId };
+                var accounts = new List<GrainAccessInfo>(accountIdsServer0) { accountId };
                 Console.WriteLine($"Accounts: {string.Join(", ", accounts)}");
-                Xunit.Assert.Equal(11, accounts.Count);
-                var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferInput, accounts, accessInfoClassNamesMultiTransfer);
+                var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferInput, accounts);
                 multiTransferTasks.Add(multiTransfertask);
             }
             await Task.WhenAll(multiTransferTasks);
@@ -145,11 +166,11 @@ namespace SnapperGeoRegionalIntegration.Tests
             var balanceTasks = new List<Task<TransactionResult>>();
             foreach (var accountId in accountIds)
             {
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = this.Cluster.GrainFactory.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
-                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
                 balanceTasks.Add(balanceTask);
             }
 
@@ -174,6 +195,7 @@ namespace SnapperGeoRegionalIntegration.Tests
         public Task DisposeAsync()
         {
             this.Cluster.StopAllSilos();
+
             return Task.CompletedTask;
         }
     }

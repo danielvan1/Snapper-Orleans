@@ -15,7 +15,7 @@ namespace SmallBank.Grains
     {
         private readonly ILogger<SnapperTransactionalAccountGrain> logger;
 
-        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger, IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory) : base(logger, deterministicTransactionExecutorFactory)
         {
             this.logger = logger;
         }

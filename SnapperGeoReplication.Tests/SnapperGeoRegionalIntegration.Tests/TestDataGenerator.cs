@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Concurrency.Interface.Models;
 
 namespace SnapperGeoRegionalIntegration.Tests
 {
@@ -16,14 +17,31 @@ namespace SnapperGeoRegionalIntegration.Tests
             return Enumerable.Repeat(snapperTransactionalAccountGrainTypeName, n).ToList<string>();
         }
 
-        public static List<Tuple<int, string>> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex)
+        public static List<GrainAccessInfo> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex, string grainClassName)
         {
-            List<Tuple<int, string>> accountIds = new List<Tuple<int, string>>();
+            List<GrainAccessInfo> accountIds = new List<GrainAccessInfo>();
             var regionAndServer = $"{deployedRegion}-{homeRegion}-{serverIndex}";
             for (int accountId = startAccountId; accountId < n+startAccountId; accountId++)
             {
-                accountIds.Add(new Tuple<int, string>(accountId, regionAndServer));
+                accountIds.Add(
+                new GrainAccessInfo()
+                {
+                    Id = accountId,
+                    Region = regionAndServer,
+                    GrainClassName = grainClassName
+                });
             }
+            return accountIds;
+        }
+
+        public static List<Tuple<int, string>> GetAccountsFromRegion(List<GrainAccessInfo> grainAccessInfos)
+        {
+            List<Tuple<int, string>> accountIds = new List<Tuple<int, string>>();
+            foreach (var grainAccessInfo in grainAccessInfos)
+            {
+                accountIds.Add(new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region));
+            }
+
             return accountIds;
         }
     }

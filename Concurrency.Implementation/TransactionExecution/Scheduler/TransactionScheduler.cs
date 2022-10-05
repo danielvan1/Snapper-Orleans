@@ -7,21 +7,19 @@ using Microsoft.Extensions.Logging;
 
 namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
-    public class TransactionScheduler
+    public class TransactionScheduler : ITransactionScheduler
     {
         private readonly ScheduleInfoManager scheduleInfoManager;
         private readonly Dictionary<long, SubBatch> batchInfo;                               // key: local bid
         private readonly Dictionary<long, long> tidToLastTid;
         private readonly Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
-        private readonly ILogger logger;
 
-        public TransactionScheduler(ILogger logger)
+        public TransactionScheduler()
         {
             this.scheduleInfoManager = new ScheduleInfoManager();
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
         }
 
         public void CompleteDeterministicBatch(long bid)
@@ -33,7 +31,6 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         {
             this.scheduleInfoManager.InsertDeterministicBatch(batch, regionalBid, highestCommittedBid);
             this.batchInfo.Add(batch.Bid, batch);
-            this.logger.LogInformation("batch transactions: [{transactions}]", string.Join(", ", batch));
 
             // TODO: This logic can be improved
             for (int i = 0; i < batch.Transactions.Count; i++)
@@ -51,8 +48,6 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
                     this.deterministicExecutionPromise.Add(tid, new TaskCompletionSource<bool>());
                 }
             }
-
-            this.logger.LogInformation("tidToLastTid: {herp}", string.Join(";; ", tidToLastTid.Select(kv => kv.Key + ": " + kv.Value)));
         }
 
         public async Task WaitForTurn(long bid, long tid)

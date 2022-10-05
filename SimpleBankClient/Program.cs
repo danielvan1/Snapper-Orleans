@@ -1,4 +1,4 @@
-﻿using Concurrency.Interface.Configuration;
+﻿using Concurrency.Interface.Models;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
@@ -26,9 +26,14 @@ int actorId0 = 0;
 int actorId1 = 1;
 var regionAndServer = "EU-EU-0";
 
-var actorAccessInfo0 = new List<Tuple<int, string>>()
+var actorAccessInfo0 = new List<GrainAccessInfo>()
 {
-    new Tuple<int, string>(actorId0, regionAndServer),
+    new GrainAccessInfo()
+    {
+        Id = actorId0,
+        Region = regionAndServer,
+        GrainClassName = snapperTransactionalAccountGrainTypeName
+    },
 };
 
 var actorAccessInfo1 = new List<Tuple<int, string>>()
@@ -58,12 +63,12 @@ var actorAccessInfoForMultiTransfer = new List<Tuple<int, string>>()
 var amountToDeposit = 50;
 var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
     amountToDeposit,
-    new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer) 
+    new List<Tuple<int, string>>() { new Tuple<int, string>(actorId1, regionAndServer)
 });
 
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
-    await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer), actorAccessInfo0, grainClassName);
+    await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer), actorAccessInfo0);
     // await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer), actorAccessInfo1, grainClassName);
 
     // Console.WriteLine("Starting deposit txs");

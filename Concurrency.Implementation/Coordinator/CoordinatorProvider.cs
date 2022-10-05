@@ -1,26 +1,28 @@
 using System;
 using Concurrency.Implementation.LoadBalancing;
+using Concurrency.Interface.Coordinator;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Implementation.Coordinator
 {
-    public class CoordinatorProvider<T> : ICoordinatorProvider<T> where T : IGrain, IGrainWithIntegerCompoundKey
+    public class CoordinatorProvider : ICoordinatorProvider
     {
-        private readonly IGrainFactory grainFactory;
         private readonly Random random;
 
-        public CoordinatorProvider(IGrainFactory grainFactory)
+        public CoordinatorProvider()
         {
-            this.grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
             this.random = new Random();
         }
 
-        public T GetCoordinator(string region)
+        public ILocalCoordinatorGrain GetLocalCoordinatorGrain(int id, string region, IGrainFactory grainFactory)
         {
-            // TODO: Somehow get more information to be able to properly choose a random Coordinator
-            int randomId = this.random.Next(3);
+            return grainFactory.GetGrain<ILocalCoordinatorGrain>(id % Constants.NumberOfLocalCoordinatorsPerSilo, region);
+        }
 
-            return this.grainFactory.GetGrain<T>(randomId, region);
+        public IRegionalCoordinatorGrain GetRegionalCoordinator(int id, string region, IGrainFactory grainFactory)
+        {
+            return grainFactory.GetGrain<IRegionalCoordinatorGrain>(0, region.Substring(0,2));
         }
     }
 }

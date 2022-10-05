@@ -10,10 +10,10 @@ namespace Concurrency.Implementation.Coordinator.Local
     public class LocalDeterministicTransactionProcessorFactory : ILocalDeterministicTransactionProcessorFactory
     {
         private readonly ILogger<LocalDeterministicTransactionProcessor> logger;
-        private readonly ICoordinatorProvider<IRegionalCoordinatorGrain> coordinatorProvider;
+        private readonly ICoordinatorProvider coordinatorProvider;
 
         public LocalDeterministicTransactionProcessorFactory(ILogger<LocalDeterministicTransactionProcessor> logger,
-                                                             ICoordinatorProvider<IRegionalCoordinatorGrain> coordinatorProvider)
+                                                             ICoordinatorProvider coordinatorProvider)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.coordinatorProvider = coordinatorProvider ?? throw new ArgumentNullException(nameof(coordinatorProvider));

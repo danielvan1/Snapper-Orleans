@@ -1,11 +1,10 @@
-using System;
 using System.Collections.Generic;
 using System.IO;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
 using Xunit;
-using System.Linq; 
+using System.Linq;
 
 namespace SnapperGeoReplication.Tests
 {
@@ -33,7 +32,7 @@ namespace SnapperGeoReplication.Tests
             var siloPlacementInfo = siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
             var localSiloInfos = siloPlacementInfo.LocalSiloInfo;
 
-            var expectedSiloRegionsAndServers = new List<string>() 
+            var expectedSiloRegionsAndServers = new List<string>()
             {
                 // EU homes
                 "EU-EU-0",

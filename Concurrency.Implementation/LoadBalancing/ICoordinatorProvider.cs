@@ -1,10 +1,13 @@
 using System.Threading.Tasks;
+using Concurrency.Interface.Coordinator;
 using Orleans;
 
 namespace Concurrency.Implementation.LoadBalancing
 {
-    public interface ICoordinatorProvider<T> where T : IGrain
+    public interface ICoordinatorProvider
     {
-        T GetCoordinator(string region);
+        IRegionalCoordinatorGrain GetRegionalCoordinator(int id, string region, IGrainFactory grainFactory);
+
+        ILocalCoordinatorGrain GetLocalCoordinatorGrain(int id, string region, IGrainFactory grainFactory);
     }
 }
