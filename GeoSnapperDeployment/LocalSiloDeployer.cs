@@ -5,6 +5,9 @@ using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Implementation.TransactionExecution;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
+using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
+using Concurrency.Implementation.TransactionExecution.TransactionExecution;
+using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -209,6 +212,8 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(globalConfiguration);
                 serviceCollection.AddSingleton(globalSiloInfo);
 
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
                 serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
                 serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
@@ -236,8 +241,10 @@ namespace GeoSnapperDeployment
                     builder.AddSerilog(CreateLogger());
                 });
 
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
 
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(regionalConfiguration);
@@ -277,9 +284,11 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(localSilos);
 
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
                 serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
 
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
                 serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();

@@ -6,12 +6,14 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
+using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
+using Orleans.Runtime.Placement;
 using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
@@ -20,16 +22,9 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         private readonly ILogger<DeterministicTransactionExecutor> logger;
         private readonly ITransactionScheduler transactionScheduler;
-
-        private readonly ILocalCoordinatorGrain localCoordinator;
-        private readonly IRegionalCoordinatorGrain regionalCoordinator;                                // use this coord to get tid for global transactions
         private readonly IGrainFactory grainFactory;
-        private readonly ICoordinatorProvider coordinatorProvider;
         private readonly GrainReference grainReference;
         private readonly GrainId grainId;
-
-        // grain basic info
-        private readonly string siloId;
 
         private Dictionary<long, TaskCompletionSource<bool>> batchCommit;                // key: local bid
         private Dictionary<long, TaskCompletionSource<bool>> localBatchInfoPromise;       // key: local bid, use to check if the SubBatch has arrived or not
@@ -44,24 +39,16 @@ namespace Concurrency.Implementation.TransactionExecution
         private long highestCommittedLocalBid;
 
         public DeterministicTransactionExecutor(ILogger<DeterministicTransactionExecutor> logger,
-                                                ICoordinatorProvider coordinatorProvider,
                                                 ITransactionScheduler transactionScheduler,
                                                 IGrainFactory grainFactory,
                                                 GrainReference grainReference,
                                                 GrainId grainId)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.coordinatorProvider = coordinatorProvider ?? throw new ArgumentNullException(nameof(coordinatorProvider));
-            // this.transactionScheduler = new TransactionScheduler();
-            this.transactionScheduler = transactionScheduler;
-
-            this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
-            this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId, grainFactory);
-
+            this.transactionScheduler = transactionScheduler ?? throw new ArgumentNullException(nameof(transactionScheduler));
 
             this.grainReference = grainReference;
             this.grainId = grainId;
-            this.siloId = grainId.StringId;
 
             // this.myLocalCoord = grainFactory;
             // this.regionalCoordinator = regionalCoordinator;
@@ -75,139 +62,6 @@ namespace Concurrency.Implementation.TransactionExecution
             this.regionalBidToLocalBid = new Dictionary<long, long>();
             this.regionalBidToRegionalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
             this.regionalBatchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
-        }
-
-        // int: the highestCommittedBid get from local coordinator
-        /// <summary>
-        /// This returns the Bid and TransactionContext. Also start the process of starting to create the (sub)batches
-        /// in the RegionalCoordinator (if it is a regional transaction) and also in the LocalCoordinator.
-        /// We also figure out whether the transaction is a multi-server or single server transacation.
-        /// </summary>
-        /// <param name="grainAccessInfos"></param>
-        /// <param name="grainClassNames"></param>
-        /// <returns></returns>
-
-        // TODO: Figure out whether or not the current transaction .
-        public async Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
-        {
-            this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
-                                       this.grainReference, string.Join(", ", grainAccessInfos));
-
-            // check if the transaction will access multiple silos
-            var silos = new List<string>();
-            var grainListPerSilo = new Dictionary<string, List<GrainAccessInfo>>();
-
-            // This is the placement manager(PM) code described in the paper
-            for (int i = 0; i < grainAccessInfos.Count; i++)
-            {
-                var siloId = grainAccessInfos[i].Region;
-                this.logger.LogInformation("SiloId: {siloId}", this.grainReference, siloId);
-
-                if (!grainListPerSilo.ContainsKey(siloId))
-                {
-                    silos.Add(siloId);
-                    grainListPerSilo.Add(siloId, new List<GrainAccessInfo>());
-                }
-
-                GrainAccessInfo grainAccessInfo = new GrainAccessInfo()
-                {
-                    Id = grainAccessInfos[i].Id,
-                    Region = grainAccessInfos[i].Region,
-                    GrainClassName = grainAccessInfos[i].GrainClassName,
-                };
-
-                grainListPerSilo[siloId].Add(grainAccessInfo);
-                // grainAccessInfos[i]
-                // grainListPerSilo[siloId].Add();
-            }
-
-
-            // For a simple example, make sure that only 1 silo is involved in the transaction
-            this.logger.LogInformation("Silolist count: {siloListCount}", this.grainReference, silos.Count);
-            if (silos.Count > 1)
-            {
-                // get regional tid from regional coordinator
-                // Note the Dictionary<string, Tuple<int, string>> part of the
-                // return type of NewTransaction(..) is a map between the region
-                // and which local coordinators
-                Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>> regionalInfo =
-                    await this.regionalCoordinator.NewRegionalTransaction(silos);
-
-                var regionalTid = regionalInfo.Item1.Tid;
-                var regionalBid = regionalInfo.Item1.Bid;
-                Dictionary<string, Tuple<int, string>> siloIDToLocalCoordID = regionalInfo.Item2;
-
-                // send corresponding grainAccessInfo to local coordinators in different silos
-                Debug.Assert(grainListPerSilo.ContainsKey(siloId));
-                Task<TransactionRegisterInfo> task = null;
-
-                for (int i = 0; i < silos.Count; i++)
-                {
-                    var siloId = silos[i];
-                    Debug.Assert(siloIDToLocalCoordID.ContainsKey(siloId));
-
-                    // TODO: Need a map from coordinator to local coordinator
-                    var coordId = siloIDToLocalCoordID[siloId];
-                    var localCoordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(coordId.Item1, coordId.Item2);
-
-                    // get local tid, bid from local coordinator
-                    this.logger.LogInformation("Chosen LocalCoordinator: {id}-{regionl}, siloId: {siloId}", this.grainReference, coordId.Item1, coordId.Item2, this.siloId);
-                    Console.WriteLine($"{this.grainReference}: Chosen LocalCoordinator: {coordId.Item1}-{coordId.Item2}, siloId: {this.siloId}");
-                    this.logger.LogInformation("Herp: {x}, {grainReference}", 1, this.grainReference);
-                    if (coordId.Item2 == this.siloId)
-                    {
-                        this.logger.LogInformation($"Is calling NewRegionalTransaction w/ task", this.grainReference);
-                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
-                    }
-                    else
-                    {
-                        this.logger.LogInformation($"Is calling NewRegionalTransaction w/o task", this.grainReference);
-
-                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
-                    }
-                }
-
-                Debug.Assert(task != null);
-                this.logger.LogInformation($"Waiting for task in GetDetContext", this.grainReference);
-                TransactionRegisterInfo localInfo = await task;
-                this.logger.LogInformation($"Is DONE waiting for task in GetDetContext, going to return tx context", this.grainReference);
-                var regionalContext = new TransactionContext(localInfo.Bid, localInfo.Tid, regionalBid, regionalTid);
-
-                if (this.highestCommittedLocalBid < -1)
-                {
-                    this.highestCommittedLocalBid = -1;
-                    await this.GarbageCollection(this.highestCommittedLocalBid);
-                }
-                // TODO: What is this -1??
-                return new Tuple<long, TransactionContext>(-1, regionalContext);
-            }
-
-            var herpderp = new List<GrainAccessInfo>();
-
-            for (int i = 0; i < grainAccessInfos.Count; i++)
-            {
-                herpderp.Add(new GrainAccessInfo()
-                {
-                    Id = grainAccessInfos[i].Id,
-                    Region = grainAccessInfos[i].Region,
-                    GrainClassName = grainAccessInfos[i].GrainClassName
-                }
-                );
-            }
-
-            TransactionRegisterInfo info = await localCoordinator.NewLocalTransaction(herpderp);
-            this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.localCoordinator);
-
-            var cxt2 = new TransactionContext(info.Tid, info.Bid);
-            var localContext = new Tuple<long, TransactionContext>(info.HighestCommittedBid, cxt2);
-
-            if (this.highestCommittedLocalBid < localContext.Item1)
-            {
-                this.highestCommittedLocalBid = localContext.Item1;
-                await this.GarbageCollection(this.highestCommittedLocalBid);
-            }
-
-            return localContext;
         }
 
         /// <summary>
@@ -326,11 +180,7 @@ namespace Concurrency.Implementation.TransactionExecution
                                        this.grainReference, batch);
 
             // do garbage collection for committed local batches
-            if (this.highestCommittedLocalBid < batch.HighestCommittedBid)
-            {
-                this.highestCommittedLocalBid = batch.HighestCommittedBid;
-                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
-            }
+            this.GarbageCollection(batch.HighestCommittedBid);
 
             this.batchCommit.Add(batch.Bid, new TaskCompletionSource<bool>());
 
@@ -384,11 +234,8 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("AckBatchCommit is called on batch id: {bid} by LocalCoordinator",
                                        this.grainReference, bid);
 
-            if (this.highestCommittedLocalBid < bid)
-            {
-                this.highestCommittedLocalBid = bid;
-                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
-            }
+            this.GarbageCollection(bid);
+
 
             this.logger.LogInformation("Setting bid: {bid} to commit, these are the bid waiting: {bids}",
                                        this.grainReference, bid, string.Join(", ", this.batchCommit.Select(kv => kv.Key + " : " + kv.Value.ToString())));
@@ -420,7 +267,11 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public Task GarbageCollection(long bid)
         {
-            this.transactionScheduler.GarbageCollection(bid);
+            if (this.highestCommittedLocalBid < bid)
+            {
+                this.highestCommittedLocalBid = bid;
+                this.transactionScheduler.GarbageCollection(this.highestCommittedLocalBid);
+            }
 
             return Task.CompletedTask;
         }

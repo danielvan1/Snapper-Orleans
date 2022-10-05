@@ -1,8 +1,7 @@
 using System;
-using Concurrency.Implementation.TransactionExecution.Scheduler;
 using Microsoft.Extensions.Logging;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public class TransactionSchedulerFactory : ITransactionSchedulerFactory
     {

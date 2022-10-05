@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public interface ITransactionScheduler
     {

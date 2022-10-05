@@ -17,7 +17,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public DeterministicState(TState state)
         {
-            committedState = state;
+            this.committedState = state;
         }
 
         public TState DetOp()

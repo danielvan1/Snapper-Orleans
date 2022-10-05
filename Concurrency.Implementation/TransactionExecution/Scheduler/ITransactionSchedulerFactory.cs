@@ -1,4 +1,4 @@
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public interface ITransactionSchedulerFactory
     {

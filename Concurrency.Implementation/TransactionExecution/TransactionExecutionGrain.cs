@@ -5,6 +5,8 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
+using Concurrency.Implementation.TransactionExecution.TransactionExecution;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
@@ -19,16 +21,22 @@ namespace Concurrency.Implementation.TransactionExecution
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
         private readonly ILogger<TransactionExecutionGrain<TState>> logger;
+        private readonly ITransactionContextProviderFactory transactionContextProviderFactory;
         private readonly IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory;
+
+        private ITransactionContextProvider transactionContextProvider;
         private IDeterministicTransactionExecutor deterministicTransactionExecutor;
         private GrainId myGrainId;
 
         // transaction execution
         private ITransactionalState<TState> state;
 
-        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory)
+        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger,
+                                         ITransactionContextProviderFactory transactionContextProviderFactory,
+                                         IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.transactionContextProviderFactory = transactionContextProviderFactory ?? throw new ArgumentNullException(nameof(transactionContextProviderFactory));
             this.deterministicTransactionExecutorFactory = deterministicTransactionExecutorFactory ?? throw new ArgumentNullException(nameof(deterministicTransactionExecutorFactory));
         }
 
@@ -36,7 +44,9 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion };
             this.state = new DeterministicState<TState>();
+
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
+            this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
 
             return Task.CompletedTask;
         }
@@ -52,16 +62,17 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <returns></returns>
         public async Task<TransactionResult> StartTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo)
         {
+            var receiveTxnTime = DateTime.Now;
+
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
 
 
-            var receiveTxnTime = DateTime.Now;
-
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
-            Tuple<long, TransactionContext> transactionContext = await this.deterministicTransactionExecutor.GetDeterministicContext(grainAccessInfo);
+            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
+            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
             var context = transactionContext.Item2;
 
             // TODO: Only gets here in multi-server or multi-home transaction???

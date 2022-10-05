@@ -1,7 +1,7 @@
 using Orleans;
 using Orleans.Runtime;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
 {
     public interface IDeterministicTransactionExecutorFactory
     {

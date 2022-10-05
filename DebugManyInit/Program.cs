@@ -21,7 +21,7 @@ await client.Connect();
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
 
-var numberOfAccountsInEachServer = 2;
+var numberOfAccountsInEachServer = 15;
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
