@@ -85,10 +85,6 @@ namespace Concurrency.Implementation.Coordinator.Local
         // TODO: We should inject a CoordinatorProvider such that we can choose a regionalCoordinator
         public async Task<TransactionRegisterInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<GrainAccessInfo> grainAccessInfo)
         {
-            // this.grainReference.GetPrimaryKeyLong(out string region1);
-            // string region = region1.Substring(0, 2);
-
-            // IRegionalCoordinatorGrain regionalCoordinator = this.regionalCoordinatorProvider.GetCoordinator(region);
             this.logger.LogInformation("NewRegionalTransaction is called regionalBid {globalBid} and regionalTid {tid}", this.grainReference, regionalBid, regionalTid);
 
             if (!this.regionalBatchProcessInfos.TryGetValue(regionalBid, out RegionalBatchProcessInfo regionalBatchProcessInfo))
@@ -215,11 +211,9 @@ namespace Concurrency.Implementation.Coordinator.Local
         }
 
         private void GenerateSchedulePerGrain(IDictionary<GrainAccessInfo, SubBatch> schedulePerGrain, long tid, long currentBatchId,
-                                                                               List<GrainAccessInfo> deterministicTransactionRequests)
+                                              List<GrainAccessInfo> deterministicTransactionRequests)
         {
             this.logger.LogInformation("GenerateSchedulePerService: Number of transactionRequest: {count}. The grains accessed are: {grains}", this.grainReference, deterministicTransactionRequests.Count, string.Join(", ", deterministicTransactionRequests));
-
-            // var schedulePerGrain = new Dictionary<GrainAccessInfo, SubBatch>();
 
             for (int i = 0; i < deterministicTransactionRequests.Count; i++)
             {
@@ -235,7 +229,6 @@ namespace Concurrency.Implementation.Coordinator.Local
 
             this.logger.LogInformation("GenerateSchedulePerService Done", this.grainReference);
 
-            // return schedulePerGrain;
         }
 
         public Task EmitBatch(long bid)
@@ -455,6 +448,8 @@ namespace Concurrency.Implementation.Coordinator.Local
             }
 
             this.expectedAcksPerBatch.Remove(bid);
+
+            // TODO: Find a way to cleanup the BatchProcessInfo that we do not use anymore
             // this.localBatchProcessInfos.Remove(bid);
             if(regionalBid != -1) this.regionalBatchProcessInfos.Remove(regionalBid);
         }
