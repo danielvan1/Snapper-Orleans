@@ -36,7 +36,7 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion };
             this.state = new DeterministicState<TState>();
-            this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, myGrainId);
+            this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
 
             return Task.CompletedTask;
         }

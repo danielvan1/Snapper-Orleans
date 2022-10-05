@@ -209,6 +209,8 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(globalConfiguration);
                 serviceCollection.AddSingleton(globalSiloInfo);
 
+                serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
+                serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
@@ -242,6 +244,9 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(localConfiguration);
                 serviceCollection.AddSingleton(localSilos);
 
+                serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
+                serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
+
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
@@ -271,6 +276,9 @@ namespace GeoSnapperDeployment
                 });
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(localSilos);
+
+                serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
+                serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
 
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
                 serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();

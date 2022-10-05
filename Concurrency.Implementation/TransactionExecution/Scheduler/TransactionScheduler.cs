@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
@@ -9,14 +10,19 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
     public class TransactionScheduler : ITransactionScheduler
     {
-        private readonly ScheduleInfoManager scheduleInfoManager;
+        // private readonly ScheduleInfoManager scheduleInfoManager;
         private readonly Dictionary<long, SubBatch> batchInfo;                               // key: local bid
         private readonly Dictionary<long, long> tidToLastTid;
         private readonly Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
+        private readonly ILogger<TransactionScheduler> logger;
+        private readonly IScheduleInfoManager scheduleInfoManager;
 
-        public TransactionScheduler()
+        public TransactionScheduler(ILogger<TransactionScheduler> logger, IScheduleInfoManager scheduleInfoManager)
         {
-            this.scheduleInfoManager = new ScheduleInfoManager();
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.scheduleInfoManager = scheduleInfoManager ?? throw new ArgumentNullException(nameof(scheduleInfoManager));
+
+            // this.scheduleInfoManager = new ScheduleInfoManager();
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();

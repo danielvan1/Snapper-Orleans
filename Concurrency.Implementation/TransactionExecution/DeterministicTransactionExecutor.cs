@@ -45,13 +45,15 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public DeterministicTransactionExecutor(ILogger<DeterministicTransactionExecutor> logger,
                                                 ICoordinatorProvider coordinatorProvider,
+                                                ITransactionScheduler transactionScheduler,
                                                 IGrainFactory grainFactory,
                                                 GrainReference grainReference,
                                                 GrainId grainId)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.coordinatorProvider = coordinatorProvider ?? throw new ArgumentNullException(nameof(coordinatorProvider));
-            this.transactionScheduler = new TransactionScheduler();
+            // this.transactionScheduler = new TransactionScheduler();
+            this.transactionScheduler = transactionScheduler;
 
             this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
             this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId, grainFactory);
