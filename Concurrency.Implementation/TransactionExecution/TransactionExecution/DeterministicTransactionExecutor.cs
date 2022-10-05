@@ -3,20 +3,17 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
-using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
-using Orleans.Runtime.Placement;
 using Utilities;
 
-namespace Concurrency.Implementation.TransactionExecution
+namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
 {
     public class DeterministicTransactionExecutor : IDeterministicTransactionExecutor
     {
