@@ -74,30 +74,10 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         public async Task PassToken(LocalToken token)
         {
-            long currentBatchId;
-            IList<long> currentBatchIds = new List<long>();
+            long currentBatchId = this.localDeterministicTransactionProcessor.GenerateLocalBatch(token);
+            IList<long> currentBatchIds = this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
+
             Thread.Sleep(10);
-
-            // TODO: Why do we need to do it like this?
-            if (token.IsLastEmitBidRegional)
-            {
-                currentBatchIds = this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
-                currentBatchId = this.localDeterministicTransactionProcessor.GenerateLocalBatch(token);
-            }
-            else
-            {
-                currentBatchId = this.localDeterministicTransactionProcessor.GenerateLocalBatch(token);
-                currentBatchIds = this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
-            }
-
-            // if (this.highestCommittedBid > token.HighestCommittedBid)
-            // {
-            //     GarbageCollectTokenInfo(token);
-            // }
-            // else
-            // {
-            //     this.highestCommittedBid = token.HighestCommittedBid;
-            // }
 
             _ = this.neighbor.PassToken(token);
             if (currentBatchId != -1) await this.localDeterministicTransactionProcessor.EmitBatch(currentBatchId);

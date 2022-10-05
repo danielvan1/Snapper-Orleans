@@ -20,6 +20,7 @@ namespace Concurrency.Implementation.Coordinator
             return grainFactory.GetGrain<ILocalCoordinatorGrain>(id % Constants.NumberOfLocalCoordinatorsPerSilo, region);
         }
 
+        // TODO: Add a way to get the number of regionalCoordinators.
         public IRegionalCoordinatorGrain GetRegionalCoordinator(int id, string region, IGrainFactory grainFactory)
         {
             return grainFactory.GetGrain<IRegionalCoordinatorGrain>(0, region.Substring(0,2));

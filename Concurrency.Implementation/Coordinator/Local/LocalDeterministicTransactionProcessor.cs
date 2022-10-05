@@ -144,7 +144,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
             this.deterministicTransactionRequests.Clear();
             this.deterministicTransactionRequestPromises.Clear();
-            this.HerpDerp(token);
+            this.GarbageCollection(token);
 
             return currentBatchId;
         }
@@ -209,7 +209,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 token.LastEmitGlobalBid = regionalBid;
             }
 
-            this.HerpDerp(token);
+            this.GarbageCollection(token);
 
             return currentBatchIds;
         }
@@ -550,7 +550,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             token.HighestCommittedBid = highestCommittedBid;
         }
 
-        private void HerpDerp(LocalToken token)
+        private void GarbageCollection(LocalToken token)
         {
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {
