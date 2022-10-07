@@ -16,15 +16,13 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionPlacement
 
         public TransactionType GetTransactionType(List<GrainAccessInfo> grainAccessInfos)
         {
-            this.logger.LogInformation("Getting context for grainList: [{grainList}]", string.Join(", ", grainAccessInfos));
-
             // Check if the transaction will access multiple silos
-            HashSet<string> uniqueSiloIds = this.GroupGrainAccessInfos(grainAccessInfos);
+            HashSet<string> uniqueSiloIds = this.GetUniqueSiloIds(grainAccessInfos);
 
             return uniqueSiloIds.Count > 1 ? TransactionType.SingleHomeMultiServer : TransactionType.SingleHomeSingleServer;
         }
 
-        private HashSet<string> GroupGrainAccessInfos(List<GrainAccessInfo> grainAccessInfos)
+        private HashSet<string> GetUniqueSiloIds(List<GrainAccessInfo> grainAccessInfos)
         {
             // Check if the transaction will access multiple silos
             var siloIds = new HashSet<string>();

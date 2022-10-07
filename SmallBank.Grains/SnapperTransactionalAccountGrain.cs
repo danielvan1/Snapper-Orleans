@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Concurrency.Implementation;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
@@ -19,7 +21,8 @@ namespace SmallBank.Grains
 
         public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger,
                                                 ITransactionContextProviderFactory transactionContextProviderFactory,
-                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory) : base(logger, transactionContextProviderFactory, deterministicTransactionExecutorFactory)
+                                                ITransactionBroadCasterFactory transactionBroadCasterFactory,
+                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory) : base(logger, transactionContextProviderFactory, transactionBroadCasterFactory, deterministicTransactionExecutorFactory, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
             this.logger = logger;
         }
@@ -27,16 +30,17 @@ namespace SmallBank.Grains
         public async Task<TransactionResult> Init(TransactionContext context, object funcInput)
         {
             var accountID = (Tuple<int, string>)funcInput;
-            var myState = await GetState(context, AccessMode.ReadWrite);
+            BankAccount myState = await GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID;
             myState.balance = 10000;
             this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
+
             return new TransactionResult();
         }
 
         public async Task<TransactionResult> MultiTransfer(TransactionContext context, object funcInput)
         {
-            var input = (MultiTransferInput)funcInput;
+            var input = (MultiTransferInput) funcInput;
             var money = input.Item1;
             var toAccounts = input.Item2;
             var myState = await GetState(context, AccessMode.ReadWrite);

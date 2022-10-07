@@ -22,7 +22,6 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.scheduleInfoManager = scheduleInfoManager ?? throw new ArgumentNullException(nameof(scheduleInfoManager));
 
-            // this.scheduleInfoManager = new ScheduleInfoManager();
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
@@ -44,7 +43,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
                 var tid = batch.Transactions[i];
                 // TODO: rafactor
                 if (i == 0) this.tidToLastTid.Add(tid, -1);
-                else this.tidToLastTid.Add(tid, batch.Transactions[i - 1]);
+                else tidToLastTid.Add(tid, batch.Transactions[i - 1]);
 
                 if (i == batch.Transactions.Count - 1) break;
 
@@ -92,7 +91,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 
             if (transactions.Count == 0)
             {
-                coordinatorId = this.batchInfo[bid].CoordinatorId;
+                coordinatorId = this.batchInfo[bid].LocalCoordinatorId;
                 this.batchInfo.Remove(bid);
             }
             else

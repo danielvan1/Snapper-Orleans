@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.LoadBalancing;
+using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
@@ -77,7 +78,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             foreach (GrainAccessInfo grainAccessInfo in grainAccessInfos)
             {
                 var siloId = grainAccessInfo.Region;
-                this.logger.LogInformation("SiloId: {siloId}", siloId);
+                this.logger.LogInformation("SiloId: {siloId}", this.grainReference,  siloId);
 
                 if (!grainsPerSilo.ContainsKey(siloId))
                 {

@@ -5,6 +5,7 @@ using System.Runtime.Serialization;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
 using Concurrency.Interface.Models;
@@ -22,9 +23,11 @@ namespace Concurrency.Implementation.TransactionExecution
     {
         private readonly ILogger<TransactionExecutionGrain<TState>> logger;
         private readonly ITransactionContextProviderFactory transactionContextProviderFactory;
+        private readonly ITransactionBroadCasterFactory transactionBroadCasterFactory;
         private readonly IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory;
-
+        private readonly string classNameSpace;
         private ITransactionContextProvider transactionContextProvider;
+        private ITransactionBroadCaster transactionBroadCaster;
         private IDeterministicTransactionExecutor deterministicTransactionExecutor;
         private GrainId myGrainId;
 
@@ -33,11 +36,15 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger,
                                          ITransactionContextProviderFactory transactionContextProviderFactory,
-                                         IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory)
+                                         ITransactionBroadCasterFactory transactionBroadCasterFactory,
+                                         IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory,
+                                         string classNameSpace)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.transactionContextProviderFactory = transactionContextProviderFactory ?? throw new ArgumentNullException(nameof(transactionContextProviderFactory));
+            this.transactionBroadCasterFactory = transactionBroadCasterFactory ?? throw new ArgumentNullException(nameof(transactionBroadCasterFactory));
             this.deterministicTransactionExecutorFactory = deterministicTransactionExecutorFactory ?? throw new ArgumentNullException(nameof(deterministicTransactionExecutorFactory));
+            this.classNameSpace = classNameSpace ?? throw new ArgumentNullException(nameof(classNameSpace));
         }
 
         public override Task OnActivateAsync()
@@ -47,6 +54,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
             this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
+            this.transactionBroadCaster = this.transactionBroadCasterFactory.Create(this.GrainFactory);
 
             return Task.CompletedTask;
         }
@@ -67,10 +75,47 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
 
-
+            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo);
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
+            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
+
+            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
+            var context = transactionContext.Item2;
+
+            // TODO: Only gets here in multi-server or multi-home transaction???
+
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
+            // execute PACT
+            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
+            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
+            var finishExeTime = DateTime.Now;
+            var startExeTime = result.Item2;
+            var resultObj = result.Item1;
+
+            // wait for this batch to commit
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
+            await this.deterministicTransactionExecutor.WaitForBatchToCommit(context.localBid);
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
+
+            var commitTime = DateTime.Now;
+            var txnResult = new TransactionResult(resultObj);
+            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
+            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
+            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
+
+            return txnResult;
+        }
+
+        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo)
+        {
+            var receiveTxnTime = DateTime.Now;
+
+            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
+                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
+            this.logger.LogInformation("HerpDerp: {hj} ", this.GrainReference, this.GrainReference);
+
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
             await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
             var context = transactionContext.Item2;
@@ -98,6 +143,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             return txnResult;
         }
+
 
         public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
         {
@@ -140,20 +186,9 @@ namespace Concurrency.Implementation.TransactionExecution
             return Task.CompletedTask;
         }
 
-
         /// <summary> When execute a transaction on the grain, call this interface to read / write grain state </summary>
         public async Task<TState> GetState(TransactionContext cxt, AccessMode mode)
         {
-            // TODO: I think that for multi-server we should actually
-            // run the nonDetTxnExecutor path of this code, but why is multi-server
-            // considered non-det ? Right now I think that the RegionalBankClient
-            // works because we always run the deterministic, which will just create
-            // the actors it need locally (I think).
-            // Question: How do we detect when our transactions just create
-            // new actors locally because our silo key is not being used as
-            // intended?
-
-            //var isDet = cxt.localBid != -1;
             return this.deterministicTransactionExecutor.GetState<TState>(cxt.localTid, mode, this.state);
         }
 
@@ -162,13 +197,11 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             var grain = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Item1, grainId.Item2, grainNameSpace);
 
-            this.logger.LogInformation("Inside CallGrain {i} --- {ii}", 1, this.GrainReference);
-            this.logger.LogInformation("Inside CallGrain, grainId: {id}-{region}", this.GrainReference, grainId.Item1, grainId.Item2);
             this.logger.LogInformation("Inside CallGrain, going to call grain to execute transaction: {grainId}-{region}", this.GrainReference, grainId.Item1, grainId.Item2);
-            this.logger.LogInformation("Inside CallGrain {i} --- {ii}", this.GrainReference, 2);
 
             var resultObj = (await grain.ExecuteDeterministicTransaction(call, context)).Item1;
-            this.logger.LogInformation("Inside CallGrain, after call to grain: {graindId}-{region}", this.GrainReference);
+
+            this.logger.LogInformation("Inside CallGrain, after call to grain: {graindId}-{region}", this.GrainReference, grainId.Item1, grainId.Item2 );
 
             return new TransactionResult(resultObj);
         }

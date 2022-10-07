@@ -46,9 +46,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
 
             this.grainReference = grainReference;
             this.grainId = grainId;
-
-            // this.myLocalCoord = grainFactory;
-            // this.regionalCoordinator = regionalCoordinator;
             this.grainFactory = grainFactory;
 
 

@@ -1,4 +1,7 @@
-using Concurrency.Interface.Configuration;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Concurrency.Implementation;
 using Concurrency.Interface.Models;
 using Orleans;
 using Orleans.Configuration;
@@ -87,9 +90,10 @@ var actorAccessInfoForMultiTransfer = new List<GrainAccessInfo>()
 
 var amountToDeposit = 50;
 
-try {
+try
+{
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
-    var tasks=  new List<Task>();
+    var tasks = new List<Task>();
     var task1 = actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer0), actorAccessInfo0);
     var task2 = actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer1), actorAccessInfo1);
     tasks.Add(task1);
@@ -111,9 +115,11 @@ try {
 
     var PACT_balance4 = await actor1.StartTransaction("Balance", null, actorAccessInfo1);
     Console.WriteLine($"The PACT balance in actor {actorId1} after receiving money: Expected: 150, Actual:{PACT_balance4.resultObj}");
-  } catch (Exception e) {
-     Console.WriteLine(e.Message);
-     Console.WriteLine(e.StackTrace);
-  }
+}
+catch (Exception e)
+{
+    Console.WriteLine(e.Message);
+    Console.WriteLine(e.StackTrace);
+}
 
 Console.WriteLine("Ended deterministic tx");

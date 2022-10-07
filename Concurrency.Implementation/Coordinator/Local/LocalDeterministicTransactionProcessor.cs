@@ -514,7 +514,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             RegionalBatchProcessInfo regionalBatchProcessInfo = this.regionalBatchProcessInfos[regionalBid];
 
             regionalBatchProcessInfo.RegionalSubBatch = batch;
-            regionalBatchProcessInfo.RegionalCoordinatorId = batch.CoordinatorId;
+            regionalBatchProcessInfo.RegionalCoordinatorId = batch.LocalCoordinatorId;
 
             this.regionalBatchInfos.Add(regionalBid, batch);
 

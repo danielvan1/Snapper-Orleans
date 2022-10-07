@@ -18,7 +18,6 @@ namespace Concurrency.Implementation.Coordinator.Regional
     [RegionalCoordinatorGrainPlacementStrategy]
     public class RegionalCoordinatorGrain : Grain, IRegionalCoordinatorGrain
     {
-        // coord basic info
         private IRegionalCoordinatorGrain neighborCoord;
         private readonly ILogger<RegionalCoordinatorGrain> logger;
 
@@ -34,7 +33,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
         public RegionalCoordinatorGrain(ILogger<RegionalCoordinatorGrain> logger)
         {
-            this.logger = logger;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public override Task OnActivateAsync()

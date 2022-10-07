@@ -1,9 +1,9 @@
-﻿using Utilities;
-using System.Threading.Tasks;
+﻿using System;
 using System.Collections.Generic;
-using System;
+using System.Threading.Tasks;
 using Concurrency.Interface.Models;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Interface.TransactionExecution
 {
@@ -14,6 +14,7 @@ namespace Concurrency.Interface.TransactionExecution
         // to run its methods in transactions
         Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<GrainAccessInfo> grainAccessInfo);
 
+        Task<TransactionResult> StartReplicaTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo);
         Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext ctx);
 
         Task ReceiveBatchSchedule(LocalSubBatch batch);

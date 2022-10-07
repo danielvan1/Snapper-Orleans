@@ -73,7 +73,7 @@ namespace GeoSnapperDeployment
                 options.ClusterId = "Snapper";
                 options.ServiceId = "Snapper";
             })
-            .Configure<ClientMessagingOptions>(options => 
+            .Configure<ClientMessagingOptions>(options =>
             {
                 options.ResponseTimeout = new TimeSpan(0, 5, 0);
             })
@@ -82,15 +82,15 @@ namespace GeoSnapperDeployment
             await client.Connect();
 
             IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-            // IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
+            IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
 
             await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            // await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
+            await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
 
             ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-            // ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
+            ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
             await localConfigGrainEU.InitializeLocalCoordinators("EU");
-            // await localConfigGrainUS.InitializeLocalCoordinators("US");
+            await localConfigGrainUS.InitializeLocalCoordinators("US");
             // List<Task> configureAllConfigAndCoordinators = new List<Task>()
             // {
             //     task1, task2, task3, task4
