@@ -1,6 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace Concurrency.Interface.Models
 {
@@ -8,9 +6,13 @@ namespace Concurrency.Interface.Models
     public class TokenBase
     {
         public long PreviousEmitBid { get; set; }
+
         public long PreviousEmitTid { get; set; }
+
         public long PreviousCoordinatorId { get; set; }
+
         public long HighestCommittedBid { get; set; }
+
         public bool IsLastEmitBidRegional { get; set; }
 
         public TokenBase()

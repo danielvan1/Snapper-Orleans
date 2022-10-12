@@ -20,11 +20,11 @@ namespace Concurrency.Interface.Models
         // as the index
         public Dictionary<GrainAccessInfo, long> PreviousRegionalBidPerGrain { get; }   // grainID, the regional bid of the latest emitted local batch
 
-        public long LastEmitGlobalBid { get; set; }
+        public long PreviousEmitRegionalBid { get; set; }
 
         public LocalToken() : base()
         {
-            this.LastEmitGlobalBid = -1;
+            this.PreviousEmitRegionalBid = -1;
             this.PreviousBidPerGrain = new Dictionary<GrainAccessInfo, long>();
             this.PreviousRegionalBidPerGrain = new Dictionary<GrainAccessInfo, long>();
         }

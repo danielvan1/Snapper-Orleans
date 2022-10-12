@@ -52,10 +52,10 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
             this.highestCommittedLocalBid = -1;
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.localBatchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.regionalBatchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
             this.determinsticFunctionResults = new Dictionary<long, BasicFuncResult>();
             this.regionalBidToLocalBid = new Dictionary<long, long>();
             this.regionalBidToRegionalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
-            this.regionalBatchInfoPromise = new Dictionary<long, TaskCompletionSource<bool>>();
         }
 
         /// <summary>
@@ -104,8 +104,8 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 this.logger.LogInformation("WaitForturn finished", this.grainReference);
             }
 
-            Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
-            this.determinsticFunctionResults.Add(context.localTid, new BasicFuncResult());
+            // Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
+            this.determinsticFunctionResults.TryAdd(context.localTid, new BasicFuncResult());
 
             // After the batch is arrived we are waiting for the turn of the current transaction.
             await this.transactionScheduler.WaitForTurn(context.localBid, context.localTid);
@@ -196,8 +196,8 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
             if (batch.RegionalBid != -1)
             {
                 // Mapping the regional bid to the to the local bid
-                this.regionalBidToLocalBid.Add(batch.RegionalBid, batch.Bid);
-                this.regionalBidToRegionalTidToLocalTidPerBatch.Add(batch.RegionalBid, batch.RegionalTidToLocalTid);
+                this.regionalBidToLocalBid.TryAdd(batch.RegionalBid, batch.Bid);
+                this.regionalBidToRegionalTidToLocalTidPerBatch.TryAdd(batch.RegionalBid, batch.RegionalTidToLocalTid);
 
                 if (!this.regionalBatchInfoPromise.ContainsKey(batch.RegionalBid))
                 {
@@ -206,6 +206,8 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
 
                 this.regionalBatchInfoPromise[batch.RegionalBid].SetResult(true);
             }
+
+            this.logger.LogInformation("BatchArrive: Done", this.grainReference);
 
             return Task.CompletedTask;
         }
@@ -238,7 +240,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
             this.batchCommit[bid].SetResult(true);
 
             this.batchCommit.Remove(bid);
-            //myScheduler.AckBatchCommit(highestCommittedBid);
+
             return Task.CompletedTask;
         }
 

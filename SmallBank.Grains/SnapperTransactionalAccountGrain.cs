@@ -1,20 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
-using Concurrency.Implementation;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
+using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using SmallBank.Interfaces;
 using Utilities;
 
 namespace SmallBank.Grains
 {
-    using MultiTransferInput = Tuple<int, List<Tuple<int, string>>>;  // money, List<to account>
-
     public class SnapperTransactionalAccountGrain : TransactionExecutionGrain<BankAccount>, ISnapperTransactionalAccountGrain
     {
         private readonly ILogger<SnapperTransactionalAccountGrain> logger;
@@ -27,57 +26,68 @@ namespace SmallBank.Grains
             this.logger = logger;
         }
 
-        public async Task<TransactionResult> Init(TransactionContext context, object funcInput)
+        public async Task<TransactionResult> Init(TransactionContext context, FunctionInput functionInput)
         {
-            var accountID = (Tuple<int, string>)funcInput;
-            BankAccount myState = await GetState(context, AccessMode.ReadWrite);
-            myState.accountID = accountID;
-            myState.balance = 10000;
+            var accountID = functionInput.DestinationGrains.First();
+            BankAccount myState =  await this.GetState(context, AccessMode.ReadWrite);
+            myState.accountID = accountID.DestinationGrain;
+            myState.balance = accountID.Value;
+
             this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
 
             return new TransactionResult();
         }
 
-        public async Task<TransactionResult> MultiTransfer(TransactionContext context, object funcInput)
+        public async Task<TransactionResult> MultiTransfer(TransactionContext context, FunctionInput functionInput)
         {
-            var input = (MultiTransferInput) funcInput;
-            var money = input.Item1;
-            var toAccounts = input.Item2;
-            var myState = await GetState(context, AccessMode.ReadWrite);
-
-            myState.balance -= money * toAccounts.Count;
+            var toAccounts = functionInput.DestinationGrains;
+            var myState = await this.GetState(context, AccessMode.ReadWrite);
+            myState.balance -= toAccounts.Select(acc => acc.Value).Sum();
 
             var task = new List<Task>();
+
             foreach (var accountID in toAccounts)
             {
                 this.logger.LogInformation("MyState account: {id} and ToAccount: {toId}", this.GrainReference, myState.accountID, accountID);
-                if (accountID != myState.accountID)
+                if (accountID.DestinationGrain != myState.accountID)
                 {
-                    var funcCall = new FunctionCall("Deposit", money, typeof(SnapperTransactionalAccountGrain));
-                    var t = this.CallGrain(context, accountID, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
+                    var funcCall = new FunctionCall("Deposit", functionInput, typeof(SnapperTransactionalAccountGrain));
+                    var t = this.CallGrain(context, accountID.DestinationGrain, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
                     task.Add(t);
                 }
                 // This logic is weird, one of the recipients could be it self
                 else
                 {
-                    task.Add(Deposit(context, money));
+                    var herp = new FunctionInput()
+                    {
+                        DestinationGrains = new List<TransactionInfo>()
+                        {
+                            accountID
+                        }
+
+                    };
+
+                    task.Add(Deposit(context, herp));
                 }
             }
             await Task.WhenAll(task);
+
             return new TransactionResult();
         }
 
-        public async Task<TransactionResult> Deposit(TransactionContext context, object funcInput)
+        public async Task<TransactionResult> Deposit(TransactionContext context, FunctionInput functionInput)
         {
-            var money = (int)funcInput;
+            var accountID = functionInput.DestinationGrains.First();
             var myState = await GetState(context, AccessMode.ReadWrite);
-            myState.balance += money;
+            myState.balance += accountID.Value;
+
             return new TransactionResult();
         }
 
-        public async Task<TransactionResult> Balance(TransactionContext context, object funcInput)
+        public async Task<TransactionResult> Balance(TransactionContext context, FunctionInput functionInput)
         {
-            var myState = await GetState(context, AccessMode.Read);
+            var myState = await this.GetState(context, AccessMode.Read);
+
             return new TransactionResult(myState.balance);
         }
     }

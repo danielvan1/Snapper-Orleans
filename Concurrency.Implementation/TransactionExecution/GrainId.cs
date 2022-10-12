@@ -5,5 +5,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public int IntId { get; init; }
 
         public string StringId { get; init; }
+
+        public string GrainClassName { get; init; }
     }
 }

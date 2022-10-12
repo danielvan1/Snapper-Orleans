@@ -20,7 +20,9 @@ namespace SnapperGeoRegionalIntegration.Tests
         public static List<GrainAccessInfo> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex, string grainClassName)
         {
             List<GrainAccessInfo> accountIds = new List<GrainAccessInfo>();
+
             var regionAndServer = $"{deployedRegion}-{homeRegion}-{serverIndex}";
+
             for (int accountId = startAccountId; accountId < n+startAccountId; accountId++)
             {
                 accountIds.Add(
@@ -34,15 +36,23 @@ namespace SnapperGeoRegionalIntegration.Tests
             return accountIds;
         }
 
-        public static List<Tuple<int, string>> GetAccountsFromRegion(List<GrainAccessInfo> grainAccessInfos)
+        public static FunctionInput GetAccountsFromRegion(List<GrainAccessInfo> grainAccessInfos)
         {
-            List<Tuple<int, string>> accountIds = new List<Tuple<int, string>>();
+            FunctionInput functionInput = new FunctionInput()
+            {
+                DestinationGrains = new List<TransactionInfo>()
+            };
+
             foreach (var grainAccessInfo in grainAccessInfos)
             {
-                accountIds.Add(new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region));
+                functionInput.DestinationGrains.Add(new TransactionInfo()
+                {
+                    DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region),
+                    Value = 1
+                });
             }
 
-            return accountIds;
+            return functionInput;
         }
     }
 }

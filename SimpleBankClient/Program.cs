@@ -1,4 +1,5 @@
 ﻿using Concurrency.Implementation;
+using Concurrency.Interface;
 using Concurrency.Interface.Models;
 using Orleans;
 using Orleans.Configuration;
@@ -81,8 +82,10 @@ var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(
 
 try {
     Console.WriteLine("Starting init txs(both accounts start with 100$)");
-    await actor0.StartTransaction("Init", new Tuple<int, string>(actorId0, regionAndServer), actorAccessInfo0);
-    await actor0.StartTransaction("Deposit", 5, actorAccessInfo0);
+    FunctionInput initFunctionInput = FunctionInputHelper.Create(10000, new Tuple<int, string>(actorId0, regionAndServer));
+
+    await actor0.StartTransaction("Init", initFunctionInput, actorAccessInfo0);
+    await actor0.StartTransaction("Deposit", FunctionInputHelper.Create(5, null), actorAccessInfo0);
 
 
     // await actor1.StartTransaction("Init", new Tuple<int, string>(actorId1, regionAndServer), actorAccessInfo1, grainClassName);

@@ -49,7 +49,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public override Task OnActivateAsync()
         {
-            this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion };
+            this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion, GrainClassName = this.classNameSpace };
             this.state = new DeterministicState<TState>();
 
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
@@ -68,14 +68,15 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <param name="grainAccessInfo"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
-        public async Task<TransactionResult> StartTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo)
+        public async Task<TransactionResult> StartTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
         {
             var receiveTxnTime = DateTime.Now;
 
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
 
-            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo);
+            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId);
+
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
@@ -84,10 +85,7 @@ namespace Concurrency.Implementation.TransactionExecution
             await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
             var context = transactionContext.Item2;
 
-            // TODO: Only gets here in multi-server or multi-home transaction???
-
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
-            // execute PACT
             var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
             var result = await this.ExecuteDeterministicTransaction(functionCall, context);
             var finishExeTime = DateTime.Now;
@@ -105,10 +103,14 @@ namespace Concurrency.Implementation.TransactionExecution
             txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
             txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
 
+            this.logger.LogInformation("TransactionExecutionGrain: Finished transaction {txn} with FunctionInput {input}",
+                                       this.GrainReference, firstFunction, functionInput);
+
+
             return txnResult;
         }
 
-        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo)
+        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
         {
             var receiveTxnTime = DateTime.Now;
 

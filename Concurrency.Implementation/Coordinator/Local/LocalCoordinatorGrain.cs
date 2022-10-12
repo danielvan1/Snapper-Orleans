@@ -74,8 +74,8 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         public async Task PassToken(LocalToken token)
         {
+            IList<long> currentBatchIds = await this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
             long currentBatchId = this.localDeterministicTransactionProcessor.GenerateLocalBatch(token);
-            IList<long> currentBatchIds = this.localDeterministicTransactionProcessor.GenerateRegionalBatch(token);
 
             Thread.Sleep(10);
 

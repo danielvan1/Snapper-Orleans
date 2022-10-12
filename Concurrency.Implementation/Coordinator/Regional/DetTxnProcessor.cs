@@ -106,7 +106,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
             for (int i = 0; i < this.deterministicRequests.Count; i++)
             {
                 var tid = ++token.PreviousEmitTid;
-                this.GenerateSchedulePerService(tid, currentBatchID, this.deterministicRequests[i]);
+                this.GenerateSchedulePerSilo(tid, currentBatchID, this.deterministicRequests[i]);
                 var herp = new Tuple<long, long>(currentBatchID, tid);
                 this.deterministicRequestPromise[i].SetResult(herp);
                 this.logger.LogInformation("setting tuple: {herp} to a value", this.grainReference, herp);
@@ -127,7 +127,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
         //
         // This is why we differentiate between the two with isRegionalCoordinator
         // This method creates the subbatch for each of the executiongrains
-        public void GenerateSchedulePerService(long tid, long currentBatchId, List<string> deterministicRequests)
+        public void GenerateSchedulePerSilo(long tid, long currentBatchId, List<string> deterministicRequests)
         {
             if (!this.bidToSubBatches.ContainsKey(currentBatchId))
             {
@@ -163,7 +163,6 @@ namespace Concurrency.Implementation.Coordinator.Regional
             Dictionary<string, SubBatch> siloIdToSubBatch = this.bidToSubBatches[currentBatchId];
             this.expectedAcksPerBatch.Add(currentBatchId, siloIdToSubBatch.Count);
             this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.grainReference, currentBatchId, token);
-
 
             // update the previous batch ID for each service accessed by this batch
             foreach (var serviceInfo in siloIdToSubBatch)

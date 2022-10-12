@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation;
+using Concurrency.Interface;
 using Concurrency.Interface.Models;
 using Orleans;
 using Orleans.Configuration;
@@ -26,7 +27,7 @@ await client.Connect();
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
 
-var numberOfAccountsInEachServer = 15;
+var numberOfAccountsInEachServer = 40;
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
@@ -37,6 +38,7 @@ int startAccountId0 = 0;
 int startAccountId1 = numberOfAccountsInEachServer;
 var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0, snapperTransactionalAccountGrainTypeName);
 var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1, snapperTransactionalAccountGrainTypeName);
+
 var input1 = TestDataGenerator.GetAccountsFromRegion(accountIdsServer1);
 var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
 var initTasks = new List<Task>();
@@ -47,7 +49,8 @@ foreach (var accountId in accountIds)
     var id = accountId.Id;
     var regionAndServer = accountId.Region;
     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
-    var initTask = actor.StartTransaction("Init", new Tuple<int, string>(id, regionAndServer), new List<GrainAccessInfo>() { accountId });
+    var initTask = actor.StartTransaction("Init", FunctionInputHelper.Create(1000, new Tuple<int, string>(id, regionAndServer)), new List<GrainAccessInfo>() { accountId });
+
     initTasks.Add(initTask);
 }
 
@@ -59,15 +62,14 @@ var oneDollar = 1;
 foreach (var accountId in accountIdsServer0)
 {
     Console.WriteLine($"accountId: {accountId}");
-    var multiTransferInput = new Tuple<int, List<Tuple<int, string>>>(oneDollar, input1);
     var id = accountId.Id;
     var regionAndServer = accountId.Region;
     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
-    // Debug.Assert(11 == accessInfoClassNamesMultiTransfer.Count);
-    // Debug.Assert(10 == accountIdsServer1.Count);
+
     var herp = accountIdsServer1.Append(accountId).ToList();
-    // Debug.Assert(11 == herp.Count);
-    var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferInput, herp);
+
+    await Task.Delay(100);
+    var multiTransfertask = actor.StartTransaction("MultiTransfer", input1, herp);
     multiTransferTasks.Add(multiTransfertask);
 }
 await Task.WhenAll(multiTransferTasks);
@@ -75,6 +77,7 @@ await Task.WhenAll(multiTransferTasks);
 Console.WriteLine("Starting with balances");
 
 var balanceTasks = new List<Task<TransactionResult>>();
+
 foreach (var accountId in accountIds)
 {
     var id = accountId.Id;
@@ -82,19 +85,23 @@ foreach (var accountId in accountIds)
     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
     Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
+
     balanceTasks.Add(balanceTask);
 }
 
 var results = await Task.WhenAll(balanceTasks);
 
-Console.WriteLine("Started with checking all balances");
-var initialBalance = 10000;
+int initialBalance = 1000;
+
 for(int i = 0; i < results.Length; i++)
 {
-    // var result = results[0];
-    // if (i < numberOfAccountsInEachServer) {
-    //     Xunit.Assert.Equal(initialBalance-numberOfAccountsInEachServer*oneDollar, Convert.ToInt32(result.resultObj));
-    // } else {
-    //     Xunit.Assert.Equal(initialBalance+numberOfAccountsInEachServer*oneDollar, Convert.ToInt32(result.resultObj));
-    // }
+    var result = results[i];
+    if (i < numberOfAccountsInEachServer)
+    {
+        Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
+    }
+    else
+    {
+        Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
+    }
 }

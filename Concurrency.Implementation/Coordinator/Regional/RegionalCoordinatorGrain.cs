@@ -57,7 +57,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
         // for PACT
         public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>>> NewRegionalTransaction(List<string> silos)
         {
-            this.logger.LogInformation("New Regional transaction received. The silos involved in the trainsaction: [{silos}]  ",
+            this.logger.LogInformation("New Regional transaction received. The silos involved in the trainsaction: [{silos}]",
                                         this.GrainReference, string.Join(", ", silos));
 
             Tuple<long, long> bidAndTid = await this.detTxnProcessor.GetDeterministicTransactionBidAndTid(silos);

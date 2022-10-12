@@ -12,9 +12,10 @@ namespace Concurrency.Interface.TransactionExecution
         // PACT
         // These are the methods that the client calls as a entry point
         // to run its methods in transactions
-        Task<TransactionResult> StartTransaction(string startFunc, object funcInput, List<GrainAccessInfo> grainAccessInfo);
+        Task<TransactionResult> StartTransaction(string startFunc, FunctionInput funcInput, List<GrainAccessInfo> grainAccessInfo);
 
-        Task<TransactionResult> StartReplicaTransaction(string firstFunction, object functionInput, List<GrainAccessInfo> grainAccessInfo);
+        Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo);
+
         Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext ctx);
 
         Task ReceiveBatchSchedule(LocalSubBatch batch);
