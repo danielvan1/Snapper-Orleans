@@ -61,15 +61,19 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 
             if (previousTid == -1)
             {
+                this.logger.LogInformation("First transaction in the batch {bid} with tid: {tid}", bid, tid);
                 // if the tid is the first txn in the batch, wait for previous node
                 var previousNode = this.scheduleInfoManager.GetDependingNode(bid);
                 await previousNode.NextNodeCanExecute.Task;
             }
             else
             {
+                this.logger.LogInformation("Waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
                 // wait for previous det txn
                 await this.deterministicExecutionPromise[previousTid].Task;
                 this.deterministicExecutionPromise.Remove(previousTid);
+
+                this.logger.LogInformation("Done waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
             }
         }
 

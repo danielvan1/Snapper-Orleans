@@ -171,16 +171,21 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 SubBatch subBatch = serviceInfo.Value;
                 this.logger.LogInformation("SiloId: {siloId} and subbatch: {subbatch}", this.grainReference, siloId, subBatch);
 
+                this.logger.LogInformation("Old subbatch previous bid: {oldBid}", this.grainReference, subBatch.PreviousBid);
                 if (token.PreviousBidPerSilo.ContainsKey(siloId))
                 {
                     this.logger.LogInformation("New subbatch previousBid value: {value}", this.grainReference, token.PreviousBidPerSilo[siloId]);
                     subBatch.PreviousBid = token.PreviousBidPerSilo[siloId];
                 }
+
+                this.logger.LogInformation("New subbatch previous bid: {oldBid}", this.grainReference, subBatch.PreviousBid);
+
                 // else, the default value is -1
 
                 Debug.Assert(subBatch.Bid > subBatch.PreviousBid);
                 token.PreviousBidPerSilo[siloId] = subBatch.Bid;
             }
+
             this.bidToLastBid.Add(currentBatchId, token.PreviousEmitBid);
 
             if (token.PreviousEmitBid != -1)

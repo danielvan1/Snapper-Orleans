@@ -11,7 +11,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         Task<TransactionRegisterInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<GrainAccessInfo> grainAccessInfo);
 
-        Task<List<long>> GenerateRegionalBatch(LocalToken token);
+        List<long> GenerateRegionalBatch(LocalToken token);
 
         long GenerateLocalBatch(LocalToken token);
 

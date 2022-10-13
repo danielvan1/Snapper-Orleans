@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.Coordinator
         public ILocalCoordinatorGrain GetLocalCoordinatorGrain(int id, string region, IGrainFactory grainFactory)
         {
             int localCoordinatorId = id % Constants.NumberOfLocalCoordinatorsPerSilo;
-            this.logger.LogInformation("Creating local coordinator with id: {id} and region: {region}", id, region);
+            this.logger.LogInformation("Creating local coordinator with id: {id} and region: {region}", localCoordinatorId, region);
 
             return grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, region);
         }

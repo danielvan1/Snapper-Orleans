@@ -27,13 +27,10 @@ await client.Connect();
 // and then transfer 50$ from account id 0 to account id 1. They both
 // get initialized to 100$(hardcoded inside of Init)
 
-var numberOfAccountsInEachServer = 40;
+var numberOfAccountsInEachServer = 60;
 Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
 // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
 string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
-var accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
-var theOneAccountThatSendsTheMoney = 1;
-var accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer+theOneAccountThatSendsTheMoney);
 int startAccountId0 = 0;
 int startAccountId1 = numberOfAccountsInEachServer;
 var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0, snapperTransactionalAccountGrainTypeName);
@@ -68,7 +65,7 @@ foreach (var accountId in accountIdsServer0)
 
     var herp = accountIdsServer1.Append(accountId).ToList();
 
-    await Task.Delay(100);
+    // await Task.Delay(1000);
     var multiTransfertask = actor.StartTransaction("MultiTransfer", input1, herp);
     multiTransferTasks.Add(multiTransfertask);
 }
@@ -76,32 +73,32 @@ await Task.WhenAll(multiTransferTasks);
 
 Console.WriteLine("Starting with balances");
 
-var balanceTasks = new List<Task<TransactionResult>>();
+// var balanceTasks = new List<Task<TransactionResult>>();
 
-foreach (var accountId in accountIds)
-{
-    var id = accountId.Id;
-    var regionAndServer = accountId.Region;
-    var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+// foreach (var accountId in accountIds)
+// {
+//     var id = accountId.Id;
+//     var regionAndServer = accountId.Region;
+//     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
-    Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
+//     Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
 
-    balanceTasks.Add(balanceTask);
-}
+//     balanceTasks.Add(balanceTask);
+// }
 
-var results = await Task.WhenAll(balanceTasks);
+// var results = await Task.WhenAll(balanceTasks);
 
-int initialBalance = 1000;
+// int initialBalance = 1000;
 
-for(int i = 0; i < results.Length; i++)
-{
-    var result = results[i];
-    if (i < numberOfAccountsInEachServer)
-    {
-        Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
-    }
-    else
-    {
-        Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
-    }
-}
+// for(int i = 0; i < results.Length; i++)
+// {
+//     var result = results[i];
+//     if (i < numberOfAccountsInEachServer)
+//     {
+//         Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
+//     }
+//     else
+//     {
+//         Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
+//     }
+// }

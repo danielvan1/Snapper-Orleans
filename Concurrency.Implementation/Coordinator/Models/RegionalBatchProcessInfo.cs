@@ -14,7 +14,7 @@ namespace Concurrency.Implementation.Coordinator.Models
 
         public SubBatch RegionalSubBatch { get; set; }
 
-        public TaskCompletionSource<bool> BatchCommitPromise { get; set; } = new TaskCompletionSource<bool>(false);
+        public TaskCompletionSource<bool> BatchCommitPromise { get; set; } = new TaskCompletionSource<bool>();
 
         public Dictionary<long, List<GrainAccessInfo>> RegionalTransactionInfos { get; } = new Dictionary<long, List<GrainAccessInfo>>();
     }

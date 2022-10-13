@@ -104,7 +104,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 this.logger.LogInformation("WaitForturn finished", this.grainReference);
             }
 
-            // Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
+            Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
             this.determinsticFunctionResults.TryAdd(context.localTid, new BasicFuncResult());
 
             // After the batch is arrived we are waiting for the turn of the current transaction.
@@ -179,7 +179,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
             this.batchCommit.Add(batch.Bid, new TaskCompletionSource<bool>());
 
             this.transactionScheduler.RegisterBatch(batch, batch.RegionalBid, this.highestCommittedLocalBid);
-            this.logger.LogInformation("Batch arrived, batch: {batch}", this.grainReference, batch);
 
             // If the batch arrives before the transactions actually reaches the point of localBatchInfoPromise.
             if (!this.localBatchInfoPromise.ContainsKey(batch.Bid))

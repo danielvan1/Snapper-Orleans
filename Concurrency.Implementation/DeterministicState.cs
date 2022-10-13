@@ -2,7 +2,6 @@ using System;
 using Utilities;
 using System.Threading.Tasks;
 using Concurrency.Interface.TransactionExecution;
-using Concurrency.Interface.TransactionExecution.Nondeterministic;
 
 namespace Concurrency.Implementation.TransactionExecution
 {
@@ -17,7 +16,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public DeterministicState(TState state)
         {
-            this.committedState = state;
+            committedState = state;
         }
 
         public TState DetOp()

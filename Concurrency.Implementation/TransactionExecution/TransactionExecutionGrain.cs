@@ -106,7 +106,6 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("TransactionExecutionGrain: Finished transaction {txn} with FunctionInput {input}",
                                        this.GrainReference, firstFunction, functionInput);
 
-
             return txnResult;
         }
 

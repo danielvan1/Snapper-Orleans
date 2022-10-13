@@ -70,7 +70,9 @@ namespace SmallBank.Grains
                     task.Add(Deposit(context, herp));
                 }
             }
+
             await Task.WhenAll(task);
+            this.logger.LogInformation("Done with multi transfer for context: {context} and functionInput: {input}", this.GrainReference, context, functionInput);
 
             return new TransactionResult();
         }
@@ -79,6 +81,7 @@ namespace SmallBank.Grains
         {
             var accountID = functionInput.DestinationGrains.First();
             var myState = await GetState(context, AccessMode.ReadWrite);
+            this.logger.LogInformation("Going to deposit on this account: {accountId}", this.GrainReference, accountID);
             myState.balance += accountID.Value;
 
             return new TransactionResult();
