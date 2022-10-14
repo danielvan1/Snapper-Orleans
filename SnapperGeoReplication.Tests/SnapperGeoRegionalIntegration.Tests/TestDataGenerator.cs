@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Concurrency.Interface.Models;
 
 namespace SnapperGeoRegionalIntegration.Tests
 {
@@ -25,6 +26,25 @@ namespace SnapperGeoRegionalIntegration.Tests
                 accountIds.Add(new Tuple<int, string>(accountId, regionAndServer));
             }
             return accountIds;
+        }
+
+        public static FunctionInput CreateMultiTransferFunctionInput(int value, List<Tuple<int, string>> grainAccessInfos)
+        {
+            FunctionInput functionInput = new FunctionInput()
+            {
+                DestinationGrains = new List<TransactionInfo>()
+            };
+
+            foreach (var grainAccessInfo in grainAccessInfos)
+            {
+                functionInput.DestinationGrains.Add(new TransactionInfo()
+                {
+                    DestinationGrain = grainAccessInfo,
+                    Value = value
+                });
+            }
+
+            return functionInput;
         }
     }
 }

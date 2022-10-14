@@ -103,7 +103,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <param name="grainAccessInfo"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
-        public async Task<TransactionResult> StartTransaction(string firstFunction, object functionInput,
+        public async Task<TransactionResult> StartTransaction(string firstFunction, FunctionInput functionInput,
                                                               List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
         {
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}], grainClassNames: [{grainClassNames}] ",
@@ -279,9 +279,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
             MethodInfo methodInfo = call.grainClassName.GetMethod(call.funcName);
 
-            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.funcInput);
+            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input}", this.GrainReference, call.funcName, call.functionInput);
 
-            var transactionResult = (Task<TransactionResult>)methodInfo.Invoke(this, new object[] { context, call.funcInput });
+            var transactionResult = (Task<TransactionResult>)methodInfo.Invoke(this, new object[] { context, call.functionInput });
 
             var result = await transactionResult;
 

@@ -160,19 +160,4 @@ namespace Utilities
             globalScheduleInfo.isAfterComplete &= newGlobalInfo.isAfterComplete;
         }
     }
-
-    [Serializable]
-    public class FunctionCall
-    {
-        public readonly string funcName;
-        public readonly object funcInput;
-        public readonly Type grainClassName;
-
-        public FunctionCall(string funcName, object funcInput, Type grainClassName)
-        {
-            this.funcName = funcName;
-            this.funcInput = funcInput;
-            this.grainClassName = grainClassName;
-        }
-    }
 }
