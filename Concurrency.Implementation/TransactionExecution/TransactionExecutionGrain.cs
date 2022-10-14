@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
+using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
+using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
@@ -51,9 +53,17 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion, GrainClassName = this.classNameSpace };
             this.state = new DeterministicState<TState>();
+            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myGrainId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myGrainId.StringId);
 
+            // TODO: Need this later when we have multi server and multi home
+            // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
+            // myGlobalCoord = GrainFactory.GetGrain<IGlobalCoordGrain>(globalCoordID);
+
+            // TODO: Consider this logic for how regional coordinators are chosen
+            var regionalCoordinatorID = 0;
+            var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, this.myGrainId.StringId.Substring(0, 2));
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
-            this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
+            this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId, myLocalCoord, regionalCoordinator);
             this.transactionBroadCaster = this.transactionBroadCasterFactory.Create(this.GrainFactory);
 
             return Task.CompletedTask;
@@ -75,7 +85,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
 
-            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId);
+            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId);
 
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)

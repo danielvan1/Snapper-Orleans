@@ -1,5 +1,6 @@
 using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
+using Concurrency.Interface.Coordinator;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
@@ -21,9 +22,9 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             this.placementManager = placementManager ?? throw new System.ArgumentNullException(nameof(placementManager));
         }
 
-        public ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId)
+        public ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId, ILocalCoordinatorGrain localCoordinatorGrain, IRegionalCoordinatorGrain regionalCoordinatorGrain)
         {
-            return new TransactionContextProvider(this.logger, this.coordinatorProvider, this.placementManager, grainFactory, grainReference, grainId);
+            return new TransactionContextProvider(this.logger, this.coordinatorProvider, this.placementManager, grainFactory, localCoordinatorGrain, regionalCoordinatorGrain, grainReference, grainId);
         }
     }
 }

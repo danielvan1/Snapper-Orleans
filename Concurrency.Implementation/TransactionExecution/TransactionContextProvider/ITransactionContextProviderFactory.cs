@@ -1,3 +1,4 @@
+using Concurrency.Interface.Coordinator;
 using Orleans;
 using Orleans.Runtime;
 
@@ -5,6 +6,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 {
     public interface ITransactionContextProviderFactory
     {
-        ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId);
+        ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId, ILocalCoordinatorGrain localCoordinatorGrain, IRegionalCoordinatorGrain regionalCoordinatorGrain);
     }
 }
