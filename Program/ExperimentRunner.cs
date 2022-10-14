@@ -29,16 +29,13 @@ namespace Program
             // and then transfer 50$ from account id 0 to account id 1. They both
             // get initialized to 100$(hardcoded inside of Init)
 
-            var numberOfAccountsInEachServer = 10;
-
-            var accessInfoClassNamesSingleAccess = TestDataGenerator.GetAccessInfoClassNames(1);
-            var theOneAccountThatSendsTheMoney = 1;
-            List<string> accessInfoClassNamesMultiTransfer = TestDataGenerator.GetAccessInfoClassNames(numberOfAccountsInEachServer+theOneAccountThatSendsTheMoney);
+            var numberOfAccountsInEachServer = 100;
+            string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
             int startAccountId0 = 0;
             int startAccountId1 = numberOfAccountsInEachServer;
 
-            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0);
-            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1);
+            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0, snapperTransactionalAccountGrainTypeName);
+            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1, snapperTransactionalAccountGrainTypeName);
             var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
             var initTasks = new List<Task>();
 
@@ -47,12 +44,12 @@ namespace Program
             Console.WriteLine("Starting with inits");
             foreach (var accountId in accountIds)
             {
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
                 var initFunctionInput = FunctionInputHelper.Create(startBalance, accountId);
 
-                var initTask = actor.StartTransaction("Init", initFunctionInput, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                var initTask = actor.StartTransaction("Init", initFunctionInput, new List<GrainAccessInfo>() { accountId });
                 initTasks.Add(initTask);
             }
 
@@ -67,12 +64,12 @@ namespace Program
 
             foreach (var accountId in accountIdsServer0)
             {
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
                 var herp = accountIdsServer1.Append(accountId).ToList();
 
-                var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferFunctionInput, herp, accessInfoClassNamesMultiTransfer);
+                var multiTransfertask = actor.StartTransaction("MultiTransfer", multiTransferFunctionInput, herp);
                 multiTransferTasks.Add(multiTransfertask);
             }
 
@@ -83,11 +80,11 @@ namespace Program
             var balanceTasks = new List<Task<TransactionResult>>();
             foreach (var accountId in accountIds)
             {
-                var id = accountId.Item1;
-                var regionAndServer = accountId.Item2;
+                var id = accountId.Id;
+                var regionAndServer = accountId.Region;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
-                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<Tuple<int, string>>() { accountId }, accessInfoClassNamesSingleAccess);
+                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
                 balanceTasks.Add(balanceTask);
             }
 

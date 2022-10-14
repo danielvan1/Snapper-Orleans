@@ -11,7 +11,7 @@ namespace Concurrency.Interface.Coordinator
     {
         Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor);
 
-        Task<TransactionRegisterInfo> NewLocalTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegisterInfo> NewLocalTransaction(List<GrainAccessInfo> grainAccessInfos);
 
         Task PassToken(LocalToken token);
 
@@ -22,7 +22,7 @@ namespace Concurrency.Interface.Coordinator
         Task AckRegionalBatchCommit(long globalBid);
 
         // for global transactions (hierarchical architecture)
-        Task<TransactionRegisterInfo> NewRegionalTransaction(long globalBid, long globalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName);
+        Task<TransactionRegisterInfo> NewRegionalTransaction(long globalBid, long globalTid, List<GrainAccessInfo> grainAccessInfo);
 
         Task ReceiveBatchSchedule(SubBatch batch);
     }

@@ -100,14 +100,14 @@ namespace Concurrency.Implementation.TransactionExecution
         /// </summary>
         /// <param name="firstFunction"></param>
         /// <param name="functionInput"></param>
-        /// <param name="grainAccessInfo"></param>
+        /// <param name="grainAccessInfos"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
         public async Task<TransactionResult> StartTransaction(string firstFunction, FunctionInput functionInput,
-                                                              List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
+                                                              List<GrainAccessInfo> grainAccessInfos)
         {
-            this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}], grainClassNames: [{grainClassNames}] ",
-                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo), string.Join(", ", grainClassNames));
+            this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
+                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfos));
 
 
             var receiveTxnTime = DateTime.Now;
@@ -115,7 +115,7 @@ namespace Concurrency.Implementation.TransactionExecution
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
-            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfo, grainClassNames);
+            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfos);
             var context = transactionContext.Item2;
 
             // TODO: Only gets here in multi-server or multi-home transaction???

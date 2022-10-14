@@ -9,7 +9,7 @@ namespace Concurrency.Interface
     public static class FunctionInputHelper
     {
 
-        public static FunctionInput Create(int value, Tuple<int, string> destinationGrain)
+        public static FunctionInput Create(int value, GrainAccessInfo grainAccessInfo)
         {
             return new FunctionInput()
             {
@@ -17,7 +17,7 @@ namespace Concurrency.Interface
                 {
                     new TransactionInfo()
                     {
-                        DestinationGrain = destinationGrain,
+                        DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region),
                         Value = value
                     }
                 }

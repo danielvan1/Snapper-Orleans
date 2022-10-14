@@ -27,18 +27,17 @@ namespace Concurrency.Implementation.Coordinator
 
         // coord basic info
         private ILocalCoordinatorGrain neighborCoord;
-        private Dictionary<Tuple<int, string>, string> grainIdToGrainClassName;  // grainID, grainClassName
         private readonly ILogger logger;
 
         // PACT
         private DetTxnProcessor detTxnProcessor;
         private Dictionary<long, int> expectedAcksPerBatch;
-        private Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>> bidToSubBatches;
+        private Dictionary<long, Dictionary<GrainAccessInfo, SubBatch>> bidToSubBatches;
 
         // Hierarchical Architecture
         // for global batches sent from global coordinators
         private SortedDictionary<long, SubBatch> regionalBatchInfo;                                   // key: regional bid
-        private Dictionary<long, Dictionary<long, List<Tuple<int, string>>>> regionalTransactionInfo; // <regional bid, <regional tid, grainAccessInfo>>
+        private Dictionary<long, Dictionary<long, List<GrainAccessInfo>>> regionalTransactionInfo; // <regional bid, <regional tid, grainAccessInfo>>
         private Dictionary<long, TaskCompletionSource<Tuple<long, long>>> regionalDetRequestPromise;  // <regional tid, <local bid, local tid>>
         private Dictionary<long, long> localBidToRegionalBid;
         private Dictionary<long, Dictionary<long, long>> regionalTidToLocalTidPerBatch;               // local bid, <regional tid, local tid>
@@ -52,7 +51,7 @@ namespace Concurrency.Implementation.Coordinator
 
 
         // transaction processing
-        private List<List<Tuple<int, string>>> deterministicRequests;
+        private List<List<GrainAccessInfo>> deterministicRequests;
         private List<TaskCompletionSource<Tuple<long, long>>> deterministicRequestPromise; // <local bid, local tid>
 
         // batch processing
@@ -94,17 +93,16 @@ namespace Concurrency.Implementation.Coordinator
             this.highestCommittedRegionalBid = -1;
             this.highestCommittedBid = -1;
 
-            this.deterministicRequests = new List<List<Tuple<int, string>>>();
+            this.deterministicRequests = new List<List<GrainAccessInfo>>();
             this.deterministicRequestPromise = new List<TaskCompletionSource<Tuple<long, long>>>();
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.grainIdToGrainClassName = new Dictionary<Tuple<int, string>, string>();
             this.expectedAcksPerBatch = new Dictionary<long, int>();
-            this.bidToSubBatches = new Dictionary<long, Dictionary<Tuple<int, string>, SubBatch>>();
+            this.bidToSubBatches = new Dictionary<long, Dictionary<GrainAccessInfo, SubBatch>>();
             this.bidToLastBid = new Dictionary<long, long>();
             this.bidToLastCoordID = new Dictionary<long, long>(); // <bid, coordID who emit this bid's lastBid>
 
             this.regionalBatchInfo = new SortedDictionary<long, SubBatch>();
-            this.regionalTransactionInfo = new Dictionary<long, Dictionary<long, List<Tuple<int, string>>>>();
+            this.regionalTransactionInfo = new Dictionary<long, Dictionary<long, List<GrainAccessInfo>>>();
             this.regionalDetRequestPromise = new Dictionary<long, TaskCompletionSource<Tuple<long, long>>>();
             this.localBidToRegionalBid = new Dictionary<long, long>();
             this.regionalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
@@ -117,22 +115,12 @@ namespace Concurrency.Implementation.Coordinator
         #region NewTransaction from TransactionExecutionGrain
 
         // for PACT
-        public async Task<TransactionRegisterInfo> NewLocalTransaction(List<Tuple<int, string>> grainAccessInfo, List<string> grainClassNames)
+        public async Task<TransactionRegisterInfo> NewLocalTransaction(List<GrainAccessInfo> grainAccessInfo)
         {
             this.logger.LogInformation("NewLocalTransaction is called with grainAccessInfo: {grainAccessInfo}, grainClassNames: {grainClassNames}",
-                                       this.GrainReference, string.Join(", ", grainAccessInfo), string.Join(", ", grainClassNames));
+                                       this.GrainReference, string.Join(", ", grainAccessInfo));
 
             Task<Tuple<long, long>> getBidAndTidTask = this.GetDeterministicTransactionBidAndTid(grainAccessInfo);
-
-            // Mapping each grainId to the corresponding grainClassName
-            for (int i = 0; i < grainAccessInfo.Count; i++)
-            {
-                var grainId = grainAccessInfo[i];
-                if (!this.grainIdToGrainClassName.ContainsKey(grainId))
-                {
-                    this.grainIdToGrainClassName.Add(grainId, grainClassNames[i]);
-                }
-            }
 
             var bidAndTid = await getBidAndTidTask;
             long bid = bidAndTid.Item1;
@@ -143,26 +131,16 @@ namespace Concurrency.Implementation.Coordinator
             return new TransactionRegisterInfo(bid, tid, this.highestCommittedBid);
         }
 
-        public async Task<TransactionRegisterInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<Tuple<int, string>> grainAccessInfo, List<string> grainClassName)
+        public async Task<TransactionRegisterInfo> NewRegionalTransaction(long regionalBid, long regionalTid, List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("NewRegionalTransaction is called regionalBid {globalBid} and regionalTid {tid}", this.GrainReference, regionalBid, regionalTid);
 
-            for (int i = 0; i < grainAccessInfo.Count; i++)
-            {
-                var grainID = grainAccessInfo[i];
-
-                if (!this.grainIdToGrainClassName.ContainsKey(grainID))
-                {
-                    this.grainIdToGrainClassName.Add(grainID, grainClassName[i]);
-                }
-            }
-
             if (!this.regionalTransactionInfo.ContainsKey(regionalBid))
             {
-                this.regionalTransactionInfo.Add(regionalBid, new Dictionary<long, List<Tuple<int, string>>>());
+                this.regionalTransactionInfo.Add(regionalBid, new Dictionary<long, List<GrainAccessInfo>>());
             }
 
-            this.regionalTransactionInfo[regionalBid].Add(regionalTid, grainAccessInfo);
+            this.regionalTransactionInfo[regionalBid].Add(regionalTid, grainAccessInfos);
 
             var promise = new TaskCompletionSource<Tuple<long, long>>();
             this.logger.LogInformation("Waiting for promise {promise} to bet set to a value", this.GrainReference, promise);
@@ -174,7 +152,7 @@ namespace Concurrency.Implementation.Coordinator
             return new TransactionRegisterInfo(promise.Task.Result.Item1, promise.Task.Result.Item2, highestCommittedBid);
         }
 
-        public async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<Tuple<int, string>> serviceList)   // returns a Tuple<bid, tid>
+        public async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<GrainAccessInfo> serviceList)   // returns a Tuple<bid, tid>
         {
             this.deterministicRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
@@ -301,15 +279,15 @@ namespace Concurrency.Implementation.Coordinator
 
             this.AckBatchCommit(bid);
 
-            Dictionary<Tuple<int, string>, SubBatch> currentScheduleMap = bidToSubBatches[bid];
+            Dictionary<GrainAccessInfo, SubBatch> currentScheduleMap = bidToSubBatches[bid];
 
             // Sent message that the transaction grains can commit
-            foreach ((Tuple<int, string> grainId, SubBatch subBatch) in currentScheduleMap)
+            foreach ((GrainAccessInfo grainId, SubBatch subBatch) in currentScheduleMap)
             {
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.LogInformation($"Commit Grains", this.GrainReference);
-                Debug.Assert(region == grainId.Item2); // I think this should be true, we just have the same info multiple places now
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Item1, region, this.grainIdToGrainClassName[grainId]);
+                Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GrainClassName);
                 _ = destination.AckBatchCommit(bid);
             }
 
@@ -355,7 +333,7 @@ namespace Concurrency.Implementation.Coordinator
 
             if (!this.regionalTransactionInfo.ContainsKey(regionalBid))
             {
-                this.regionalTransactionInfo.Add(regionalBid, new Dictionary<long, List<Tuple<int, string>>>());
+                this.regionalTransactionInfo.Add(regionalBid, new Dictionary<long, List<GrainAccessInfo>>());
             }
 
             return Task.CompletedTask;
@@ -468,7 +446,7 @@ namespace Concurrency.Implementation.Coordinator
 
         private async Task EmitBatch(long bid)
         {
-            Dictionary<Tuple<int, string>, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<GrainAccessInfo, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
 
             long regionalBid = -1;
             if (this.localBidToRegionalBid.ContainsKey(bid))
@@ -483,10 +461,10 @@ namespace Concurrency.Implementation.Coordinator
                 this.regionalTidToLocalTidPerBatch.Remove(bid);
             }
 
-            foreach (( Tuple<int, string> grainId, SubBatch subBatch) in currentScheduleMap)
+            foreach (( GrainAccessInfo grainId, SubBatch subBatch) in currentScheduleMap)
             {
-                int id = grainId.Item1;
-                string region = grainId.Item2;
+                int id = grainId.Id;
+                string region = grainId.Region;
 
                 this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {grainId}", this.GrainReference, grainId);
 
@@ -494,7 +472,7 @@ namespace Concurrency.Implementation.Coordinator
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
 
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, this.grainIdToGrainClassName[grainId]);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GrainClassName);
 
                 var localSubBatch = new LocalSubBatch(subBatch)
                 {
@@ -550,15 +528,15 @@ namespace Concurrency.Implementation.Coordinator
         //
         // This is why we differentiate between the two with isRegionalCoordinator
         // This method creates the subbatch for each of the executiongrains
-        public void GenerateSchedulePerService(long tid, long currentBatchId, List<Tuple<int, string>> deterministicRequests)
+        public void GenerateSchedulePerService(long tid, long currentBatchId, List<GrainAccessInfo> deterministicRequests)
         {
             this.logger.LogInformation("GenerateSchedulePerService", this.GrainReference);
             if (!this.bidToSubBatches.ContainsKey(currentBatchId))
             {
-                this.bidToSubBatches.Add(currentBatchId, new Dictionary<Tuple<int, string>, SubBatch>());
+                this.bidToSubBatches.Add(currentBatchId, new Dictionary<GrainAccessInfo, SubBatch>());
             }
 
-            Dictionary<Tuple<int, string>, SubBatch> deterministicRequestToSubBatch = this.bidToSubBatches[currentBatchId];
+            Dictionary<GrainAccessInfo, SubBatch> deterministicRequestToSubBatch = this.bidToSubBatches[currentBatchId];
 
             for (int i = 0; i < deterministicRequests.Count; i++)
             {
@@ -577,14 +555,14 @@ namespace Concurrency.Implementation.Coordinator
         public void UpdateToken(LocalToken token, long currentBatchId, long globalBid)
         {
             // Here we assume that every actor is only called once
-            Dictionary<Tuple<int, string>, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
+            Dictionary<GrainAccessInfo, SubBatch> serviceIDToSubBatch = this.bidToSubBatches[currentBatchId];
             this.expectedAcksPerBatch.Add(currentBatchId, serviceIDToSubBatch.Count);
             this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.GrainReference, currentBatchId, token);
 
             // update the previous batch ID for each service accessed by this batch
             foreach (var serviceInfo in serviceIDToSubBatch)
             {
-                Tuple<int, string> serviceId = serviceInfo.Key;
+                GrainAccessInfo serviceId = serviceInfo.Key;
                 SubBatch subBatch = serviceInfo.Value;
                 this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.GrainReference, serviceId, subBatch);
 
@@ -664,7 +642,7 @@ namespace Concurrency.Implementation.Coordinator
 
         public void GarbageCollectTokenInfo(LocalToken token)
         {
-            var expiredGrains = new HashSet<Tuple<int, string>>();
+            var expiredGrains = new HashSet<GrainAccessInfo>();
 
             // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
             foreach (var item in token.PreviousBidPerGrain)

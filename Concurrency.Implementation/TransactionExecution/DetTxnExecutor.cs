@@ -91,32 +91,28 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <returns></returns>
 
         // TODO: Figure out whether or not the current transaction .
-        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<Tuple<int, string>> grainAccessInfos, List<string> grainClassNames)
+        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
-                                       this.grainReference, string.Join(", ", grainAccessInfos), string.Join(", ", grainClassNames));
+                                       this.grainReference, string.Join(", ", grainAccessInfos));
 
             // check if the transaction will access multiple silos
             var silos = new List<string>();
-            var grainListPerSilo = new Dictionary<string, List<Tuple<int, string>>>();
-            var grainNamePerSilo = new Dictionary<string, List<string>>();
+            var grainListPerSilo = new Dictionary<string, List<GrainAccessInfo>>();
 
             // This is the placement manager(PM) code described in the paper
             for (int i = 0; i < grainAccessInfos.Count; i++)
             {
-                var siloId = grainAccessInfos[i].Item2;
+                var siloId = grainAccessInfos[i].Region;
 
                 if (!grainListPerSilo.ContainsKey(siloId))
                 {
                     silos.Add(siloId);
-                    grainListPerSilo.Add(siloId, new List<Tuple<int, string>>());
-                    grainNamePerSilo.Add(siloId, new List<string>());
+                    grainListPerSilo.Add(siloId, new List<GrainAccessInfo>());
                 }
 
                 grainListPerSilo[siloId].Add(grainAccessInfos[i]);
-                grainNamePerSilo[siloId].Add(grainClassNames[i]);
             }
-
 
             // For a simple example, make sure that only 1 silo is involved in the transaction
             this.logger.LogInformation("Silolist count: {siloListCount}", this.grainReference, silos.Count);
@@ -150,13 +146,13 @@ namespace Concurrency.Implementation.TransactionExecution
                     if (coordId.Item2 == this.siloID)
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/ task", this.grainReference);
-                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
+                        task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
                     }
                     else
                     {
                         this.logger.LogInformation($"Is calling NewRegionalTransaction w/o task", this.grainReference);
 
-                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId], grainNamePerSilo[siloId]);
+                        _ = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
                     }
                 }
 
@@ -170,7 +166,7 @@ namespace Concurrency.Implementation.TransactionExecution
                 return new Tuple<long, TransactionContext>(-1, regionalContext) ;
             }
 
-            TransactionRegisterInfo info = await myLocalCoord.NewLocalTransaction(grainAccessInfos, grainClassNames);
+            TransactionRegisterInfo info = await myLocalCoord.NewLocalTransaction(grainAccessInfos);
             this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.myLocalCoord);
 
             var cxt2 = new TransactionContext(info.Tid, info.Bid);

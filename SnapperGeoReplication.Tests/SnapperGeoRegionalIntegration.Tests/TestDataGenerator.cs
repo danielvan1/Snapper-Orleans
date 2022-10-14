@@ -17,18 +17,37 @@ namespace SnapperGeoRegionalIntegration.Tests
             return Enumerable.Repeat(snapperTransactionalAccountGrainTypeName, n).ToList<string>();
         }
 
-        public static List<Tuple<int, string>> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex)
+        // public static List<Tuple<int, string>> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex)
+        // {
+        //     List<Tuple<int, string>> accountIds = new List<Tuple<int, string>>();
+        //     var regionAndServer = $"{deployedRegion}-{homeRegion}-{serverIndex}";
+        //     for (int accountId = startAccountId; accountId < n+startAccountId; accountId++)
+        //     {
+        //         accountIds.Add(new Tuple<int, string>(accountId, regionAndServer));
+        //     }
+        //     return accountIds;
+        // }
+        public static List<GrainAccessInfo> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex, string grainClassName)
         {
-            List<Tuple<int, string>> accountIds = new List<Tuple<int, string>>();
+            List<GrainAccessInfo> accountIds = new List<GrainAccessInfo>();
+
             var regionAndServer = $"{deployedRegion}-{homeRegion}-{serverIndex}";
-            for (int accountId = startAccountId; accountId < n+startAccountId; accountId++)
+
+            for (int accountId = startAccountId; accountId < n + startAccountId; accountId++)
             {
-                accountIds.Add(new Tuple<int, string>(accountId, regionAndServer));
+                accountIds.Add(
+                new GrainAccessInfo()
+                {
+                    Id = accountId,
+                    Region = regionAndServer,
+                    GrainClassName = grainClassName
+                });
             }
+
             return accountIds;
         }
 
-        public static FunctionInput CreateMultiTransferFunctionInput(int value, List<Tuple<int, string>> grainAccessInfos)
+        public static FunctionInput CreateMultiTransferFunctionInput(int value, List<GrainAccessInfo> grainAccessInfos)
         {
             FunctionInput functionInput = new FunctionInput()
             {
@@ -39,7 +58,7 @@ namespace SnapperGeoRegionalIntegration.Tests
             {
                 functionInput.DestinationGrains.Add(new TransactionInfo()
                 {
-                    DestinationGrain = grainAccessInfo,
+                    DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region),
                     Value = value
                 });
             }
