@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
+using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
@@ -22,7 +23,9 @@ namespace Concurrency.Implementation.TransactionExecution
     public abstract class TransactionExecutionGrain<TState> : Grain, ITransactionExecutionGrain where TState : ICloneable, ISerializable, new()
     {
         private readonly ILogger<TransactionExecutionGrain<TState>> logger;
-        private GrainId myId;
+        private readonly ITransactionContextProviderFactory transactionContextProviderFactory;
+        private  ITransactionContextProvider transactionContextProvider;
+        private GrainId myGrainId;
 
         // grain basic info
         private string mySiloID;
@@ -42,16 +45,17 @@ namespace Concurrency.Implementation.TransactionExecution
         // garbage collection
         private long highestCommittedLocalBid;
 
-        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, string myClassName)
+        public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, ITransactionContextProviderFactory transactionContextProviderFactory)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.transactionContextProviderFactory = transactionContextProviderFactory ?? throw new ArgumentNullException(nameof(transactionContextProviderFactory));
         }
 
         public override Task OnActivateAsync()
         {
             this.highestCommittedLocalBid = -1;
 
-            this.myId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion };
+            this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion };
 
             this.mySiloID = localRegion;
 
@@ -61,7 +65,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.state = new DeterministicState<TState>();
 
-            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myId.StringId);
+            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myGrainId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myGrainId.StringId);
 
             // TODO: Need this later when we have multi server and multi home
             // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
@@ -71,11 +75,12 @@ namespace Concurrency.Implementation.TransactionExecution
             var regionalCoordinatorID = 0;
             var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, "EU");
 
+            this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId, myLocalCoord, regionalCoordinator);
 
             this.detTxnExecutor = new DetTxnExecutor<TState>(
                 this.logger,
                 this.GrainReference,
-                this.myId,
+                this.myGrainId,
                 this.mySiloID,
                 myLocalCoord,
                 regionalCoordinator,
@@ -97,8 +102,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <param name="grainAccessInfos"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
-        public async Task<TransactionResult> StartTransaction(string firstFunction, FunctionInput functionInput,
-                                                              List<GrainAccessInfo> grainAccessInfos)
+        public async Task<TransactionResult> StartTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfos));
@@ -109,7 +113,8 @@ namespace Concurrency.Implementation.TransactionExecution
             // This is where we get the Tuple<Tid, TransactionContext>
             // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
             // to decide the locality of the transaction
-            Tuple<long, TransactionContext> transactionContext = await this.detTxnExecutor.GetDetContext(grainAccessInfos);
+            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfos);
+
             var context = transactionContext.Item2;
 
             // TODO: Only gets here in multi-server or multi-home transaction???

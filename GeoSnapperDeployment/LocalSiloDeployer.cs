@@ -1,5 +1,8 @@
 using System.Net;
+using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
+using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Factories;
@@ -177,7 +180,7 @@ namespace GeoSnapperDeployment
                            {
                                options.AdvertisedIPAddress = IPAddress.Loopback;
                            })
-                           .Configure<ClientMessagingOptions>(options => 
+                           .Configure<ClientMessagingOptions>(options =>
                            {
                                options.ResponseTimeout = new TimeSpan(0, 5, 0);
                                options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
@@ -192,14 +195,6 @@ namespace GeoSnapperDeployment
 
         private void ConfigureGlobalGrains(SiloHostBuilder siloHostBuilder, GlobalConfiguration globalConfiguration, SiloInfo globalSiloInfo)
         {
-
-            // ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
-            //                                                         Logger.AddSimpleConsole(options =>
-            //                                                         {
-            //                                                             options.SingleLine = true;
-            //                                                             options.IncludeScopes = true;
-            //                                                         }));
-            // ILogger logger = loggerFactory.CreateLogger("Global");
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
                 serviceCollection.AddLogging(builder =>
@@ -209,7 +204,10 @@ namespace GeoSnapperDeployment
 
                 serviceCollection.AddSingleton(globalConfiguration);
                 serviceCollection.AddSingleton(globalSiloInfo);
-                // serviceCollection.AddSingleton(logger);
+
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
+                serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, GlobalConfigurationGrainPlacementStrategy>(nameof(GlobalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, GlobalConfigurationGrainPlacement>(typeof(GlobalConfigurationGrainPlacementStrategy));
@@ -235,9 +233,11 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(regionalSilos);
                 serviceCollection.AddSingleton(regionalConfiguration);
                 serviceCollection.AddSingleton(localConfiguration);
-                // serviceCollection.AddSingleton(logger);
                 serviceCollection.AddSingleton(localSilos);
 
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
+                serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, RegionalCoordinatorGrainPlacement>(typeof(RegionalCoordinatorGrainPlacementStrategy));
 
@@ -257,17 +257,6 @@ namespace GeoSnapperDeployment
 
         private void ConfigureLocalGrains(SiloHostBuilder siloHostBuilder, RegionalSilosPlacementInfo regionalSilos, LocalSiloPlacementInfo localSilos)
         {
-            // ILoggerFactory loggerFactory = LoggerFactory.Create(Logger =>
-            //                                                         Logger.AddSimpleConsole(options =>
-            //                                                         {
-            //                                                             options.SingleLine = true;
-            //                                                             options.IncludeScopes = false;
-            //                                                             options.UseUtcTimestamp = true;
-            //                                                             options.TimestampFormat = "[hh:mm:ss:ffff] ";
-
-            //                                                         }));
-            // ILogger logger = loggerFactory.CreateLogger(string.Empty);
-
             siloHostBuilder.ConfigureServices(serviceCollection =>
             {
                 serviceCollection.AddLogging(builder =>
@@ -278,6 +267,9 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(localSilos);
                 // serviceCollection.AddSingleton(logger);
 
+                serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
+                serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
+                serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, LocalConfigurationGrainPlacementStrategy>(nameof(LocalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigurationGrainPlacement>(typeof(LocalConfigurationGrainPlacementStrategy));
 

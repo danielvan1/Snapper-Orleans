@@ -84,7 +84,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <returns></returns>
 
         // TODO: Figure out whether or not the current transaction .
-        public async Task<Tuple<long, TransactionContext>> GetDetContext(List<GrainAccessInfo> grainAccessInfos)
+        public async Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
                                        this.grainReference, string.Join(", ", grainAccessInfos));

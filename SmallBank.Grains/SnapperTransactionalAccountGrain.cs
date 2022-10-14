@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution;
+using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using SmallBank.Interfaces;
@@ -15,7 +16,7 @@ namespace SmallBank.Grains
     {
         private readonly ILogger<SnapperTransactionalAccountGrain> logger;
 
-        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger) : base(logger, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+        public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger, ITransactionContextProviderFactory transactionContextProviderFactory) : base(logger, transactionContextProviderFactory)
         {
             this.logger = logger;
         }
