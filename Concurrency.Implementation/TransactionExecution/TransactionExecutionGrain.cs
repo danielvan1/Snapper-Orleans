@@ -26,9 +26,6 @@ namespace Concurrency.Implementation.TransactionExecution
 
         // grain basic info
         private string mySiloID;
-        private readonly string myClassName;
-        private static int myLocalCoordID;
-        private static ILocalCoordinatorGrain myLocalCoord;   // use this coord to get tid for local transactions
 
         // transaction execution
         private TransactionScheduler transactionScheduler;
@@ -48,7 +45,6 @@ namespace Concurrency.Implementation.TransactionExecution
         public TransactionExecutionGrain(ILogger<TransactionExecutionGrain<TState>> logger, string myClassName)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.myClassName = myClassName;
         }
 
         public override Task OnActivateAsync()
@@ -80,14 +76,12 @@ namespace Concurrency.Implementation.TransactionExecution
                 this.logger,
                 this.GrainReference,
                 this.myId,
-                this.myId.IntId,
-                mySiloID,
-                myLocalCoordID,
+                this.mySiloID,
                 myLocalCoord,
                 regionalCoordinator,
-                GrainFactory,
-                transactionScheduler,
-                state);
+                this.GrainFactory,
+                this.transactionScheduler,
+                this.state);
 
             this.logger.LogInformation("Initialized DetTxnExecutor", this.GrainReference);
 

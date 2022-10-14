@@ -22,7 +22,6 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly GrainId myId;
 
         // grain basic info
-        private readonly int myID;
         private readonly string siloID;
 
         // transaction execution
@@ -30,8 +29,6 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly ITransactionalState<TState> state;
 
         // local and global coordinators
-        private readonly int myLocalCoordID;
-        private readonly ICoordMap coordMap;
         private readonly ILocalCoordinatorGrain myLocalCoord;
         private readonly IRegionalCoordinatorGrain regionalCoordinator;                                // use this coord to get tid for global transactions
         private readonly IGrainFactory grainFactory;
@@ -50,9 +47,7 @@ namespace Concurrency.Implementation.TransactionExecution
             ILogger logger,
             GrainReference grainReference,
             GrainId myId,
-            int myID,
             string siloID,
-            int myLocalCoordID,
             ILocalCoordinatorGrain myLocalCoord,
             IRegionalCoordinatorGrain myRegionalCoordinator,
             IGrainFactory grainFactory,
@@ -64,9 +59,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.grainReference = grainReference;
             this.myId = myId;
 
-            this.myID = myID;
             this.siloID = siloID;
-            this.myLocalCoordID = myLocalCoordID;
             this.myLocalCoord = myLocalCoord;
             this.regionalCoordinator = myRegionalCoordinator;
             this.grainFactory = grainFactory;
