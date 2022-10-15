@@ -72,7 +72,8 @@ namespace SmallBank.Grains
             }
 
             await Task.WhenAll(task);
-            this.logger.LogInformation("Done with multi transfer for context: {context} and functionInput: {input}", this.GrainReference, context, functionInput);
+
+            this.logger.LogInformation("Done with multi transfer for context: {context}", this.GrainReference, context);
 
             return new TransactionResult();
         }

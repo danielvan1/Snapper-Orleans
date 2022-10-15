@@ -18,7 +18,7 @@ namespace Concurrency.Interface.Models
 
         public override string ToString()
         {
-            return $"FunctionName: {funcName}, FunctionInput: {funcInput}, GrainClassName: {grainClassName}";
+            return $"FunctionName: {funcName}, GrainClassName: {grainClassName}";
         }
     }
 }

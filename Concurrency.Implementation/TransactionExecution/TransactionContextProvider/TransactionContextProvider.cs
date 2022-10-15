@@ -4,7 +4,6 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.Coordinator;
-using Concurrency.Implementation.LoadBalancing;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
 using Concurrency.Interface.Coordinator;
@@ -47,13 +46,12 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
             this.mySiloId = grainId.StringId;
 
-            this.localCoordinator = localCoordinatorGrain;
-            this.regionalCoordinator = regionalCoordinatorGrain;
-            // this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
-            // this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, "EU", grainFactory);
+            // this.localCoordinator = localCoordinatorGrain;
+            // this.regionalCoordinator = regionalCoordinatorGrain;
+            this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
+            this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId.Substring(0, 2), grainFactory);
         }
 
-        // int: the highestCommittedBid get from local coordinator
         /// <summary>
         /// This returns the Bid and TransactionContext. Also start the process of starting to create the (sub)batches
         /// in the RegionalCoordinator (if it is a regional transaction) and also in the LocalCoordinator.
@@ -62,17 +60,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
         /// <param name="grainAccessInfos"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
-        // public async Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
-        // {
-        //     this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]", this.grainReference, string.Join(", ", grainAccessInfos));
-
-        //     var grainListPerSilo = this.GroupGrainsPerSilo(grainAccessInfos);
-
-        //     TransactionType transactionType = this.placementManager.GetTransactionType(grainAccessInfos);
-
-        //     return grainListPerSilo.Count > 1 ? await this.GetRegionalContext(grainListPerSilo)
-        //                                       : await this.GetLocalContext(grainAccessInfos);
-        // }
         public async Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Amazon.Auth.AccessControlPolicy.ActionIdentifiers;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionBroadcasting;
@@ -87,74 +86,13 @@ namespace Concurrency.Implementation.TransactionExecution
 
             _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId);
 
-            // This is where we get the Tuple<Tid, TransactionContext>
-            // The TransactionContext just contains the 4 values (localBid, localTid, globalBid, globalTid)
-            // to decide the locality of the transaction
-            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
-
-            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
-            var context = transactionContext.Item2;
-
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
-            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
-            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
-            var finishExeTime = DateTime.Now;
-            var startExeTime = result.Item2;
-            var resultObj = result.Item1;
-
-            // wait for this batch to commit
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
-            await this.deterministicTransactionExecutor.WaitForBatchToCommit(context.localBid);
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
-
-            var commitTime = DateTime.Now;
-            var txnResult = new TransactionResult(resultObj);
-            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
-
-            this.logger.LogInformation("TransactionExecutionGrain: Finished transaction {txn} with FunctionInput {input}",
-                                       this.GrainReference, firstFunction, functionInput);
-
-            return txnResult;
+            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo);
         }
 
         public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
         {
-            var receiveTxnTime = DateTime.Now;
-
-            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
-                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
-            this.logger.LogInformation("HerpDerp: {hj} ", this.GrainReference, this.GrainReference);
-
-            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
-            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
-            var context = transactionContext.Item2;
-
-            // TODO: Only gets here in multi-server or multi-home transaction???
-
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
-            // execute PACT
-            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
-            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
-            var finishExeTime = DateTime.Now;
-            var startExeTime = result.Item2;
-            var resultObj = result.Item1;
-
-            // wait for this batch to commit
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
-            await this.deterministicTransactionExecutor.WaitForBatchToCommit(context.localBid);
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
-
-            var commitTime = DateTime.Now;
-            var txnResult = new TransactionResult(resultObj);
-            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
-
-            return txnResult;
+            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo);
         }
-
 
         public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
         {
@@ -217,6 +155,41 @@ namespace Concurrency.Implementation.TransactionExecution
             return new TransactionResult(resultObj);
         }
 
+        private async Task<TransactionResult> RunTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
+        {
+            var receiveTxnTime = DateTime.Now;
+
+            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
+                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
+
+            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
+            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
+            var context = transactionContext.Item2;
+
+            // TODO: Only gets here in multi-server or multi-home transaction???
+
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
+            // execute PACT
+            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
+            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
+            var finishExeTime = DateTime.Now;
+            var startExeTime = result.Item2;
+            var resultObj = result.Item1;
+
+            // wait for this batch to commit
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
+            await this.deterministicTransactionExecutor.WaitForBatchToCommit(context.localBid);
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
+
+            var commitTime = DateTime.Now;
+            var txnResult = new TransactionResult(resultObj);
+            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
+            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
+            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
+
+            return txnResult;
+        }
+
         private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext context)
         {
             if (context.localBid == -1)
@@ -226,13 +199,13 @@ namespace Concurrency.Implementation.TransactionExecution
 
             MethodInfo methodInfo = call.grainClassName.GetMethod(call.funcName);
 
-            this.logger.LogInformation("Going to call Invoke for method {functionName} with input {input} and context: {context}", this.GrainReference, call.funcName, call.funcInput, context);
+            this.logger.LogInformation("Going to call Invoke for method {functionName} and context: {context}", this.GrainReference, call.funcName, context);
 
             var transactionResult = (Task<TransactionResult>)methodInfo.Invoke(this, new object[] { context, call.funcInput });
 
             var result = await transactionResult;
 
-            this.logger.LogInformation("Finished with invoking function {name} with input: {input}", this.GrainReference, call.funcName, call.funcInput);
+            this.logger.LogInformation("Finished with invoking function {name}", this.GrainReference, call.funcName);
 
             return result;
         }

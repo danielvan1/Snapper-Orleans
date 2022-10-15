@@ -1,7 +1,7 @@
 using Concurrency.Interface.Coordinator;
 using Orleans;
 
-namespace Concurrency.Implementation.LoadBalancing
+namespace Concurrency.Implementation.Coordinator
 {
     public interface ICoordinatorProvider
     {
