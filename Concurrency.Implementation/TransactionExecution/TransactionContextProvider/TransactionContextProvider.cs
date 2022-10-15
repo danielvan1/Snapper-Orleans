@@ -46,10 +46,10 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
             this.mySiloId = grainId.StringId;
 
-            // this.localCoordinator = localCoordinatorGrain;
-            // this.regionalCoordinator = regionalCoordinatorGrain;
-            this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
-            this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId.Substring(0, 2), grainFactory);
+            this.localCoordinator = localCoordinatorGrain;
+            this.regionalCoordinator = regionalCoordinatorGrain;
+            // this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
+            // this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId.Substring(0, 2), grainFactory);
         }
 
         /// <summary>

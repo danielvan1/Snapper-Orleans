@@ -104,11 +104,22 @@ namespace Experiments
                     Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
                 }
             }
+
+            string USEU1 = "US-EU-1";
+            string USEU0 = "US-EU-0";
+
+            var replicaActorUSEU0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
+            TransactionResult balanceTaskReplica = await replicaActorUSEU0.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 0, Region = USEU0, GrainClassName = snapperTransactionalAccountGrainTypeName } });
+            Console.WriteLine($"Replica ::: result: {balanceTaskReplica.resultObj} -- expected {initialBalance - numberOfAccountsInEachServer * oneDollar}");
+
+            var replicaActorUSEU1 = client.GetGrain<ISnapperTransactionalAccountGrain>(70, USEU1);
+            TransactionResult balanceTaskReplica1 = await replicaActorUSEU1.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 70, Region = USEU1, GrainClassName = snapperTransactionalAccountGrainTypeName } });
+            Console.WriteLine($"Replica ::: result: {balanceTaskReplica1.resultObj} -- expected {initialBalance + numberOfAccountsInEachServer * oneDollar}");
+
         }
 
         public async Task SimpleBank()
         {
-
             var client = new ClientBuilder()
             .UseLocalhostClustering()
             .Configure<ClusterOptions>(options =>

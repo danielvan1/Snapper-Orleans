@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.Logging;
@@ -21,7 +20,8 @@ namespace SmallBank.Grains
         public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger,
                                                 ITransactionContextProviderFactory transactionContextProviderFactory,
                                                 ITransactionBroadCasterFactory transactionBroadCasterFactory,
-                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory) : base(logger, transactionContextProviderFactory, transactionBroadCasterFactory, deterministicTransactionExecutorFactory, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory)
+                                                : base(logger, transactionContextProviderFactory, transactionBroadCasterFactory, deterministicTransactionExecutorFactory, "SmallBank.Grains.SnapperTransactionalAccountGrain")
         {
             this.logger = logger;
         }
