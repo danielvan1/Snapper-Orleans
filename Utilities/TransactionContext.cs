@@ -13,6 +13,7 @@ namespace Utilities
         // for global PACT and all ACT
         public readonly long regionalTid;
 
+        public bool IsReplicaTransaction { get; set; } = false;
 
         /// <summary> This constructor is only for local PACT </summary>
         public TransactionContext(long localTid, long localBid)

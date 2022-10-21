@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Implementation.TransactionBroadcasting
 {
@@ -14,20 +16,25 @@ namespace Concurrency.Implementation.TransactionBroadcasting
     {
         private readonly ILogger<TransactionBroadCaster> logger;
         private readonly IGrainFactory grainFactory;
+        private readonly IIdHelper idHelper;
         private readonly List<string> regions;
 
-        public TransactionBroadCaster(ILogger<TransactionBroadCaster> logger, IGrainFactory grainFactory, List<string> regions)
+        public TransactionBroadCaster(ILogger<TransactionBroadCaster> logger,
+                                      IIdHelper IdHelper,
+                                      IGrainFactory grainFactory,
+                                      List<string> regions)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.grainFactory = grainFactory ?? throw new ArgumentNullException(nameof(grainFactory));
+            this.idHelper = IdHelper ?? throw new ArgumentNullException(nameof(IdHelper));
             this.regions = regions ?? throw new ArgumentNullException(nameof(regions));
         }
 
-        public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain)
+        public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext, long highestCommittedBidFromMaster)
         {
             this.logger.LogInformation("BroadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
 
-            string currentRegion = startGrain.StringId.Substring(0, 2);
+            string currentRegion = startGrain.SiloId.Substring(0, 2);
 
             foreach (string region in this.regions)
             {
@@ -44,17 +51,45 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                     newGrainAccessInfo.Add(new GrainAccessInfo()
                     {
                         Id = grainAccessInfo.Id,
-                        Region = replicaRegion,
-                        GrainClassName = grainAccessInfo.GrainClassName
+                        SiloId = replicaRegion,
+                        GranClassNamespace = grainAccessInfo.GranClassNamespace
                     });
                 }
 
-                var transactionExecutionGrain = this.grainFactory.GetGrain<ITransactionExecutionGrain>(startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.StringId), startGrain.GrainClassName);
+                var transactionExecutionGrain = this.grainFactory.GetGrain<ITransactionExecutionGrain>(startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.SiloId), startGrain.GrainClassName);
 
-                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo);
+                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext, highestCommittedBidFromMaster );
             }
 
             this.logger.LogInformation("Finished broadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
+
+            return Task.CompletedTask;
+        }
+
+        public Task BroadCastLocalSchedules(string currentLocalSiloId, long bid, long previousBid, Dictionary<GrainAccessInfo, LocalSubBatch> replicaSchedules)
+        {
+            List<string> replicaSiloIds = this.idHelper.GetLocalReplicaSiloIds(currentLocalSiloId);
+
+            foreach(string replicaSiloId in replicaSiloIds)
+            {
+                var localReplicaCoordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, replicaSiloId);
+
+                _ = localReplicaCoordinator.ReceiveLocalSchedule(bid, previousBid, replicaSchedules);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task BroadCastRegionalSchedules(string currentRegionSiloId, long bid, long previousBid, Dictionary<string, SubBatch> replicaSchedules)
+        {
+            List<string> replicaSiloIds = this.idHelper.GetRegionalReplicaSiloIds(currentRegionSiloId);
+
+            foreach(string replicaSiloId in replicaSiloIds)
+            {
+                var localReplicaCoordinator = this.grainFactory.GetGrain<IRegionalReplicaCoordinator>(0, replicaSiloId);
+
+                _ = localReplicaCoordinator.ReceiveRegionalSchedule(bid, previousBid, replicaSchedules);
+            }
 
             return Task.CompletedTask;
         }

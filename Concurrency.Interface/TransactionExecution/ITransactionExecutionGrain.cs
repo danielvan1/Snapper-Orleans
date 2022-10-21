@@ -14,7 +14,7 @@ namespace Concurrency.Interface.TransactionExecution
         // to run its methods in transactions
         Task<TransactionResult> StartTransaction(string startFunc, FunctionInput funcInput, List<GrainAccessInfo> grainAccessInfo);
 
-        Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo);
+        Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster);
 
         Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext ctx);
 

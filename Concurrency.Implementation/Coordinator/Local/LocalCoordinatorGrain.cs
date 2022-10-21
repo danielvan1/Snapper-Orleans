@@ -4,13 +4,13 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Concurrency.Implementation.Coordinator.Models;
+using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
@@ -22,14 +22,16 @@ namespace Concurrency.Implementation.Coordinator.Local
     [LocalCoordinatorGrainPlacementStrategy]
     public class LocalCoordinatorGrain : Grain, ILocalCoordinatorGrain
     {
-        private string region;
-        private Random random;
+        private string siloId;
         private long myId;
         private long highestCommittedBid;
 
         // coord basic info
         private ILocalCoordinatorGrain neighborCoord;
         private readonly ILogger logger;
+        private readonly ITransactionBroadCasterFactory transactionBroadCasterFactory;
+        private ITransactionBroadCaster transactionBroadCaster;
+        private readonly IIdHelper idHelper;
 
         // PACT
         private Dictionary<long, int> expectedAcksPerBatch;
@@ -63,19 +65,21 @@ namespace Concurrency.Implementation.Coordinator.Local
         // only for global batch
         private Dictionary<long, Dictionary<Tuple<int, string>, Tuple<int, string>>> localCoordinatorPerSiloPerBatch; // regional bid, silo ID, chosen local coord ID
 
-        public LocalCoordinatorGrain(ILogger<LocalCoordinatorGrain> logger)
+        public LocalCoordinatorGrain(ILogger<LocalCoordinatorGrain> logger, ITransactionBroadCasterFactory transactionBroadCasterFactory)
         {
-            this.logger = logger;
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            this.transactionBroadCasterFactory = transactionBroadCasterFactory ?? throw new ArgumentNullException(nameof(transactionBroadCasterFactory));
         }
 
         public override Task OnActivateAsync()
         {
             this.Init();
 
-            this.random = new Random();
-            this.myId = this.GetPrimaryKeyLong(out string region);
+            this.myId = this.GetPrimaryKeyLong(out string siloId);
 
-            this.region = region;
+            this.siloId = siloId;
+
+            this.transactionBroadCaster = this.transactionBroadCasterFactory.Create(this.GrainFactory);
 
             return base.OnActivateAsync();
         }
@@ -225,7 +229,6 @@ namespace Concurrency.Implementation.Coordinator.Local
 
             if (this.expectedAcksPerBatch[bid] > 0) return;
 
-
             // the batch has been completed in this silo
             long regionalBid = -1;
 
@@ -275,8 +278,8 @@ namespace Concurrency.Implementation.Coordinator.Local
             {
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.LogInformation($"Commit Grains", this.GrainReference);
-                Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GrainClassName);
+                Debug.Assert(region == grainId.SiloId); // I think this should be true, we just have the same info multiple places now
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GranClassNamespace);
                 _ = destination.AckBatchCommit(bid);
             }
 
@@ -350,7 +353,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         private IList<long> GenerateRegionalBatch(LocalToken token)
         {
-            IList<long> currentBatchIds = new List<long>();
+            IList<long> currentBids = new List<long>();
 
             while (this.regionalBatchInfo.Count > 0)
             {
@@ -370,20 +373,20 @@ namespace Concurrency.Implementation.Coordinator.Local
 
                 this.logger.LogInformation("HerpDerp", this.GrainReference);
 
-                var currentBatchId = token.PreviousEmitTid + 1;
-                currentBatchIds.Add(currentBatchId);
-                this.localBidToRegionalBid.Add(currentBatchId, regionalBid);
-                this.regionalTidToLocalTidPerBatch.Add(currentBatchId, new Dictionary<long, long>());
+                var currentBid = token.PreviousEmitTid + 1;
+                currentBids.Add(currentBid);
+                this.localBidToRegionalBid.Add(currentBid, regionalBid);
+                this.regionalTidToLocalTidPerBatch.Add(currentBid, new Dictionary<long, long>());
 
                 foreach (var globalTid in subBatch.Transactions)
                 {
                     var localTid = ++token.PreviousEmitTid;
-                    this.regionalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(currentBatchId, localTid));
+                    this.regionalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(currentBid, localTid));
 
                     var grainAccessInfo = this.regionalTransactionInfo[regionalBid][globalTid];
-                    GenerateSchedulePerService(localTid, currentBatchId, grainAccessInfo);
+                    GenerateSchedulePerService(localTid, currentBid, grainAccessInfo);
 
-                    this.regionalTidToLocalTidPerBatch[currentBatchId].Add(globalTid, localTid);
+                    this.regionalTidToLocalTidPerBatch[currentBid].Add(globalTid, localTid);
                     this.regionalDetRequestPromise.Remove(globalTid);
                 }
 
@@ -391,14 +394,14 @@ namespace Concurrency.Implementation.Coordinator.Local
                 this.regionalBatchInfo.Remove(regionalBid);
                 this.regionalTransactionInfo.Remove(regionalBid);
 
-                this.UpdateToken(token, currentBatchId, regionalBid);
+                this.UpdateToken(token, currentBid, regionalBid);
                 token.PreviousEmitRegionalBid = regionalBid;
             }
 
-            return currentBatchIds;
+            return currentBids;
         }
 
-        public Task RegionalBatchCommitAcknowledgement(long regionalBid)
+        private Task RegionalBatchCommitAcknowledgement(long regionalBid)
         {
             this.GetPrimaryKeyLong(out string region);
             string region1 = new string(region);
@@ -439,7 +442,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         private async Task EmitBatch(long bid)
         {
-            Dictionary<GrainAccessInfo, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
+            Dictionary<GrainAccessInfo, SubBatch> currentSchedule = this.bidToSubBatches[bid];
 
             long regionalBid = -1;
             if (this.localBidToRegionalBid.ContainsKey(bid))
@@ -454,10 +457,11 @@ namespace Concurrency.Implementation.Coordinator.Local
                 this.regionalTidToLocalTidPerBatch.Remove(bid);
             }
 
-            foreach ((GrainAccessInfo grainId, SubBatch subBatch) in currentScheduleMap)
+            Dictionary<GrainAccessInfo, LocalSubBatch> replicaSchedules = new Dictionary<GrainAccessInfo, LocalSubBatch>();
+            foreach ((GrainAccessInfo grainId, SubBatch subBatch) in currentSchedule)
             {
                 int id = grainId.Id;
-                string region = grainId.Region;
+                string region = grainId.SiloId;
 
                 this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {grainId}", this.GrainReference, grainId);
 
@@ -465,7 +469,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
 
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GrainClassName);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GranClassNamespace);
 
                 var localSubBatch = new LocalSubBatch(subBatch)
                 {
@@ -475,7 +479,11 @@ namespace Concurrency.Implementation.Coordinator.Local
                 };
 
                 _ = destination.ReceiveBatchSchedule(localSubBatch);
+
+                replicaSchedules.TryAdd(grainId, localSubBatch);
             }
+
+            // _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
         }
 
 
@@ -652,6 +660,11 @@ namespace Concurrency.Implementation.Coordinator.Local
             }
 
             token.HighestCommittedBid = this.highestCommittedBid;
+        }
+
+        private string ReplaceDeploymentRegion(string newRegion, string currentRegionId)
+        {
+            return $"{newRegion}-{currentRegionId.Substring(3)}";
         }
     }
 }

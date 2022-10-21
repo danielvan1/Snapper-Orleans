@@ -46,7 +46,7 @@ namespace Experiments
             foreach (var accountId in accountIds)
             {
                 var id = accountId.Id;
-                var regionAndServer = accountId.Region;
+                var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
                 var initTask = actor.StartTransaction("Init", FunctionInputHelper.Create(1000, new Tuple<int, string>(id, regionAndServer)), new List<GrainAccessInfo>() { accountId });
 
@@ -62,7 +62,7 @@ namespace Experiments
             {
                 Console.WriteLine($"accountId: {accountId}");
                 var id = accountId.Id;
-                var regionAndServer = accountId.Region;
+                var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
                 var herp = accountIdsServer1.Append(accountId).ToList();
@@ -80,7 +80,7 @@ namespace Experiments
             foreach (var accountId in accountIds)
             {
                 var id = accountId.Id;
-                var regionAndServer = accountId.Region;
+                var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
 
                 Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
@@ -109,11 +109,11 @@ namespace Experiments
             string USEU0 = "US-EU-0";
 
             var replicaActorUSEU0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
-            TransactionResult balanceTaskReplica = await replicaActorUSEU0.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 0, Region = USEU0, GrainClassName = snapperTransactionalAccountGrainTypeName } });
+            TransactionResult balanceTaskReplica = await replicaActorUSEU0.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 0, SiloId = USEU0, GranClassNamespace = snapperTransactionalAccountGrainTypeName } });
             Console.WriteLine($"Replica ::: result: {balanceTaskReplica.resultObj} -- expected {initialBalance - numberOfAccountsInEachServer * oneDollar}");
 
             var replicaActorUSEU1 = client.GetGrain<ISnapperTransactionalAccountGrain>(70, USEU1);
-            TransactionResult balanceTaskReplica1 = await replicaActorUSEU1.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 70, Region = USEU1, GrainClassName = snapperTransactionalAccountGrainTypeName } });
+            TransactionResult balanceTaskReplica1 = await replicaActorUSEU1.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 70, SiloId = USEU1, GranClassNamespace = snapperTransactionalAccountGrainTypeName } });
             Console.WriteLine($"Replica ::: result: {balanceTaskReplica1.resultObj} -- expected {initialBalance + numberOfAccountsInEachServer * oneDollar}");
 
         }

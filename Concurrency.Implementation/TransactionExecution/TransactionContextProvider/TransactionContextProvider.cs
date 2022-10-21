@@ -44,7 +44,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             this.grainReference = grainReference ?? throw new ArgumentNullException(nameof(grainReference));
             this.grainId = grainId ?? throw new ArgumentNullException(nameof(grainId));
 
-            this.mySiloId = grainId.StringId;
+            this.mySiloId = grainId.SiloId;
 
             this.localCoordinator = localCoordinatorGrain;
             this.regionalCoordinator = regionalCoordinatorGrain;
@@ -88,7 +88,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             // This is the placement manager(PM) code described in the paper
             for (int i = 0; i < grainAccessInfos.Count; i++)
             {
-                var siloId = grainAccessInfos[i].Region;
+                var siloId = grainAccessInfos[i].SiloId;
 
                 if (!grainListPerSilo.ContainsKey(siloId))
                 {

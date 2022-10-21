@@ -16,9 +16,11 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
         Task WaitForTurn(TransactionContext context);
 
         Task AckBatchCommit(long bid);
+
         Task WaitForBatchToCommit(long bid);
 
         Task GarbageCollection(long bid);
+
         Task CleanUp(long tid);
     }
 }

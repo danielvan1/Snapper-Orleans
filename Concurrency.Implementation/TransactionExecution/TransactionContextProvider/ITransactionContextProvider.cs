@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Concurrency.Interface.Models;
-using Orleans;
 using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution.TransactionContextProvider

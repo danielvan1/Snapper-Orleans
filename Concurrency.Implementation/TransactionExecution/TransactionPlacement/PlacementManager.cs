@@ -30,7 +30,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionPlacement
             // This is the placement manager(PM) code described in the paper
             foreach (GrainAccessInfo grainAccessInfo in grainAccessInfos)
             {
-                var siloId = grainAccessInfo.Region;
+                var siloId = grainAccessInfo.SiloId;
 
                 this.logger.LogInformation("SiloId: {siloId}", siloId);
 

@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
 using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
+using Microsoft.CodeAnalysis.Operations;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
@@ -145,15 +147,23 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 this.transactionScheduler.CompleteDeterministicBatch(context.localBid);
 
                 // We use the current region, since we assume that the local coordinator is in the same silo
-                var localCoordinatorRegion = this.grainId.StringId;
+                var localCoordinatorRegion = this.grainId.SiloId;
 
                 this.logger.LogInformation("Send the local coordinator {localCoordinatorId}-{localCoordinatorRegion} the acknowledgement of the batch completion for batch id: {localBid}",
                                             this.grainReference, localCoordinatorId, localCoordinatorRegion, context.localBid);
 
                 // TODO: This coordinator should be the one that sent the batch
-                var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
+                if(context.IsReplicaTransaction)
+                {
+                    var coordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(localCoordinatorId, localCoordinatorRegion);
+                    _ = coordinator.CommitAcknowledgement(context.localBid);
+                }
+                else
+                {
 
-                _ = coordinator.BatchCompletionAcknowledgement(context.localBid);
+                    var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
+                    _ = coordinator.BatchCompletionAcknowledgement(context.localBid);
+                }
 
                 this.logger.LogInformation("Done with current batch. The coordinator that sent the subbatch: {coordinatorId} with context {context}",
                                            this.grainReference, localCoordinatorId, context);

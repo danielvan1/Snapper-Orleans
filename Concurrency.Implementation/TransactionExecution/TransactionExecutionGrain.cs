@@ -50,9 +50,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public override Task OnActivateAsync()
         {
-            this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), StringId = localRegion, GrainClassName = this.classNameSpace };
+            this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), SiloId = localRegion, GrainClassName = this.classNameSpace };
             this.state = new DeterministicState<TState>();
-            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myGrainId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myGrainId.StringId);
+            var myLocalCoord = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(this.myGrainId.IntId % Constants.NumberOfLocalCoordinatorsPerSilo, this.myGrainId.SiloId);
 
             // TODO: Need this later when we have multi server and multi home
             // var globalCoordID = Helper.MapGrainIDToServiceID(myID, Constants.numGlobalCoord);
@@ -60,7 +60,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // TODO: Consider this logic for how regional coordinators are chosen
             var regionalCoordinatorID = 0;
-            var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, this.myGrainId.StringId.Substring(0, 2));
+            var regionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorID, this.myGrainId.SiloId.Substring(0, 2));
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
             this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId, myLocalCoord, regionalCoordinator);
             this.transactionBroadCaster = this.transactionBroadCasterFactory.Create(this.GrainFactory);
@@ -84,14 +84,52 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
                                        this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
 
-            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId);
+            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
-            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo);
+            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
+
+            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext.Item2, transactionContext.Item1);
         }
 
-        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
+        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster)
         {
-            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo);
+            transactionContext.IsReplicaTransaction = true;
+
+            return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext, highestCommittedBidFromMaster);
+        }
+
+        private async Task<TransactionResult> RunTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBid)
+        {
+            var receiveTxnTime = DateTime.Now;
+
+            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
+                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
+
+            await this.deterministicTransactionExecutor.GarbageCollection(highestCommittedBid);
+
+            // TODO: Only gets here in multi-server or multi-home transaction???
+
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
+            // execute PACT
+            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
+
+            var result = await this.ExecuteDeterministicTransaction(functionCall, transactionContext);
+            var finishExeTime = DateTime.Now;
+            var startExeTime = result.Item2;
+            var resultObj = result.Item1;
+
+            // wait for this batch to commit
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
+            await this.deterministicTransactionExecutor.WaitForBatchToCommit(transactionContext.localBid);
+            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
+
+            var commitTime = DateTime.Now;
+            var txnResult = new TransactionResult(resultObj);
+            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
+            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
+            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
+
+            return txnResult;
         }
 
         public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
@@ -155,40 +193,6 @@ namespace Concurrency.Implementation.TransactionExecution
             return new TransactionResult(resultObj);
         }
 
-        private async Task<TransactionResult> RunTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo)
-        {
-            var receiveTxnTime = DateTime.Now;
-
-            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
-                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
-
-            Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
-            await this.deterministicTransactionExecutor.GarbageCollection(transactionContext.Item1);
-            var context = transactionContext.Item2;
-
-            // TODO: Only gets here in multi-server or multi-home transaction???
-
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction2", this.GrainReference);
-            // execute PACT
-            var functionCall = new FunctionCall(firstFunction, functionInput, GetType());
-            var result = await this.ExecuteDeterministicTransaction(functionCall, context);
-            var finishExeTime = DateTime.Now;
-            var startExeTime = result.Item2;
-            var resultObj = result.Item1;
-
-            // wait for this batch to commit
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
-            await this.deterministicTransactionExecutor.WaitForBatchToCommit(context.localBid);
-            this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
-
-            var commitTime = DateTime.Now;
-            var txnResult = new TransactionResult(resultObj);
-            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
-
-            return txnResult;
-        }
 
         private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext context)
         {

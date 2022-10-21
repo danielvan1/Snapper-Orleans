@@ -1,4 +1,5 @@
 using System.Net;
+using Concurrency.Implementation;
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.Coordinator.Local;
 using Concurrency.Implementation.GrainPlacement;
@@ -223,6 +224,7 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton(globalSiloInfo);
                 serviceCollection.AddSingleton(regions);
 
+                serviceCollection.AddSingleton<IIdHelper, IdHelper>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
@@ -254,6 +256,7 @@ namespace GeoSnapperDeployment
                     builder.AddSerilog(CreateLogger());
                 });
 
+                serviceCollection.AddSingleton<IIdHelper, IdHelper>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
@@ -301,6 +304,7 @@ namespace GeoSnapperDeployment
 
                 serviceCollection.AddSingleton(regions);
 
+                serviceCollection.AddSingleton<IIdHelper, IdHelper>();
                 serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
                 serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();

@@ -261,7 +261,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             foreach ((var grainAccessInfo , SubBatch subBatch) in currentScheduleMap)
             {
                 int id = grainAccessInfo.Id;
-                string region = grainAccessInfo.Region;
+                string region = grainAccessInfo.SiloId;
 
                 this.logger.LogInformation("Calling EmitBatch on transaction execution grain {grain} with regionalbid: {regionalBid} ", this.grainReference, grainAccessInfo, regionalBid);
 
@@ -269,7 +269,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
 
-                var destination = this.grainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainAccessInfo.GrainClassName);
+                var destination = this.grainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainAccessInfo.GranClassNamespace);
 
                 var localSubBatch = new LocalSubBatch(subBatch)
                 {
@@ -467,9 +467,9 @@ namespace Concurrency.Implementation.Coordinator.Local
             {
                 this.grainReference.GetPrimaryKeyLong(out string region);
                 this.logger.LogInformation($"Commit Grains", this.grainReference);
-                Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now
+                Debug.Assert(region == grainId.SiloId); // I think this should be true, we just have the same info multiple places now
 
-                var destination = this.grainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GrainClassName);
+                var destination = this.grainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GranClassNamespace);
                 _ = destination.AckBatchCommit(bid);
             }
 

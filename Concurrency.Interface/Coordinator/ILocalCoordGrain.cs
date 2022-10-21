@@ -21,7 +21,6 @@ namespace Concurrency.Interface.Coordinator
 
         Task WaitForBatchToCommit(long bid);
 
-        Task RegionalBatchCommitAcknowledgement(long globalBid);
 
         // for global transactions (hierarchical architecture)
         Task ReceiveBatchSchedule(SubBatch batch);

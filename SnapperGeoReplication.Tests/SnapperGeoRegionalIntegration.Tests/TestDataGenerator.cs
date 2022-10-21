@@ -29,8 +29,8 @@ namespace SnapperGeoRegionalIntegration.Tests
                 new GrainAccessInfo()
                 {
                     Id = accountId,
-                    Region = regionAndServer,
-                    GrainClassName = grainClassName
+                    SiloId = regionAndServer,
+                    GranClassNamespace = grainClassName
                 });
             }
             return accountIds;
@@ -47,7 +47,7 @@ namespace SnapperGeoRegionalIntegration.Tests
             {
                 functionInput.DestinationGrains.Add(new TransactionInfo()
                 {
-                    DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.Region),
+                    DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.SiloId),
                     Value = 1
                 });
             }
