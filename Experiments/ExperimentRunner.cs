@@ -29,7 +29,7 @@ namespace Experiments
             // and then transfer 50$ from account id 0 to account id 1. They both
             // get initialized to 100$(hardcoded inside of Init)
 
-            var numberOfAccountsInEachServer = 2;
+            var numberOfAccountsInEachServer = 70;
             Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
             // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
             string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
@@ -60,7 +60,6 @@ namespace Experiments
             var oneDollar = 1;
             foreach (var accountId in accountIdsServer0)
             {
-                Console.WriteLine($"accountId: {accountId}");
                 var id = accountId.Id;
                 var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
@@ -79,6 +78,7 @@ namespace Experiments
 
             foreach (var accountId in accountIds)
             {
+                Console.WriteLine($"accountId: {accountId}");
                 var id = accountId.Id;
                 var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
@@ -91,6 +91,7 @@ namespace Experiments
             var results = await Task.WhenAll(balanceTasks);
 
             int initialBalance = 1000;
+            Console.WriteLine($"Herp {results.Length}");
 
             for(int i = 0; i < results.Length; i++)
             {
@@ -111,9 +112,9 @@ namespace Experiments
 
             await Task.Delay(1000);
             var replicaGrain0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
-            var replicaGrain1 = client.GetGrain<ISnapperTransactionalAccountGrain>(3, USEU1);
+            var replicaGrain1 = client.GetGrain<ISnapperTransactionalAccountGrain>(80, USEU1);
             var bankaccount0 = await replicaGrain0.GetState();
-            var bankaccount1 = await replicaGrain0.GetState();
+            var bankaccount1 = await replicaGrain1.GetState();
             Console.WriteLine($"Replica0 account balance: {bankaccount0.balance}");
             Console.WriteLine($"Replica1 account balance: {bankaccount1.balance}");
 

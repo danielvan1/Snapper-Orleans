@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
@@ -157,7 +158,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
             foreach(string siloId in siloIds)
             {
-                string updatedSiloId = $"{this.currentRegion}-{siloId.Substring(2)}";
+                string updatedSiloId = $"{this.currentRegion}-{siloId.Substring(3)}";
+
                 updatedSiloIds.Add(updatedSiloId);
             }
 

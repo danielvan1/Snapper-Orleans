@@ -14,7 +14,7 @@ namespace Concurrency.Interface.Models
         /// </summary>
         public string SiloId { get; init; }
 
-        public string GranClassNamespace { get; init; }
+        public string GrainClassNamespace { get; init; }
 
         public string ReplaceDeploymentRegion(string newDeploymentRegion)
         {
@@ -23,7 +23,7 @@ namespace Concurrency.Interface.Models
 
         public override string ToString()
         {
-            return $"Id: {this.Id}, SiloId {this.SiloId}, GrainClassName: {this.GranClassNamespace}";
+            return $"Id: {this.Id}, SiloId {this.SiloId}, GrainClassName: {this.GrainClassNamespace}";
         }
     }
 }

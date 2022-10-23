@@ -279,7 +279,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 this.GetPrimaryKeyLong(out string region);
                 this.logger.LogInformation($"Commit Grains", this.GrainReference);
                 Debug.Assert(region == grainId.SiloId); // I think this should be true, we just have the same info multiple places now
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GranClassNamespace);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GrainClassNamespace);
                 _ = destination.AckBatchCommit(bid);
             }
 
@@ -469,7 +469,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
 
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GranClassNamespace);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GrainClassNamespace);
 
                 var localSubBatch = new LocalSubBatch(subBatch)
                 {

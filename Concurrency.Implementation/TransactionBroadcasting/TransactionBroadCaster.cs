@@ -52,7 +52,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                     {
                         Id = grainAccessInfo.Id,
                         SiloId = replicaRegion,
-                        GranClassNamespace = grainAccessInfo.GranClassNamespace
+                        GrainClassNamespace = grainAccessInfo.GrainClassNamespace
                     });
                 }
 

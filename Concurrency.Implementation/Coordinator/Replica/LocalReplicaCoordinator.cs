@@ -35,8 +35,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
         public override Task OnActivateAsync()
         {
-            this.GetPrimaryKeyLong(out string regionKey);
-            this.currentRegion = regionKey.Substring(0, 2);
+            this.GetPrimaryKeyLong(out string siloId);
+            this.currentRegion = siloId.Substring(0, 2);
             this.highestCommittedBid = -1;
 
             this.regionalReplicaCoordinator = this.GrainFactory.GetGrain<IRegionalReplicaCoordinator>(0, currentRegion);
@@ -45,6 +45,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.bidToSchedules = new Dictionary<long, Dictionary<GrainAccessInfo, LocalSubBatch>>();
             this.batchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
             this.bidToPreviousBid = new Dictionary<long, long>();
+            this.regionalbatchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
 
             return Task.CompletedTask;
         }
@@ -71,15 +72,20 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 this.bidToPreviousBid[bid] = previousBid;
             }
 
+            if(!this.bidToSchedules.ContainsKey(bid))
+            {
+                this.bidToSchedules.Add(bid, schedule);
+            }
+
             foreach ((GrainAccessInfo grainId, LocalSubBatch localSubBatch) in schedule)
             {
                 int id = grainId.Id;
                 string masterRegion = grainId.SiloId;
                 string replicaRegion = grainId.ReplaceDeploymentRegion(this.currentRegion);
 
-                this.logger.LogInformation("Sending local schedule to TransactionExecitionGrain: {grainId}", this.GrainReference, grainId);
+                this.logger.LogInformation("Sending local schedule to TransactionExecitionGrain: {grainId}-{replicaRegion}", this.GrainReference, id, replicaRegion);
 
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, replicaRegion, grainId.GranClassNamespace);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, replicaRegion, grainId.GrainClassNamespace);
 
                 _ = destination.ReceiveBatchSchedule(localSubBatch);
             }
@@ -95,50 +101,58 @@ namespace Concurrency.Implementation.Coordinator.Replica
         /// <returns></returns>
         public async Task CommitAcknowledgement(long bid)
         {
-            this.logger.LogInformation("Received commit acknowledgment from grain for localbid: {localBid}", this.GrainReference, bid);
+            this.logger.LogInformation("Received commit acknowledgment from grain for localbid: {localBid}. Current number of expected acknowledgements are: {acks}", this.GrainReference, bid, this.expectedAcknowledgementsPerBatch[bid]);
             this.expectedAcknowledgementsPerBatch[bid]--;
 
             if(this.expectedAcknowledgementsPerBatch[bid] > 0)
             {
                 return;
             }
+            this.logger.LogInformation("Herpderp1", this.GrainReference);
 
             LocalSubBatch localSubBatch = this.bidToSchedules[bid].First().Value;
+            this.logger.LogInformation("Herpderp2", this.GrainReference);
 
             if(this.IsBatchRegional(localSubBatch))
             {
+                this.logger.LogInformation("Current batch {bid} is regional in replica", this.GrainReference, bid);
                 long regionalBid = localSubBatch.RegionalBid;
                 await this.regionalReplicaCoordinator.CommitAcknowledgement(regionalBid);
                 await this.WaitForRegionalBatchToCommit(regionalBid);
-                await this.WaitForBatchToCommit(localSubBatch.RegionalBid);
+                // await this.WaitForBatchToCommit(localSubBatch.RegionalBid);
             }
+            this.logger.LogInformation("Herpderp3", this.GrainReference);
 
             // When this is done we can start to commit the current batch
             await this.WaitForPreviousBatchToCommit(bid);
+            this.logger.LogInformation("Herpderp4", this.GrainReference);
 
             this.BatchCommitAcknowledgement(bid);
+            this.logger.LogInformation("Herpderp5", this.GrainReference);
 
             // TODO: Change coordinator ID to this
             Dictionary<GrainAccessInfo, LocalSubBatch> currentScheduleMap = this.bidToSchedules[bid];
+            this.logger.LogInformation("Herpderp6: currentschedulemapcount: {count}", this.GrainReference, currentScheduleMap.Count);
 
             // Sent message that the transaction grains can commit
             foreach ((GrainAccessInfo grainId, _) in currentScheduleMap)
             {
-                this.logger.LogInformation("Sending acknowledgement that local batch can commit to grain {grain} for localbid: {localbid}", this.GrainReference, grainId, bid);
-                this.GetPrimaryKeyLong(out string region);
+                this.GetPrimaryKeyLong(out string siloId);
+                this.logger.LogInformation("Sending acknowledgement that local batch can commit to grain {grainId}-{siloId} for localbid: {localbid}", this.GrainReference, grainId.Id, siloId, bid);
                 // this.logger.LogInformation($"Commit Grains", this.GrainReference);
                 // Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, region, grainId.GranClassNamespace);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, siloId, grainId.GrainClassNamespace);
                 _ = destination.AckBatchCommit(bid);
             }
         }
 
         public Task RegionalBatchCommitAcknowledgement(long regionalBid)
         {
-            // this.logger.LogInformation("AckRegionalBatch commit was called from regional coordinator. We can now commit batch: {regionalBid}",
-            //                            this.GrainReference, regionalBid);
+            this.logger.LogInformation("RegionalBatchCommitAcknowledgement commit was called from regional coordinator. We can now commit regionalBatch: {regionalBid}",
+                                       this.GrainReference, regionalBid);
 
             // this.highestCommittedRegionalBid = Math.Max(regionalBid, this.highestCommittedRegionalBid);
+
 
             if (this.regionalbatchCommitPromises.ContainsKey(regionalBid))
             {
@@ -153,6 +167,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
         private async Task WaitForPreviousBatchToCommit(long bid)
         {
             long previousBid = this.bidToPreviousBid[bid];
+            this.logger.LogInformation("Current bid {bid} waiting for previous bid {prevBid} to commit", this.GrainReference, bid, previousBid);
 
             // This is when it is the first schedule.
             if(previousBid == -1) return;
@@ -171,11 +186,14 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 this.regionalbatchCommitPromises.Add(regionalBid, new TaskCompletionSource<bool>());
             }
 
-            // this.logger.LogInformation("Waiting for the regional batch: {bid} to commit",
-            //                             this.GrainReference, regionalBid);
+            this.logger.LogInformation("Waiting for the regional batch: {bid} to commit",
+                                        this.GrainReference, regionalBid);
 
             // Waiting here for the RegionalCoordinator to sent a signal to commit for regionalBid.
             await this.regionalbatchCommitPromises[regionalBid].Task;
+
+            this.logger.LogInformation("Done waiting for the regional batch: {bid} to commit",
+                                        this.GrainReference, regionalBid);
         }
 
         private async Task WaitForBatchToCommit(long bid)
@@ -187,16 +205,18 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 this.batchCommitPromises.Add(bid, new TaskCompletionSource<bool>());
             }
 
-            // this.logger.LogInformation("Waiting for batch: {bid} to commit", this.grainReference, bid);
+            this.logger.LogInformation("Waiting for batch: {bid} to commit", this.GrainReference, bid);
 
             await this.batchCommitPromises[bid].Task;
 
-            // this.logger.LogInformation("Finish waiting for batch: {bid} to commit", this.grainReference, bid);
+            this.logger.LogInformation("Finish waiting for batch: {bid} to commit", this.GrainReference, bid);
         }
 
         private void BatchCommitAcknowledgement(long bid)
         {
             this.highestCommittedBid = Math.Max(bid, this.highestCommittedBid);
+
+            this.logger.LogInformation("Batch {bid} can now commit", this.GrainReference, bid);
 
             if (this.batchCommitPromises.ContainsKey(bid))
             {

@@ -149,18 +149,17 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 // We use the current region, since we assume that the local coordinator is in the same silo
                 var localCoordinatorRegion = this.grainId.SiloId;
 
-                this.logger.LogInformation("Send the local coordinator {localCoordinatorId}-{localCoordinatorRegion} the acknowledgement of the batch completion for batch id: {localBid}",
-                                            this.grainReference, localCoordinatorId, localCoordinatorRegion, context.localBid);
 
                 // TODO: This coordinator should be the one that sent the batch
                 if(context.IsReplicaTransaction)
                 {
+                    this.logger.LogInformation("Send the local replica coordinator 0-{localCoordinatorRegion} the acknowledgement of the batch completion for batch id: {localBid}",
+                                               this.grainReference, localCoordinatorRegion, context.localBid);
                     var coordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, localCoordinatorRegion);
                     _ = coordinator.CommitAcknowledgement(context.localBid);
                 }
                 else
                 {
-
                     var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
                     _ = coordinator.BatchCompletionAcknowledgement(context.localBid);
                 }

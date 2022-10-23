@@ -30,7 +30,7 @@ namespace SnapperGeoRegionalIntegration.Tests
                 {
                     Id = accountId,
                     SiloId = regionAndServer,
-                    GranClassNamespace = grainClassName
+                    GrainClassNamespace = grainClassName
                 });
             }
             return accountIds;
