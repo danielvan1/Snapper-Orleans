@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Interface.Models;
@@ -44,6 +45,9 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
         public Task ReceiveRegionalSchedule(long regionalBid, long previousRegionalBid, Dictionary<string, SubBatch> schedule)
         {
+            this.logger.LogInformation("Received regional schedules for batch {bid}, previous batch: {previous} and schedules: {schedule} from master",
+                                        this.GrainReference, regionalBid, previousRegionalBid, string.Join(", ", schedule.Select(kv => kv.Key + " :: " + kv.Value)));
+
             if(!this.expectedAcknowledgementsPerBatch.ContainsKey(regionalBid))
             {
                 this.expectedAcknowledgementsPerBatch.Add(regionalBid, schedule.Count);
@@ -73,6 +77,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
         /// <returns></returns>
         public async Task CommitAcknowledgement(long regionalBid)
         {
+            this.logger.LogInformation("Received commit acknowledgment from LocalCoordinator for RegionalBid: {regionalBid}", this.GrainReference, regionalBid);
+
             this.expectedAcknowledgementsPerBatch[regionalBid]--;
 
             if(this.expectedAcknowledgementsPerBatch[regionalBid] > 0)
@@ -91,6 +97,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
             // Sent message that the transaction grains can commit
             foreach (string siloId in siloIds)
             {
+                this.logger.LogInformation("Sending acknowledgement that regional bid can commit to silo {siloId} for regionalbid: {regionalBid}", this.GrainReference, siloId, regionalBid);
+
                 var destination = this.GrainFactory.GetGrain<ILocalReplicaCoordinator>(0, siloId);
                 _ = destination.RegionalBatchCommitAcknowledgement(regionalBid);
             }
@@ -103,7 +111,11 @@ namespace Concurrency.Implementation.Coordinator.Replica
             // This is when it is the first schedule.
             if(previousBid == -1) return;
 
+            this.logger.LogInformation("Current batch: {bid}, waiting for previous batch: {previous} to commit", this.GrainReference, bid, previousBid);
+
             await this.WaitForBatchToCommit(previousBid);
+
+            this.logger.LogInformation("Done waiting for previous batch: {previous} to commit", this.GrainReference, bid, previousBid);
         }
 
         private async Task WaitForBatchToCommit(long bid)

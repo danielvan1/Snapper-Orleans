@@ -58,7 +58,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
         /// <returns></returns>
         public Task ReceiveLocalSchedule(long bid, long previousBid, Dictionary<GrainAccessInfo, LocalSubBatch> schedule)
         {
-            this.logger.LogInformation("Received schedule for batch {bid} from master", this.GrainReference, bid);
+            this.logger.LogInformation("Received local schedules for batch {bid}, previous batch: {previous} and schedules: {schedule} from master",
+                                        this.GrainReference, bid, previousBid, string.Join(", ", schedule.Select(kv => kv.Key + " :: " + kv.Value)));
 
             if(!this.expectedAcknowledgementsPerBatch.ContainsKey(bid))
             {
@@ -76,7 +77,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 string masterRegion = grainId.SiloId;
                 string replicaRegion = grainId.ReplaceDeploymentRegion(this.currentRegion);
 
-                // this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {grainId}", this.GrainReference, grainId);
+                this.logger.LogInformation("Sending local schedule to TransactionExecitionGrain: {grainId}", this.GrainReference, grainId);
 
                 var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, replicaRegion, grainId.GranClassNamespace);
 
@@ -94,6 +95,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
         /// <returns></returns>
         public async Task CommitAcknowledgement(long bid)
         {
+            this.logger.LogInformation("Received commit acknowledgment from grain for localbid: {localBid}", this.GrainReference, bid);
             this.expectedAcknowledgementsPerBatch[bid]--;
 
             if(this.expectedAcknowledgementsPerBatch[bid] > 0)
@@ -122,6 +124,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             // Sent message that the transaction grains can commit
             foreach ((GrainAccessInfo grainId, _) in currentScheduleMap)
             {
+                this.logger.LogInformation("Sending acknowledgement that local batch can commit to grain {grain} for localbid: {localbid}", this.GrainReference, grainId, bid);
                 this.GetPrimaryKeyLong(out string region);
                 // this.logger.LogInformation($"Commit Grains", this.GrainReference);
                 // Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now

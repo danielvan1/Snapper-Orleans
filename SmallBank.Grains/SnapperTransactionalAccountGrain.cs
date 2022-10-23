@@ -81,7 +81,7 @@ namespace SmallBank.Grains
         public async Task<TransactionResult> Deposit(TransactionContext context, FunctionInput functionInput)
         {
             var accountID = functionInput.DestinationGrains.First();
-            var myState = await GetState(context, AccessMode.ReadWrite);
+            var myState = await this.GetState(context, AccessMode.ReadWrite);
             this.logger.LogInformation("Going to deposit on this account: {accountId}", this.GrainReference, accountID);
             myState.balance += accountID.Value;
 
@@ -90,9 +90,14 @@ namespace SmallBank.Grains
 
         public async Task<TransactionResult> Balance(TransactionContext context, FunctionInput functionInput)
         {
-            var myState = await this.GetState(context, AccessMode.Read);
+            BankAccount myState = await this.GetState(context, AccessMode.Read);
 
             return new TransactionResult(myState.balance);
+        }
+
+        public Task<BankAccount> GetState()
+        {
+            return base.GetState();
         }
     }
 }

@@ -9,7 +9,7 @@ namespace Concurrency.Interface.Models
     {
         public long Bid { get; init; }
 
-        public long LocalCoordinatorId { get; init; }
+        public long LocalCoordinatorId { get; set; }
 
         public long PreviousBid { get; set; }
 

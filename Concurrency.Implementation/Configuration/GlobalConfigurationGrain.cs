@@ -21,7 +21,7 @@ namespace Concurrency.Implementation.Configuration
 
         public GlobalConfigurationGrain(ILogger<GlobalConfigurationGrain> logger, GlobalConfiguration globalConfiguration)   // dependency injection
         {
-            this.logger = logger ?? throw new System.ArgumentNullException(nameof(logger));
+            this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.globalConfiguration = globalConfiguration ?? throw new System.ArgumentNullException(nameof(globalConfiguration));
 
             // create the log folder if not exists

@@ -483,7 +483,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 replicaSchedules.TryAdd(grainId, localSubBatch);
             }
 
-            // _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
+            _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
         }
 
 

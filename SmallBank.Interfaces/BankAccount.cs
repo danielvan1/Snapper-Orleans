@@ -2,7 +2,7 @@
 using System.Runtime.Serialization;
 using MessagePack;
 
-namespace SmallBank.Grains
+namespace SmallBank.Interfaces
 {
     [MessagePackObject]
     public class BankAccount : ICloneable, ISerializable

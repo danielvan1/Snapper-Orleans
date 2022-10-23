@@ -155,7 +155,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 // TODO: This coordinator should be the one that sent the batch
                 if(context.IsReplicaTransaction)
                 {
-                    var coordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(localCoordinatorId, localCoordinatorRegion);
+                    var coordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, localCoordinatorRegion);
                     _ = coordinator.CommitAcknowledgement(context.localBid);
                 }
                 else

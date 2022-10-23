@@ -70,6 +70,13 @@ namespace Concurrency.Implementation.TransactionBroadcasting
         {
             List<string> replicaSiloIds = this.idHelper.GetLocalReplicaSiloIds(currentLocalSiloId);
 
+            Dictionary<GrainAccessInfo, LocalSubBatch> replicaSchedulesUpdatedCoordinatorId = new Dictionary<GrainAccessInfo, LocalSubBatch>(replicaSchedules);
+
+            foreach((_, LocalSubBatch subBatch) in replicaSchedulesUpdatedCoordinatorId)
+            {
+                subBatch.LocalCoordinatorId = 0;
+            }
+
             foreach(string replicaSiloId in replicaSiloIds)
             {
                 var localReplicaCoordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, replicaSiloId);
@@ -83,6 +90,13 @@ namespace Concurrency.Implementation.TransactionBroadcasting
         public Task BroadCastRegionalSchedules(string currentRegionSiloId, long bid, long previousBid, Dictionary<string, SubBatch> replicaSchedules)
         {
             List<string> replicaSiloIds = this.idHelper.GetRegionalReplicaSiloIds(currentRegionSiloId);
+
+            Dictionary<string, SubBatch> replicaSchedulesUpdatedCoordinatorId = new Dictionary<string, SubBatch>(replicaSchedules);
+
+            foreach((_, SubBatch subBatch) in replicaSchedulesUpdatedCoordinatorId)
+            {
+                subBatch.LocalCoordinatorId = 0;
+            }
 
             foreach(string replicaSiloId in replicaSiloIds)
             {

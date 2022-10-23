@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
@@ -86,7 +87,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
-            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
+            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext.Item2, transactionContext.Item1);
         }
@@ -178,6 +179,12 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             return this.deterministicTransactionExecutor.GetState<TState>(cxt.localTid, mode, this.state);
         }
+
+        public async Task<TState> GetState()
+        {
+            return this.state.DetOp();
+        }
+
 
         /// <summary> When execute a transaction, call this interface to make a cross-grain function invocation </summary>
         public async Task<TransactionResult> CallGrain(TransactionContext context, Tuple<int, string> grainId, string grainNameSpace, FunctionCall call)

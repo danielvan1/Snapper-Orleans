@@ -35,7 +35,7 @@ namespace Utilities
 
         public override string ToString()
         {
-            return $"regionalBid: {this.regionalBid}, regionalTid: {this.regionalTid}, localBid: {this.localBid}, localTid: {this.localTid}";
+            return $"regionalBid: {this.regionalBid}, regionalTid: {this.regionalTid}, localBid: {this.localBid}, localTid: {this.localTid}, IsReplication: {this.IsReplicaTransaction}";
         }
     }
 }
