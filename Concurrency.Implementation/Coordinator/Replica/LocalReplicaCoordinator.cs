@@ -25,8 +25,10 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
         private IRegionalReplicaCoordinator regionalReplicaCoordinator;
         private string currentRegion;
-        private long highestCommittedBid;
         private readonly ILogger<LocalReplicaCoordinator> logger;
+
+        private long highestCommittedRegionalBid;
+        private long highestCommittedBid;
 
         public LocalReplicaCoordinator(ILogger<LocalReplicaCoordinator> logger)
         {
@@ -38,6 +40,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.GetPrimaryKeyLong(out string siloId);
             this.currentRegion = siloId.Substring(0, 2);
             this.highestCommittedBid = -1;
+            this.highestCommittedRegionalBid = -1;
 
             this.regionalReplicaCoordinator = this.GrainFactory.GetGrain<IRegionalReplicaCoordinator>(0, currentRegion);
 
@@ -151,8 +154,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.logger.LogInformation("RegionalBatchCommitAcknowledgement commit was called from regional coordinator. We can now commit regionalBatch: {regionalBid}",
                                        this.GrainReference, regionalBid);
 
-            // this.highestCommittedRegionalBid = Math.Max(regionalBid, this.highestCommittedRegionalBid);
-
+            this.highestCommittedRegionalBid = Math.Max(regionalBid, this.highestCommittedRegionalBid);
 
             if (this.regionalbatchCommitPromises.ContainsKey(regionalBid))
             {
@@ -177,10 +179,11 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
         private async Task WaitForRegionalBatchToCommit(long regionalBid)
         {
-            // if (this.highestCommittedRegionalBid >= regionalBid)
-            // {
-            //     return;
-            // }
+            if (this.highestCommittedRegionalBid >= regionalBid)
+            {
+                return;
+            }
+
             if (!this.regionalbatchCommitPromises.ContainsKey(regionalBid))
             {
                 this.regionalbatchCommitPromises.Add(regionalBid, new TaskCompletionSource<bool>());
