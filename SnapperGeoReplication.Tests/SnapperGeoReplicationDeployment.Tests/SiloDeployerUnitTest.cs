@@ -30,7 +30,7 @@ namespace SnapperGeoReplication.Tests
 
             var siloInfoFactory = new SiloInfoFactory();
             var siloConfigurationFactory = new SiloConfigurationFactory(siloInfoFactory);
-            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
+            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
             var localSiloInfos = siloPlacementInfo.LocalSiloInfo;
 
             var expectedSiloRegionsAndServers = new List<string>() 
@@ -63,7 +63,7 @@ namespace SnapperGeoReplication.Tests
 
             var siloInfoFactory = new SiloInfoFactory();
             var siloConfigurationFactory = new SiloConfigurationFactory(siloInfoFactory);
-            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
+            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
             var localSiloInfos = siloPlacementInfo.LocalSiloInfo;
 
             var expectedSiloRegionsAndServers = new List<string>() 
@@ -96,7 +96,7 @@ namespace SnapperGeoReplication.Tests
 
             var siloInfoFactory = new SiloInfoFactory();
             var siloConfigurationFactory = new SiloConfigurationFactory(siloInfoFactory);
-            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSilosDictionary(siloConfigurations);
+            var siloPlacementInfo = siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
             var localSiloInfos = siloPlacementInfo.LocalSiloInfo;
 
             var expectedSiloRegionsAndServers = new List<string>() 

@@ -35,15 +35,15 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
             var numberOfSilosInRegion = new Dictionary<string, int>();
             numberOfSilosInRegion.Add("EU", 2);
 
-            var regionalConfiguration = new RegionalConfiguration()
+            var regionalConfiguration = new RegionalCoordinatorConfiguration()
             {
-                NumberOfSilosInRegion = numberOfSilosInRegion
+                NumberOfSilosPerRegion = numberOfSilosInRegion
             };
             var siloKeysPerRegion = new Dictionary<string, List<string>>();
             siloKeysPerRegion.Add("EU", new List<string>() {"EU-EU-0", "EU-EU-1"});
-            var localConfiguration = new LocalConfiguration()
+            var localConfiguration = new LocalCoordinatorConfiguration()
             {
-                SiloKeysPerRegion = siloKeysPerRegion
+                SiloIdPerRegion = siloKeysPerRegion
             };
 
             this.ConfigureRegionalGrains(siloBuilder, regionalSiloPlacementInfo, regionalConfiguration, localConfiguration, localSiloPlacementInfo);
@@ -56,8 +56,8 @@ namespace SnapperGeoReplication.Tests.ClusterSetup
 
         private void ConfigureRegionalGrains(ISiloBuilder siloHostBuilder,
                                              RegionalSilosPlacementInfo regionalSilos,
-                                             RegionalConfiguration regionalConfiguration,
-                                             LocalConfiguration localConfiguration,
+                                             RegionalCoordinatorConfiguration regionalConfiguration,
+                                             LocalCoordinatorConfiguration localConfiguration,
                                              LocalSiloPlacementInfo localSilos)
         {
             siloHostBuilder.ConfigureServices(serviceCollection =>

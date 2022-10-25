@@ -1,9 +1,9 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Net;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Models;
-using System.Linq;
 
 namespace GeoSnapperDeployment.Factories
 {
@@ -19,8 +19,9 @@ namespace GeoSnapperDeployment.Factories
         public GlobalConfiguration CreateGlobalConfiguration(Silos silos)
         {
             var regions = silos.RegionalSilos.Select(regionalSilo => regionalSilo.Region)
-                                                                .Distinct()
-                                                                .ToList();
+                                             .Distinct()
+                                             .ToList();
+
             string deploymentRegion = silos.GlobalSilo.Region;
 
             return new GlobalConfiguration()
@@ -30,42 +31,15 @@ namespace GeoSnapperDeployment.Factories
             };
         }
 
-        public RegionalConfiguration CreateRegionalConfiguration(IReadOnlyList<SiloConfiguration> localSilos)
+        public SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations)
         {
-            return new RegionalConfiguration()
-            {
-                NumberOfSilosInRegion = this.GetNumberOfSilosPerRegion(localSilos)
-            };
+            SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
+
+            return this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloId,
+                                               globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort, globalSiloConfiguration.Region, globalSiloConfiguration.Region, false);
         }
 
-        public LocalConfiguration CreateLocalConfiguration(IReadOnlyList<SiloConfiguration> localSilos)
-        {
-            var siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
-            var siloKeysPerRegion = CreateSiloKeys(siloConfigurationRegionBuckets);
-
-            return new LocalConfiguration()
-            {
-                SiloKeysPerRegion = siloKeysPerRegion
-            };
-        }
-
-        public LocalSiloPlacementInfo CreateLocalSilosDictionary(SiloConfigurations siloConfigurations)
-        {
-            var localSilos = siloConfigurations.Silos.LocalSilos;
-
-            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
-            Dictionary<string, SiloInfo> homeSilos = this.CreateHomeSiloInfos(siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfigurationRegionBuckets);
-            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets);
-
-            var homeAndReplicaSilos = this.merge(homeSilos, replicaSilos);
-
-            return new LocalSiloPlacementInfo()
-            {
-                LocalSiloInfo = homeAndReplicaSilos
-            };
-        }
-
-        public RegionalSilosPlacementInfo CreateRegionalSilos(SiloConfigurations siloConfigurations)
+        public RegionalSilosPlacementInfo CreateRegionalSiloPlacementInfo(SiloConfigurations siloConfigurations)
         {
             var regionalSilos = new Dictionary<string, SiloInfo>();
 
@@ -83,33 +57,12 @@ namespace GeoSnapperDeployment.Factories
             return new RegionalSilosPlacementInfo() { RegionsSiloInfo = regionalSilos };
         }
 
-
-        public SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations)
+        public RegionalCoordinatorConfiguration CreateRegionalConfiguration(IReadOnlyList<SiloConfiguration> localSilos)
         {
-            SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
-
-            return this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloId,
-                                               globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort, globalSiloConfiguration.Region, globalSiloConfiguration.Region, false);
-        }
-
-
-        private IReadOnlyDictionary<string, int> GetNumberOfSilosPerRegion(IReadOnlyList<SiloConfiguration> localSilos) 
-        {
-            Dictionary<string, int> numberOfSilosPerRegion = new Dictionary<string, int>();
-
-            foreach (var siloConfiguration in localSilos)
+            return new RegionalCoordinatorConfiguration()
             {
-                string region = siloConfiguration.Region;
-                if (numberOfSilosPerRegion.ContainsKey(region))
-                {
-                    numberOfSilosPerRegion[region]++;
-                }
-                else
-                {
-                    numberOfSilosPerRegion.Add(region, 1);
-                }
-            }
-            return new ReadOnlyDictionary<string, int>(numberOfSilosPerRegion);
+                NumberOfSilosPerRegion = this.GetNumberOfSilosPerRegion(localSilos)
+            };
         }
 
         // Put each siloconfiguration in buckets of same regions.
@@ -130,27 +83,108 @@ namespace GeoSnapperDeployment.Factories
             return siloConfigurationRegionBuckets;
         }
 
-        private IReadOnlyDictionary<string, List<string>> CreateSiloKeys(Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
+        public LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationWithReplica(IReadOnlyList<SiloConfiguration> localSilos)
         {
-            var siloKeysPerRegion = new Dictionary<string, List<string>>();
+            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
+            IReadOnlyDictionary<string, List<string>> siloKeysPerRegion = this.CreateSiloIds(siloConfigurationRegionBuckets);
+
+            return new LocalCoordinatorConfiguration()
+            {
+                SiloIdPerRegion = siloKeysPerRegion
+            };
+        }
+
+        public LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationForMaster(IReadOnlyList<SiloConfiguration> localSilos)
+        {
+            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
+            IReadOnlyDictionary<string, List<string>> siloKeysPerRegion = this.CreateMasterSiloIds(siloConfigurationRegionBuckets);
+
+            return new LocalCoordinatorConfiguration()
+            {
+                SiloIdPerRegion = siloKeysPerRegion
+            };
+        }
+
+        public LocalSiloPlacementInfo CreateLocalSiloPlacementInfo(SiloConfigurations siloConfigurations)
+        {
+            var localSilos = siloConfigurations.Silos.LocalSilos;
+
+            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
+            Dictionary<string, SiloInfo> homeSilos = this.CreateHomeSiloInfos(siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfigurationRegionBuckets);
+            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets);
+
+            var homeAndReplicaSilos = this.MergeDictionaries(homeSilos, replicaSilos);
+
+            return new LocalSiloPlacementInfo()
+            {
+                LocalSiloInfo = homeAndReplicaSilos
+            };
+        }
+
+        private IReadOnlyDictionary<string, int> GetNumberOfSilosPerRegion(IReadOnlyList<SiloConfiguration> localSilos)
+        {
+            Dictionary<string, int> numberOfSilosPerRegion = new Dictionary<string, int>();
+
+            foreach (var siloConfiguration in localSilos)
+            {
+                string region = siloConfiguration.Region;
+                if (numberOfSilosPerRegion.ContainsKey(region))
+                {
+                    numberOfSilosPerRegion[region]++;
+                }
+                else
+                {
+                    numberOfSilosPerRegion.Add(region, 1);
+                }
+            }
+
+            return new ReadOnlyDictionary<string, int>(numberOfSilosPerRegion);
+        }
+
+
+        private IReadOnlyDictionary<string, List<string>> CreateMasterSiloIds(Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
+        {
+            var siloIdsPerRegion = new Dictionary<string, List<string>>();
+
+            foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
+            {
+                for (int i = 0; i < configurations.Count; i++)
+                {
+                    string siloId = this.CreateSiloId(homeRegion, homeRegion, i);
+
+                    if (!siloIdsPerRegion.TryGetValue(homeRegion, out List<string> siloIds))
+                    {
+                        siloIdsPerRegion.Add(homeRegion, siloIds = new List<string>());
+                    }
+
+                    siloIds.Add(siloId);
+                }
+            }
+
+            return siloIdsPerRegion;
+        }
+
+        private IReadOnlyDictionary<string, List<string>> CreateSiloIds(Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
+        {
+            var siloIdsPerRegion = new Dictionary<string, List<string>>();
             foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
             {
                 foreach ((string deploymentRegion, _) in siloConfigurationRegionBuckets)
                 {
                     for (int i = 0; i < configurations.Count; i++)
                     {
-                        string siloKey = this.GetRegionAndServerKey(deploymentRegion, homeRegion, i);
+                        string siloId = this.CreateSiloId(deploymentRegion, homeRegion, i);
 
-                        if (!siloKeysPerRegion.TryGetValue(deploymentRegion, out List<string> siloKeys))
+                        if (!siloIdsPerRegion.TryGetValue(deploymentRegion, out List<string> siloIds))
                         {
-                            siloKeysPerRegion.Add(deploymentRegion, siloKeys = new List<string>());
+                            siloIdsPerRegion.Add(deploymentRegion, siloIds = new List<string>());
                         }
 
-                        siloKeys.Add(siloKey);
+                        siloIds.Add(siloId);
                     }
                 }
             }
-            return new ReadOnlyDictionary<string, List<string>>(siloKeysPerRegion);
+            return new ReadOnlyDictionary<string, List<string>>(siloIdsPerRegion);
         }
 
         private Dictionary<string, SiloInfo> CreateHomeSiloInfos(string clusterId, string serviceId, Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
@@ -171,7 +205,7 @@ namespace GeoSnapperDeployment.Factories
                     SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, clusterId, serviceId, siloId,
                                                                     siloPort, gatewayPort, region, region, isReplica);
 
-                    string homeRegionAndServerKey = this.GetRegionAndServerKey(region, region, i);
+                    string homeRegionAndServerKey = this.CreateSiloId(region, region, i);
 
                     homeSilos.Add(homeRegionAndServerKey, siloInfo);
                 }
@@ -194,20 +228,17 @@ namespace GeoSnapperDeployment.Factories
                 foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
                 {
                     // We don't want to create home silo info here, we do that another place
-                    if (deploymentRegion.Equals(homeRegion))
-                    {
-                        continue;
-                    } 
+                    if (deploymentRegion.Equals(homeRegion)) { continue; }
 
                     for (int i = 0; i < configurations.Count; i++)
                     {
-                        SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, 
+                        SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback,
                                                                         clusterId, serviceId,
                                                                         replicaStartId, replicaStartPort,
                                                                         replicaStartGatewayPort, deploymentRegion,
                                                                         homeRegion, true);
 
-                        string regionAndServerKey = this.GetRegionAndServerKey(deploymentRegion, homeRegion, i);
+                        string regionAndServerKey = this.CreateSiloId(deploymentRegion, homeRegion, i);
 
                         replicaSilos.Add(regionAndServerKey, siloInfo);
 
@@ -220,7 +251,7 @@ namespace GeoSnapperDeployment.Factories
             return replicaSilos;
         }
 
-        private Dictionary<string, SiloInfo> merge(Dictionary<string, SiloInfo> silos1, Dictionary<string, SiloInfo> silos2)
+        private Dictionary<string, SiloInfo> MergeDictionaries(Dictionary<string, SiloInfo> silos1, Dictionary<string, SiloInfo> silos2)
         {
             var result = new List<Dictionary<string, SiloInfo>>() {silos1, silos2};
             // if duplicate keys this throws an ArgumentException
@@ -228,7 +259,7 @@ namespace GeoSnapperDeployment.Factories
                     .ToDictionary(x => x.Key, y => y.Value);
         }
 
-        private string GetRegionAndServerKey(string deploymentRegion, string homeRegion, int serverIndex) 
+        private string CreateSiloId(string deploymentRegion, string homeRegion, int serverIndex)
         {
             return $"{deploymentRegion}-{homeRegion}-{serverIndex}";
         }

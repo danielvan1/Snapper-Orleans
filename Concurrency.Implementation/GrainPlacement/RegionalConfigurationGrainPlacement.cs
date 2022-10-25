@@ -46,7 +46,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            throw new GrainPlacementException($"Wrong placement of {nameof(RegionalConfigurationGrain)}");
+            throw new GrainPlacementException($"Wrong placement of {nameof(RegionalCoordinatorConfigurationGrain)}");
         }
     }
 

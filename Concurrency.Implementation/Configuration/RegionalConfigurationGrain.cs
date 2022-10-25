@@ -12,13 +12,13 @@ using Orleans;
 namespace Concurrency.Implementation.Configuration
 {
     [RegionalConfigurationGrainPlacementStrategy]
-    public class RegionalConfigurationGrain : Grain, IRegionalConfigGrain
+    public class RegionalCoordinatorConfigurationGrain : Grain, IRegionalConfigGrain
     {
-        private readonly RegionalConfiguration regionalConfiguration;
-        private readonly ILogger<RegionalConfiguration> logger;
+        private readonly RegionalCoordinatorConfiguration regionalConfiguration;
+        private readonly ILogger<RegionalCoordinatorConfiguration> logger;
         private bool tokenEnabled;
 
-        public RegionalConfigurationGrain(ILogger<RegionalConfiguration> logger, RegionalConfiguration regionalConfiguration)
+        public RegionalCoordinatorConfigurationGrain(ILogger<RegionalCoordinatorConfiguration> logger, RegionalCoordinatorConfiguration regionalConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalConfiguration = regionalConfiguration ?? throw new ArgumentNullException(nameof(regionalConfiguration));
@@ -35,7 +35,7 @@ namespace Concurrency.Implementation.Configuration
         {
             this.logger.LogInformation("Going to initialize regional coordinators in region {currentRegion}", this.GrainReference, currentRegion);
 
-            if (!this.regionalConfiguration.NumberOfSilosInRegion.TryGetValue(currentRegion, out int silos))
+            if (!this.regionalConfiguration.NumberOfSilosPerRegion.TryGetValue(currentRegion, out int silos))
             {
                 this.logger.LogError("Could not find number of silos in the region {currentRegion}", this.GrainReference, currentRegion);
 

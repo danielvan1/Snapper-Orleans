@@ -1,11 +1,11 @@
-﻿using GeoSnapperDeployment.Factories;
+﻿using Concurrency.Interface.Configuration;
+using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
-using Orleans.Hosting;
-using Unity;
 using Orleans;
 using Orleans.Configuration;
-using Concurrency.Interface.Configuration;
+using Orleans.Hosting;
+using Unity;
 
 namespace GeoSnapperDeployment
 {
@@ -57,66 +57,63 @@ namespace GeoSnapperDeployment
                 IList<ISiloHost> regionSiloHosts = await localSiloDeployer.DeployRegionalSilos(siloConfigurations);
                 siloHosts.AddRange(regionSiloHosts);
 
-                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeploySilosAndReplicas(siloConfigurations);
+                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeployLocalSilosAndReplicas(siloConfigurations);
+
                 siloHosts.AddRange(localSiloHosts);
+
+                var client = new ClientBuilder()
+                .UseLocalhostClustering()
+                .Configure<ClusterOptions>(options =>
+                {
+                    options.ClusterId = "Snapper";
+                    options.ServiceId = "Snapper";
+                })
+                .Configure<ClientMessagingOptions>(options =>
+                {
+                    options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                })
+                .Build();
+
+                await client.Connect();
+
+                IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
+                IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
+
+                await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+                await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
+
+                ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
+                ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
+                await localConfigGrainEU.InitializeLocalCoordinators("EU");
+                await localConfigGrainUS.InitializeLocalCoordinators("US");
+
+                await client.Close();
+
+                Console.WriteLine("All silos created successfully");
+                Console.WriteLine("Press Enter to terminate all silos...");
+                Console.ReadLine();
+
+                List<Task> stopSiloHostTasks = new List<Task>();
+
+                foreach(ISiloHost siloHost in siloHosts)
+                {
+                    stopSiloHostTasks.Add(siloHost.StopAsync());
+                }
+
+                await Task.WhenAll(stopSiloHostTasks);
+
+                Console.WriteLine("Stopped all silos");
             }
-            else
+            else if(deploymentType.Equals("Global", StringComparison.CurrentCultureIgnoreCase))
             {
-                throw new ArgumentException($"Invalid deployment type given: {deploymentType}");
+                string region = args[1];
+
+
+
             }
-
-
-            var client = new ClientBuilder()
-            .UseLocalhostClustering()
-            .Configure<ClusterOptions>(options =>
-            {
-                options.ClusterId = "Snapper";
-                options.ServiceId = "Snapper";
-            })
-            .Configure<ClientMessagingOptions>(options => 
-            {
-                options.ResponseTimeout = new TimeSpan(0, 5, 0);
-            })
-            .Build();
-
-            await client.Connect();
-
-            IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-            // IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
-
-            await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            // await regionalConfigGrainEU.InitializeRegionalCoordinators("US");
-
-            ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-            // ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-            await localConfigGrainEU.InitializeLocalCoordinators("EU");
-            // await localConfigGrainUS.InitializeLocalCoordinators("US");
-            // List<Task> configureAllConfigAndCoordinators = new List<Task>()
-            // {
-            //     task1, task2, task3, task4
-
-            // };
-
-            // await Task.WhenAll(configureAllConfigAndCoordinators);
-
-            client.Close();
-
-            Console.WriteLine("All silos created successfully");
-            Console.WriteLine("Press Enter to terminate all silos...");
-            Console.ReadLine();
-
-            List<Task> stopSiloHostTasks = new List<Task>();
-
-            foreach(ISiloHost siloHost in siloHosts)
-            {
-                stopSiloHostTasks.Add(siloHost.StopAsync());
-            }
-
-            await Task.WhenAll(stopSiloHostTasks);
-
-            Console.WriteLine("Stopped all silos");
 
             return 0;
+
         }
     }
 }

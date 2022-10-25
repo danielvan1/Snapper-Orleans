@@ -7,15 +7,13 @@ namespace GeoSnapperDeployment.Factories
     public interface ISiloConfigurationFactory
     {
         GlobalConfiguration CreateGlobalConfiguration(Silos siloConfigurations);
-
-        RegionalSilosPlacementInfo CreateRegionalSilos(SiloConfigurations siloConfigurations);
-
-        RegionalConfiguration CreateRegionalConfiguration(IReadOnlyList<SiloConfiguration> localSilos);
-
-        LocalConfiguration CreateLocalConfiguration(IReadOnlyList<SiloConfiguration> localSilos);
-
-        LocalSiloPlacementInfo CreateLocalSilosDictionary(SiloConfigurations siloConfigurations);
-
         SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations);
+
+        RegionalSilosPlacementInfo CreateRegionalSiloPlacementInfo(SiloConfigurations siloConfigurations);
+        RegionalCoordinatorConfiguration CreateRegionalConfiguration(IReadOnlyList<SiloConfiguration> regionalSilos);
+
+        LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationWithReplica(IReadOnlyList<SiloConfiguration> localSilos);
+        LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationForMaster(IReadOnlyList<SiloConfiguration> localSilos);
+        LocalSiloPlacementInfo CreateLocalSiloPlacementInfo(SiloConfigurations siloConfigurations);
     }
 }

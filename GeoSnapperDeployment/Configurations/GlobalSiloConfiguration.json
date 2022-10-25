@@ -6,24 +6,10 @@
         "ReplicaStartPort" : 25000,
         "ReplicaStartGatewayPort" : 35000,
         "ReplicaStartId" : 40000,
-
-        "IPAddresses" :
-        {
-            "EU" : "1.2.2.1",
-            "US" : "1.2.2.1",
-            "CH" : "1.2.3.1"
-        },
-
         "Silos": {
-            "PrimarySilo" :
-            {
-                "SiloId": 10000,
-                "Region": "Global",
-                "SiloPort": 11111,
-                "GatewayPort": 30000
-            },
 
             "GlobalSilo": {
+                "IPAddress" : "127.0.0.1",
                 "SiloId": 10001,
                 "Region": "EU",
                 "SiloPort": 11112,
@@ -32,12 +18,14 @@
 
             "RegionalSilos" : [
                 {
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 15000,
                     "Region": "EU",
                     "SiloPort": 15000,
                     "GatewayPort": 30002
                 },
                 {
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 15001,
                     "Region": "US",
                     "SiloPort": 15001,
@@ -47,18 +35,21 @@
 
             "LocalSilos": [
                 {
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 0,
                     "Region": "EU",
                     "SiloPort": 20000,
                     "GatewayPort": 30004
                 },
                 {
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 1,
                     "Region": "EU",
                     "SiloPort": 20001,
                     "GatewayPort": 30005
                 },
                 {
+                    "IPAddress" : "127.0.0.1",
                     "SiloId": 2,
                     "Region": "US",
                     "SiloPort": 20002,
@@ -68,3 +59,4 @@
         }
     }
 }
+
