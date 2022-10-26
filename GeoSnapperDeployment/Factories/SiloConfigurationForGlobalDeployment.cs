@@ -16,7 +16,7 @@ namespace GeoSnapperDeployment.Factories
             this.siloInfoFactory = siloInfoFactory ?? throw new ArgumentNullException(nameof(siloInfoFactory));
         }
 
-        public GlobalConfiguration CreateGlobalCoordinatorConfiguration(Silos silos, string region)
+        public GlobalConfiguration CreateGlobalCoordinatorConfiguration(Silos silos)
         {
             var regions = silos.RegionalSilos.Select(regionalSilo => regionalSilo.Region)
                                              .Distinct()

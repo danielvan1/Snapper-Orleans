@@ -23,7 +23,7 @@ namespace Concurrency.Implementation.GrainPlacement
 
             SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
-                                                                    siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
+                                                                      siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                 .First();
 
             return Task.FromResult(siloAddress);
