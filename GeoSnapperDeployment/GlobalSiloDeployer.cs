@@ -227,13 +227,13 @@ namespace GeoSnapperDeployment
         {
             siloHostBuilder.UseDevelopmentClustering(primarySiloEndPoint);
             siloHostBuilder.ConfigureEndpoints(siloIPAdress, siloPort, gatewayPort)
-                        //    .UseDashboard(options =>
-                        //    {
-                        //        options.Port = siloPort + 100; // e.g. 11211, TODO: Find something nicer
-                        //        options.Host = "*";
-                        //        options.HostSelf = true;
-                        //        options.CounterUpdateIntervalMs = 10000;
-                        //    })
+                           .UseDashboard(options =>
+                           {
+                               options.Port = siloPort + 100; // e.g. 11211, TODO: Find something nicer
+                               options.Host = "*";
+                               options.HostSelf = true;
+                               options.CounterUpdateIntervalMs = 10000;
+                           })
                            .Configure<ClientMessagingOptions>(options =>
                            {
                                options.ResponseTimeout = new TimeSpan(0, 5, 0);
