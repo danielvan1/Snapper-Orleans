@@ -14,6 +14,7 @@ using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
@@ -191,7 +192,12 @@ namespace GeoSnapperDeployment
             const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
             const string key2 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=d9HMVrKnhIWYsIIP/+Nj6u5ehZaIBqx4Vfb86lGVDzTaXz0BBaJ6Rorn8S58imlTkLvdbkTVaD+t+AStNC6BJQ==;EndpointSuffix=core.windows.net";
             // siloHostBuilder.ConfigureEndpoints(siloIPAdress, siloPort, gatewayPort)
-            siloHostBuilder.ConfigureEndpoints(siloPort, gatewayPort)
+            siloHostBuilder.Configure<EndpointOptions>(options =>
+                            {
+                                options.AdvertisedIPAddress = siloIPAdress;
+                                options.SiloPort = siloPort;
+                                options.GatewayPort = gatewayPort;
+                            })
                            .UseDashboard(options =>
                            {
                                options.Port = siloPort + 100; // e.g. 11211, TODO: Find something nicer
