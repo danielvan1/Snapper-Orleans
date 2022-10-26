@@ -128,9 +128,9 @@ namespace GeoSnapperDeployment
             string IPAddressString = siloConfigurations.IPAddresses.Where(ip => ip.Region.Equals(region)).First().IPAddress;
 
             SiloConfiguration primarySiloConfiguration = siloConfigurations.Silos.PrimarySilo;
-            IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
+            IPAddress IPAddress = region.Equals(primarySiloConfiguration.Region) ? IPAddress.Loopback : IPAddress.Parse(primarySiloConfiguration.IPAddress);
             // IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
-            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
+            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
             Console.WriteLine($"Starting to deploy region silo in region {region}");
@@ -180,7 +180,8 @@ namespace GeoSnapperDeployment
 
             SiloConfiguration primarySiloConfiguration = siloConfigurations.Silos.PrimarySilo;
             // IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
-            IPAddress IPAddress = IPAddress.Loopback;
+            IPAddress IPAddress = region.Equals(primarySiloConfiguration.Region) ? IPAddress.Loopback : IPAddress.Parse(primarySiloConfiguration.IPAddress);
+            // IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
             IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
