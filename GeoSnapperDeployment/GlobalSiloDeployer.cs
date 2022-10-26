@@ -65,11 +65,11 @@ namespace GeoSnapperDeployment
             SiloHostBuilder siloHostBuilder = new SiloHostBuilder();
 
             SiloConfiguration primarySiloConfiguration = siloConfigurations.Silos.PrimarySilo;
-            // IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
-            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
+            IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
+            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
             this.ConfigureSiloHost(siloHostBuilder,
-                                   null,
+                                   primarySiloEndpoint,
                                    IPAddress.Loopback,
                                    siloConfigurations.ClusterId,
                                    siloConfigurations.ServiceId,
