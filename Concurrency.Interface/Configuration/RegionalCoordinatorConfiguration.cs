@@ -3,10 +3,10 @@ using MessagePack.Formatters;
 
 namespace Concurrency.Interface.Configuration
 {
-    public class RegionalConfiguration
+    public class RegionalCoordinatorConfiguration
     {
         public IReadOnlyList<string> Regions {get; init;}
 
-        public IReadOnlyDictionary<string, int> NumberOfSilosInRegion {get; init;}
+        public IReadOnlyDictionary<string, int> NumberOfSilosPerRegion {get; init;}
     }
 }

@@ -17,14 +17,14 @@ namespace Concurrency.Implementation.GrainPlacement
     public class LocalConfigurationGrainPlacement : IPlacementDirector
     {
     private readonly ILogger<LocalConfigurationGrainPlacement> logger;
-    private readonly RegionalSilosPlacementInfo regionalSilos;
+    private readonly RegionalSiloPlacementInfo regionalSilos;
 
     /// <summary>
-    /// Here we use the  <see cref="RegionalSilosPlacementInfo"/> since we want to spawn each <see cref="LocalConfigurationGrain"/>  in
+    /// Here we use the  <see cref="RegionalSiloPlacementInfo"/> since we want to spawn each <see cref="LocalConfigurationGrain"/>  in
     /// each of the regional silos. There is one regional silo per region and this should be sufficient for
     /// spawning each <see cref="LocalCoordinatorGrain"/> in every local silo for each region.
     /// </summary>
-    public LocalConfigurationGrainPlacement(ILogger<LocalConfigurationGrainPlacement> logger, RegionalSilosPlacementInfo regionalSilos)
+    public LocalConfigurationGrainPlacement(ILogger<LocalConfigurationGrainPlacement> logger, RegionalSiloPlacementInfo regionalSilos)
     {
         this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
         this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -45,7 +45,7 @@ namespace Concurrency.Implementation.GrainPlacement
         if (this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 

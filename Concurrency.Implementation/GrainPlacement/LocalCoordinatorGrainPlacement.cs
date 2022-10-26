@@ -40,7 +40,7 @@ namespace Concurrency.Implementation.GrainPlacement
             {
                 // TODO: Why is this sequence sometimes empty? Race condition?
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 

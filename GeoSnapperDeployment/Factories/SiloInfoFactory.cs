@@ -19,7 +19,7 @@ namespace GeoSnapperDeployment.Factories
                 Region = region,
                 HomeRegion = homeRegion,
                 IsReplica = IsReplica,
-                ipEndPoint = IPAddress
+                IPEndPoint = IPAddress
             };
         }
     }

@@ -4,7 +4,7 @@ namespace Concurrency.Interface.Models
 {
     public record SiloInfo
     {
-        public IPEndPoint ipEndPoint {get; init;}
+        public IPEndPoint IPEndPoint {get; init;}
 
         public string ClusterId {get; set;}
 

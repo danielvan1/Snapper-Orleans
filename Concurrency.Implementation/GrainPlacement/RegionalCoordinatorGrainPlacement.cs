@@ -16,9 +16,9 @@ namespace Concurrency.Implementation.GrainPlacement
     public class RegionalCoordinatorGrainPlacement : IPlacementDirector
     {
         private readonly ILogger<RegionalCoordinatorGrainPlacement> logger;
-        private readonly RegionalSilosPlacementInfo regionalSilos;
+        private readonly RegionalSiloPlacementInfo regionalSilos;
 
-        public RegionalCoordinatorGrainPlacement(ILogger<RegionalCoordinatorGrainPlacement> logger, RegionalSilosPlacementInfo regionalSilos)
+        public RegionalCoordinatorGrainPlacement(ILogger<RegionalCoordinatorGrainPlacement> logger, RegionalSiloPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -26,28 +26,27 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-
-            var numberOfSilosInTestCluster = 2;
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
-            bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
-            if (isTestSilo) {
-                this.logger.Info("Is using test placement strategy");
-                return Task.FromResult(compatibleSilos[0]);
-            }
+            // var numberOfSilosInTestCluster = 2;
+            // bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
+            // if (isTestSilo) {
+            //     this.logger.Info("Is using test placement strategy");
+            //     return Task.FromResult(compatibleSilos[0]);
+            // }
 
-            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            if (this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.regionalSilos.RegionsSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(RegionalCoordinatorGrain), region );
+            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(RegionalCoordinatorGrain), siloId );
 
             throw new GrainPlacementException($"Wrong placement of {nameof(RegionalCoordinatorGrain)}");
         }

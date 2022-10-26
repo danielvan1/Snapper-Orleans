@@ -4,7 +4,7 @@ using Concurrency.Interface.Models;
 namespace Concurrency.Interface.Configuration
 {
     // Storing information to place grains in the regional Silo.
-    public record RegionalSilosPlacementInfo
+    public record RegionalSiloPlacementInfo
     {
         /// <summary>
         /// Mapping each region to the corresponding Silo.

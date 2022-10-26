@@ -16,9 +16,9 @@ namespace Concurrency.Implementation.Configuration
     public class LocalConfigurationGrain : Grain, ILocalConfigGrain
     {
         private readonly ILogger<LocalConfigurationGrain> logger;
-        private readonly LocalConfiguration localConfiguration;
+        private readonly LocalCoordinatorConfiguration localConfiguration;
 
-        public LocalConfigurationGrain(ILogger<LocalConfigurationGrain> logger, LocalConfiguration localConfiguration)
+        public LocalConfigurationGrain(ILogger<LocalConfigurationGrain> logger, LocalCoordinatorConfiguration localConfiguration)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.localConfiguration = localConfiguration ?? throw new ArgumentNullException(nameof(localConfiguration));
@@ -27,7 +27,7 @@ namespace Concurrency.Implementation.Configuration
         public async Task InitializeLocalCoordinators(string currentRegion)
         {
             this.logger.LogInformation("Initializing local coordinators in region: {currentRegion}", this.GrainReference, currentRegion);
-            if (!this.localConfiguration.SiloKeysPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
+            if (!this.localConfiguration.SiloIdPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
             {
                 this.logger.LogError("Currentregion: {currentRegion} does not exist in the dictionary", this.GrainReference, currentRegion);
 

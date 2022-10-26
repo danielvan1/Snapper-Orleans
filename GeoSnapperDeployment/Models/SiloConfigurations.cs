@@ -8,6 +8,8 @@ namespace GeoSnapperDeployment.Models
 
         public int ReplicaStartId {get; init;}
 
+        public List<IPConfig> IPAddresses { get; init; }
+
         public string ClusterId {get; init;}
 
         public string ServiceId {get; init;}

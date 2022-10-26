@@ -22,7 +22,7 @@ namespace Concurrency.Implementation.GrainPlacement
             var silos = context.GetCompatibleSilos(target);   // get the list of registered silo hosts
 
             SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                     siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                 .First();
 

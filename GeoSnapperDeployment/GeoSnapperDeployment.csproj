@@ -28,6 +28,9 @@
 		<Content Include="Configurations/SiloConfigurations.json">
 		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
 		</Content>
+		<Content Include="Configurations/GlobalSiloConfigurations.json">
+		<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 
 	<ItemGroup>

@@ -18,7 +18,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         {
             IScheduleInfoManager scheduleInfoManager = new ScheduleInfoManager(this.scheduleInfoManagerLogger);
 
-            return new TransactionScheduler(logger, scheduleInfoManager);
+            return new TransactionScheduler(this.logger, scheduleInfoManager);
         }
     }
 }

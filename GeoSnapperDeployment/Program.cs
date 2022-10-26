@@ -1,11 +1,12 @@
-﻿using GeoSnapperDeployment.Factories;
+﻿using System.Net;
+using Concurrency.Interface.Configuration;
+using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
-using Orleans.Hosting;
-using Unity;
 using Orleans;
 using Orleans.Configuration;
-using Concurrency.Interface.Configuration;
+using Orleans.Hosting;
+using Unity;
 
 namespace GeoSnapperDeployment
 {
@@ -32,18 +33,20 @@ namespace GeoSnapperDeployment
 
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
-            container.RegisterType<ISiloConfigurationFactory, SiloConfigurationFactory>(TypeLifetime.Singleton);
+            container.RegisterType<ISiloConfigurationFactory, SiloConfigurationForLocalDeploymentFactory>(TypeLifetime.Singleton);
             container.RegisterType<LocalSiloDeployer>(TypeLifetime.Singleton);
+            container.RegisterType<GlobalSiloDeployer>(TypeLifetime.Singleton);
 
-            IConfiguration config = new ConfigurationBuilder()
-            .AddJsonFile(Path.Combine(Configurations, "SiloConfigurations.json"))
-            .Build();
 
             string deploymentType = args[0];
             var siloHosts = new List<ISiloHost>();
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
+                IConfiguration config = new ConfigurationBuilder()
+                .AddJsonFile(Path.Combine(Configurations, "SiloConfigurations.json"))
+                .Build();
+
                 var localSiloDeployer = container.Resolve<LocalSiloDeployer>();
 
                 var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
@@ -57,49 +60,56 @@ namespace GeoSnapperDeployment
                 IList<ISiloHost> regionSiloHosts = await localSiloDeployer.DeployRegionalSilos(siloConfigurations);
                 siloHosts.AddRange(regionSiloHosts);
 
-                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeploySilosAndReplicas(siloConfigurations);
+                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeployLocalSilosAndReplicas(siloConfigurations);
                 siloHosts.AddRange(localSiloHosts);
+
+                var client = new ClientBuilder()
+                .UseLocalhostClustering()
+                .Configure<ClusterOptions>(options =>
+                {
+                    options.ClusterId = "Snapper";
+                    options.ServiceId = "Snapper";
+                })
+                .Configure<ClientMessagingOptions>(options =>
+                {
+                    options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                })
+                .Build();
+
+                await client.Connect();
+
+                IRegionalCoordinatorConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, "EU");
+                IRegionalCoordinatorConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalCoordinatorConfigGrain>(1, "US");
+
+                await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
+                await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
+
+                ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
+                ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
+                await localConfigGrainEU.InitializeLocalCoordinators("EU");
+                await localConfigGrainUS.InitializeLocalCoordinators("US");
+
+                await client.Close();
+
             }
-            else
+            else if(deploymentType.Equals("GlobalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
-                throw new ArgumentException($"Invalid deployment type given: {deploymentType}");
+                string region = args[1];
+
+                IConfiguration config = new ConfigurationBuilder()
+                .AddJsonFile(Path.Combine(Configurations, "GlobalSiloConfigurations.json"))
+                .Build();
+
+                var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
+                Console.WriteLine($"region: {region}");
+                Console.WriteLine($"siloConfigurations: {siloConfigurations.ClusterId}");
+                Console.WriteLine($"siloConfigurations: {siloConfigurations.Silos.PrimarySilo.IPAddress}");
+
+
+                var globalSiloDeployer = container.Resolve<GlobalSiloDeployer>();
+
+                // siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region));
             }
-
-
-            var client = new ClientBuilder()
-            .UseLocalhostClustering()
-            .Configure<ClusterOptions>(options =>
-            {
-                options.ClusterId = "Snapper";
-                options.ServiceId = "Snapper";
-            })
-            .Configure<ClientMessagingOptions>(options =>
-            {
-                options.ResponseTimeout = new TimeSpan(0, 5, 0);
-            })
-            .Build();
-
-            await client.Connect();
-
-            IRegionalConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalConfigGrain>(0, "EU");
-            IRegionalConfigGrain regionalConfigGrainUS = client.GetGrain<IRegionalConfigGrain>(1, "US");
-
-            await regionalConfigGrainEU.InitializeRegionalCoordinators("EU");
-            await regionalConfigGrainUS.InitializeRegionalCoordinators("US");
-
-            ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(3, "EU");
-            ILocalConfigGrain localConfigGrainUS = client.GetGrain<ILocalConfigGrain>(3, "US");
-            await localConfigGrainEU.InitializeLocalCoordinators("EU");
-            await localConfigGrainUS.InitializeLocalCoordinators("US");
-            // List<Task> configureAllConfigAndCoordinators = new List<Task>()
-            // {
-            //     task1, task2, task3, task4
-
-            // };
-
-            // await Task.WhenAll(configureAllConfigAndCoordinators);
-
-            client.Close();
 
             Console.WriteLine("All silos created successfully");
             Console.WriteLine("Press Enter to terminate all silos...");
@@ -115,6 +125,8 @@ namespace GeoSnapperDeployment
             await Task.WhenAll(stopSiloHostTasks);
 
             Console.WriteLine("Stopped all silos");
+
+
 
             return 0;
         }

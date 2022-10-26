@@ -16,9 +16,9 @@ namespace Concurrency.Implementation.GrainPlacement
     public class RegionalConfigurationGrainPlacement : IPlacementDirector
     {
         private readonly ILogger<RegionalConfigurationGrainPlacement> logger;
-        private readonly RegionalSilosPlacementInfo regionalSilos;
+        private readonly RegionalSiloPlacementInfo regionalSilos;
 
-        public RegionalConfigurationGrainPlacement(ILogger<RegionalConfigurationGrainPlacement> logger, RegionalSilosPlacementInfo regionalSilos)
+        public RegionalConfigurationGrainPlacement(ILogger<RegionalConfigurationGrainPlacement> logger, RegionalSiloPlacementInfo regionalSilos)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
@@ -39,7 +39,7 @@ namespace Concurrency.Implementation.GrainPlacement
             if (this.regionalSilos.RegionsSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.ipEndPoint.Address) &&
+                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 

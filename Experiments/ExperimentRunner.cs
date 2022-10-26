@@ -29,7 +29,7 @@ namespace Experiments
             // and then transfer 50$ from account id 0 to account id 1. They both
             // get initialized to 100$(hardcoded inside of Init)
 
-            var numberOfAccountsInEachServer = 70;
+            var numberOfAccountsInEachServer = 2;
             Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
             // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
             string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
