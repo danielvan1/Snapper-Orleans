@@ -193,8 +193,8 @@ namespace GeoSnapperDeployment
             siloHostBuilder.Configure<EndpointOptions>(options =>
                             {
                                 options.AdvertisedIPAddress = siloIPAdress;
-                                options.SiloPort = siloPort;
-                                options.GatewayPort = gatewayPort;
+                                options.SiloListeningEndpoint = new IPEndPoint(IPAddress.Loopback, siloPort );
+                                options.GatewayListeningEndpoint = new IPEndPoint(IPAddress.Loopback, gatewayPort);
                             })
                            .UseDashboard(options =>
                            {
