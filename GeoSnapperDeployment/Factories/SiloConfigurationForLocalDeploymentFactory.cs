@@ -34,7 +34,7 @@ namespace GeoSnapperDeployment.Factories
         {
             SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
 
-            return this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloId,
+            return this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloIntegerId,
                                                globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort, globalSiloConfiguration.Region, globalSiloConfiguration.Region, false);
         }
 
@@ -46,7 +46,7 @@ namespace GeoSnapperDeployment.Factories
             {
                 bool isReplica = false;
 
-                SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloId,
+                SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloIntegerId,
                                                                 siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
                                                                 siloConfiguration.Region, isReplica);
 
@@ -196,7 +196,7 @@ namespace GeoSnapperDeployment.Factories
                 {
                     var siloConfiguration = configurations[i];
 
-                    int siloId = siloConfiguration.SiloId;
+                    int siloId = siloConfiguration.SiloIntegerId;
                     int siloPort = siloConfiguration.SiloPort;
                     int gatewayPort = siloConfiguration.GatewayPort;
                     bool isReplica = false;

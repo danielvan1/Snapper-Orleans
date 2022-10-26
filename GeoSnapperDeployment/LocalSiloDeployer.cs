@@ -89,7 +89,7 @@ namespace GeoSnapperDeployment
 
             await siloHost.StartAsync();
 
-            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} in region {globalSiloConfiguration.Region} is started");
+            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloIntegerId} in region {globalSiloConfiguration.Region} is started");
 
             return siloHost;
         }
@@ -123,7 +123,7 @@ namespace GeoSnapperDeployment
 
                 await siloHost.StartAsync();
 
-                Console.WriteLine($"Silo regional {siloConfiguration.SiloId} in region {siloConfiguration.Region} is started...");
+                Console.WriteLine($"Silo regional {siloConfiguration.SiloIntegerId} in region {siloConfiguration.Region} is started...");
 
                 siloHosts.Add(siloHost);
             }

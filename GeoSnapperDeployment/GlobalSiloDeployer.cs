@@ -19,6 +19,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using Orleans.Runtime;
 using Orleans.Runtime.Placement;
+using Orleans.Streams.PubSub;
 using Serilog;
 using Serilog.Filters;
 
@@ -27,10 +28,10 @@ namespace GeoSnapperDeployment
     public class GlobalSiloDeployer
     {
         private readonly string logPath = Path.Combine(Utilities.Constants.LogPath, $"Snapper-{DateTime.Now:ddMMyyyy-HHmm}.log");
-        private readonly ISiloConfigurationFactory siloConfigurationFactory;
+        private readonly ISiloConfigurationForGlobalDeployment siloConfigurationFactory;
         private readonly ILogger logger;
 
-        public GlobalSiloDeployer(ISiloConfigurationFactory siloConfigurationFactory)
+        public GlobalSiloDeployer(ISiloConfigurationForGlobalDeployment siloConfigurationFactory)
         {
             this.siloConfigurationFactory = siloConfigurationFactory ?? throw new ArgumentNullException(nameof(siloConfigurationFactory));
             this.logger = CreateLogger();
@@ -65,12 +66,12 @@ namespace GeoSnapperDeployment
             SiloHostBuilder siloHostBuilder = new SiloHostBuilder();
 
             SiloConfiguration primarySiloConfiguration = siloConfigurations.Silos.PrimarySilo;
-            IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
-            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress, siloConfigurations.Silos.PrimarySilo.SiloPort);
+            // IPAddress IPAddress = IPAddress.Parse(primarySiloConfiguration.IPAddress);
+            IPEndPoint primarySiloEndpoint = new IPEndPoint(IPAddress.Loopback, siloConfigurations.Silos.PrimarySilo.SiloPort);
 
             this.ConfigureSiloHost(siloHostBuilder,
                                    null,
-                                   IPAddress,
+                                   IPAddress.Loopback,
                                    siloConfigurations.ClusterId,
                                    siloConfigurations.ServiceId,
                                    primarySiloConfiguration.SiloPort,
@@ -97,7 +98,7 @@ namespace GeoSnapperDeployment
             SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
             var siloHostBuilder = new SiloHostBuilder();
 
-            GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalConfiguration(siloConfigurations.Silos);
+            GlobalConfiguration globalConfiguration = this.siloConfigurationFactory.CreateGlobalCoordinatorConfiguration(siloConfigurations.Silos);
             var globalSiloInfo = this.siloConfigurationFactory.CreateGlobalSiloInfo(siloConfigurations);
 
             // this.ConfigureGlobalGrains(siloHostBuilder, globalConfiguration, globalSiloInfo);
@@ -106,7 +107,7 @@ namespace GeoSnapperDeployment
 
             await siloHost.StartAsync();
 
-            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloId} in region {globalSiloConfiguration.Region} is started");
+            Console.WriteLine($"Global silo {globalSiloConfiguration.SiloIntegerId} in region {globalSiloConfiguration.Region} is started");
 
             return siloHost;
         }
@@ -121,7 +122,7 @@ namespace GeoSnapperDeployment
 
             RegionalSiloPlacementInfo regionalSilos = this.siloConfigurationFactory.CreateRegionalSiloPlacementInfo(siloConfigurations);
             RegionalCoordinatorConfiguration regionalConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations.Silos.LocalSilos);
-            LocalCoordinatorConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalCoordinatorConfigurationWithReplica(siloConfigurations.Silos.LocalSilos);
+            LocalCoordinatorConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalCoordinatorConfigurationForMaster(siloConfigurations.Silos.LocalSilos);
             LocalSiloPlacementInfo localSilos = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
 
             string IPAddressString = siloConfigurations.IPAddresses.Where(ip => ip.Region.Equals(region)).First().IPAddress;
@@ -150,7 +151,7 @@ namespace GeoSnapperDeployment
 
                 await siloHost.StartAsync();
 
-                Console.WriteLine($"Silo regional {regionalSiloConfiguration.SiloId} in region {regionalSiloConfiguration.Region} is started...");
+                Console.WriteLine($"Silo regional {regionalSiloConfiguration.SiloIntegerId} in region {regionalSiloConfiguration.Region} is started...");
 
                 siloHosts.Add(siloHost);
             }

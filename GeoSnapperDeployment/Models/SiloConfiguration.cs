@@ -7,7 +7,7 @@ namespace GeoSnapperDeployment.Models
 
         public string Region {get; init;}
 
-        public int SiloId {get; init;}
+        public int SiloIntegerId {get; init;}
 
         public int SiloPort {get; init;}
 
