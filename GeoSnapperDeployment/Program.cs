@@ -34,6 +34,7 @@ namespace GeoSnapperDeployment
             UnityContainer container = new UnityContainer();
             container.RegisterType<ISiloInfoFactory, SiloInfoFactory>(TypeLifetime.Singleton);
             container.RegisterType<ISiloConfigurationFactory, SiloConfigurationForLocalDeploymentFactory>(TypeLifetime.Singleton);
+            container.RegisterType<ISiloConfigurationForGlobalDeployment, SiloConfigurationForGlobalDeployment>(TypeLifetime.Singleton);
             container.RegisterType<LocalSiloDeployer>(TypeLifetime.Singleton);
             container.RegisterType<GlobalSiloDeployer>(TypeLifetime.Singleton);
 
@@ -108,7 +109,7 @@ namespace GeoSnapperDeployment
 
                 var globalSiloDeployer = container.Resolve<GlobalSiloDeployer>();
 
-                // siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region));
+                siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region));
             }
 
             Console.WriteLine("All silos created successfully");
