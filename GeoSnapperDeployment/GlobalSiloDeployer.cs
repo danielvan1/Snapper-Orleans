@@ -48,10 +48,10 @@ namespace GeoSnapperDeployment
             var global = await Task.WhenAll(siloHostTasks);
 
             var regional = await this.DeployRegionalSilos(siloConfigurations, region);
-            var localTasks = await this.DeployLocalSilosAndReplicas(siloConfigurations, region);
+            // var localTasks = await this.DeployLocalSilosAndReplicas(siloConfigurations, region);
 
             return global.Concat(regional)
-                         .Concat(localTasks)
+                        //  .Concat(localTasks)
                          .ToList();
         }
 
