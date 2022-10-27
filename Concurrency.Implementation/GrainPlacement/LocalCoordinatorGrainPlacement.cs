@@ -26,19 +26,14 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-
-            var numberOfSilosInTestCluster = 2;
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
-            bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
-            if (isTestSilo) {
-                return Task.FromResult(compatibleSilos[0]);
-            }
+            this.logger.LogInformation("Compatible silos: [{silos}]", string.Join(", ", compatibleSilos));
 
-            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
-                // TODO: Why is this sequence sometimes empty? Race condition?
+                this.logger.LogInformation("LocalCoordinator SiloInfo: {siloInfo}:{port}", siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
@@ -47,7 +42,7 @@ namespace Concurrency.Implementation.GrainPlacement
                 return Task.FromResult(siloAddress);
             }
 
-            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(LocalCoordinatorGrain), region );
+            this.logger.LogError("Can not find the correct Silo for {nameof(LocalCoordinatorGrain)}. The given region is {region}", nameof(LocalCoordinatorGrain), siloId );
 
             throw new GrainPlacementException($"Wrong placement of {nameof(LocalCoordinatorGrain)}");
         }
