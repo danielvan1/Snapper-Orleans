@@ -89,9 +89,6 @@ namespace GeoSnapperDeployment
             LocalCoordinatorConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalCoordinatorConfigurationForMaster(siloConfigurations.Silos.LocalSilos);
             LocalSiloPlacementInfo localSilos = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
 
-            string IPAddressString = siloConfigurations.IPAddresses.Where(ip => ip.Region.Equals(region)).First().IPAddress;
-
-            SiloConfiguration primarySiloConfiguration = siloConfigurations.Silos.PrimarySilo;
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
             Console.WriteLine($"Starting to deploy region silo in region {region}");
