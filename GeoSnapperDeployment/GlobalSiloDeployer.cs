@@ -101,7 +101,6 @@ namespace GeoSnapperDeployment
                 var siloHostBuilder = new SiloHostBuilder();
                 // IPAddress siloIPAddress = IPAddress.Parse(regionalSiloConfiguration.IPAddress);
                 // IPAddress siloIPAddress = IPAddress.Loopback;
-                
 
                 this.ConfigureSiloHost(siloHostBuilder,
                                        null,
@@ -190,11 +189,13 @@ namespace GeoSnapperDeployment
             const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
             const string key2 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=d9HMVrKnhIWYsIIP/+Nj6u5ehZaIBqx4Vfb86lGVDzTaXz0BBaJ6Rorn8S58imlTkLvdbkTVaD+t+AStNC6BJQ==;EndpointSuffix=core.windows.net";
             // siloHostBuilder.ConfigureEndpoints(siloIPAdress, siloPort, gatewayPort)
+
+            Console.WriteLine($"IP: {siloIPAdress}, siloPort: {siloPort}, gatewayPort: {gatewayPort}, localhost: {IPAddress.Loopback}");
             siloHostBuilder.Configure<EndpointOptions>(options =>
                             {
                                 options.AdvertisedIPAddress = siloIPAdress;
-                                options.SiloListeningEndpoint = new IPEndPoint(IPAddress.Loopback, siloPort );
-                                options.GatewayListeningEndpoint = new IPEndPoint(IPAddress.Loopback, gatewayPort);
+                                options.SiloListeningEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.0.0"), siloPort);
+                                options.GatewayListeningEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.0.0"), gatewayPort);
                             })
                            .UseDashboard(options =>
                            {
