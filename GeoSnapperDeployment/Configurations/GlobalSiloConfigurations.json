@@ -9,15 +9,15 @@
         "IPAddresses" : [
             {
                 "Region" : "EU",
-                "IP" : "45.91.59.210"
+                "IPAddress" : "45.91.59.210"
             },
             {
                 "Region" : "US",
-                "IP" : "4.227.140.73"
+                "IPAddress" : "4.227.140.73"
             },
             {
                 "Region" : "Asia",
-                "IP" : "20.193.133.29"
+                "IPAddress" : "20.193.133.29"
             }
         ],
 
