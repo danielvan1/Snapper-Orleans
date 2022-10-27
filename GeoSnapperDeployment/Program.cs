@@ -125,7 +125,11 @@ namespace GeoSnapperDeployment
                 })
                 .Build();
 
+                await client.Connect();
+
                 IRegionalCoordinatorConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, region);
+
+                await client.Close();
             }
 
             Console.WriteLine("All silos created successfully");
