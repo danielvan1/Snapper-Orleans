@@ -106,8 +106,9 @@ namespace GeoSnapperDeployment
             RegionalSiloPlacementInfo regionalSiloPlacementInfo = this.siloConfigurationFactory.CreateRegionalSiloPlacementInfo(siloConfigurations);
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
+            Console.WriteLine($"LocalSiloInfos: {string.Join(", ", localSiloPlacementInfo.LocalSiloInfo.Keys)}");
 
-            foreach ((string siloRegion, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,region.Length).Equals(region)))
+            foreach ((string siloId, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,region.Length).Equals(region)))
             {
                 IPAddress advertisedSiloIPAddress = siloInfo.IPEndPoint.Address;
                 Console.WriteLine($"Deploying local silo with int id: {siloInfo.SiloId}");
@@ -128,7 +129,7 @@ namespace GeoSnapperDeployment
 
                 startSiloTasks.Add(siloHost.StartAsync());
 
-                Console.WriteLine($"Silo {(siloInfo.IsReplica ? "replica" : string.Empty)} {siloInfo.SiloId} in region {siloRegion} is started...");
+                Console.WriteLine($"Silo {(siloInfo.IsReplica ? "replica" : string.Empty)} {siloInfo.SiloId} in region {siloId} is started...");
 
                 siloHosts.Add(siloHost);
             }
