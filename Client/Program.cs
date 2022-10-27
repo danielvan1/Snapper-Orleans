@@ -34,7 +34,7 @@ namespace Client
             await client.Connect();
 
             IRegionalCoordinatorConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, region);
-            await regionalConfigGrainEU.InitializeRegionalCoordinators("region");
+            await regionalConfigGrainEU.InitializeRegionalCoordinators(region);
 
             await client.Close();
 
