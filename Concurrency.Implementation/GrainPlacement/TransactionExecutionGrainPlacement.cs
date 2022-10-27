@@ -25,23 +25,16 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            var numberOfSilosInTestCluster = 2;
-            IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
-            bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
-            if (isTestSilo) {
-                this.logger.Info("Is using test placement strategy");
-                return Task.FromResult(compatibleSilos[0]);
-            }
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
-
-            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
-                SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
-                                                                       siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
-                                                 .First();
+                // SiloAddress siloAddress = context.GetCompatibleSilos(target)
+                //                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
+                //                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
+                //                                  .First();
 
+                var siloAddress = SiloAddress.New(siloInfo.IPEndPoint, 0);
                 return Task.FromResult(siloAddress);
             }
 

@@ -33,17 +33,19 @@ namespace Concurrency.Implementation.GrainPlacement
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
-                SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress =>
-                                                 {
-                                                    //  this.logger.LogInformation("SiloAddress info: {x}:{y}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port);
-                                                    //  this.logger.LogInformation("LocalCoordinator SiloInfo: {siloInfo}:{port}", siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+                // SiloAddress siloAddress = context.GetCompatibleSilos(target)
+                //                                  .Where(siloAddress =>
+                //                                  {
+                //                                     //  this.logger.LogInformation("SiloAddress info: {x}:{y}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port);
+                //                                     //  this.logger.LogInformation("LocalCoordinator SiloInfo: {siloInfo}:{port}", siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
 
-                                                     return siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
-                                                                         siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort);
+                //                                      return siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
+                //                                                          siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort);
 
-                                                 })
-                                                 .First();
+                //                                  })
+                //                                  .First();
+
+                var siloAddress = SiloAddress.New(siloInfo.IPEndPoint, 0);
 
                 return Task.FromResult(siloAddress);
             }
