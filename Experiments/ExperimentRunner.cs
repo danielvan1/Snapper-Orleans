@@ -12,31 +12,22 @@ namespace Experiments
 {
     public class ExperimentRunner
     {
-        public async Task ManyMultiTransferTransactions()
+        public async Task ManyMultiTransferTransactions(IClusterClient client, string region, int multitransfers)
         {
-            var client = new ClientBuilder()
-            .UseLocalhostClustering()
-            .Configure<ClusterOptions>(options =>
-            {
-                options.ClusterId = "Snapper";
-                options.ServiceId = "Snapper";
-            })
-            .Build();
-
             await client.Connect();
 
             // Going to perform 2 init transactions on two accounts in the same region,
             // and then transfer 50$ from account id 0 to account id 1. They both
             // get initialized to 100$(hardcoded inside of Init)
 
-            var numberOfAccountsInEachServer = 2;
+            var numberOfAccountsInEachServer = multitransfers;
             Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
             // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
             string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
             int startAccountId0 = 0;
             int startAccountId1 = numberOfAccountsInEachServer;
-            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, "EU", "EU", 0, snapperTransactionalAccountGrainTypeName);
-            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, "EU", "EU", 1, snapperTransactionalAccountGrainTypeName);
+            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, region, region, 0, snapperTransactionalAccountGrainTypeName);
+            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, region, region, 1, snapperTransactionalAccountGrainTypeName);
 
             var input1 = TestDataGenerator.GetAccountsFromRegion(accountIdsServer1);
             var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
@@ -127,6 +118,7 @@ namespace Experiments
             // TransactionResult balanceTaskReplica1 = await replicaActorUSEU1.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 70, SiloId = USEU1, GranClassNamespace = snapperTransactionalAccountGrainTypeName } });
             // Console.WriteLine($"Replica ::: result: {balanceTaskReplica1.resultObj} -- expected {initialBalance + numberOfAccountsInEachServer * oneDollar}");
 
+            await client.Close();
         }
 
         public async Task SimpleBank()

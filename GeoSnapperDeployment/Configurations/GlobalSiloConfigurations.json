@@ -65,16 +65,16 @@
 
             "LocalSilos": [
                 {
-                    "IPAddress" : "109.198.140.200",
+                    "IPAddress" : "20.193.133.29",
                     "SiloId": 0,
-                    "Region": "EU",
+                    "Region": "ASIA",
                     "SiloPort": 20000,
                     "GatewayPort": 30004
                 },
                 {
-                    "IPAddress" : "109.198.140.200",
+                    "IPAddress" : "20.193.133.29",
                     "SiloId": 1,
-                    "Region": "EU",
+                    "Region": "ASIA",
                     "SiloPort": 20001,
                     "GatewayPort": 30005
                 },
