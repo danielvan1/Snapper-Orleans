@@ -87,9 +87,10 @@ namespace GeoSnapperDeployment.Factories
             };
         }
 
-        public LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationForMaster(IReadOnlyList<SiloConfiguration> localSilos)
+        public LocalCoordinatorConfiguration CreateLocalCoordinatorConfigurationForMaster(IReadOnlyList<SiloConfiguration> localSilos, string region)
         {
-            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
+            var localSilosList = localSilos.Where(config => config.Region.Equals(region)).ToList();
+            Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilosList);
             IReadOnlyDictionary<string, List<string>> siloIdsPerRegion = this.CreateMasterSiloIds(siloConfigurationRegionBuckets);
 
             return new LocalCoordinatorConfiguration()
