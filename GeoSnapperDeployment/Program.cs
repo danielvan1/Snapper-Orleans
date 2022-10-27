@@ -109,27 +109,6 @@ namespace GeoSnapperDeployment
                 var globalSiloDeployer = container.Resolve<GlobalSiloDeployer>();
 
                 siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region));
-
-                const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
-
-                var client = new ClientBuilder()
-                .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(key1))
-                .Configure<ClusterOptions>(options =>
-                {
-                    options.ClusterId = siloConfigurations.ClusterId;
-                    options.ServiceId = siloConfigurations.ServiceId;
-                })
-                .Configure<ClientMessagingOptions>(options =>
-                {
-                    options.ResponseTimeout = new TimeSpan(0, 5, 0);
-                })
-                .Build();
-
-                await client.Connect();
-
-                IRegionalCoordinatorConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, region);
-
-                await client.Close();
             }
 
             Console.WriteLine("All silos created successfully");
@@ -146,8 +125,6 @@ namespace GeoSnapperDeployment
             await Task.WhenAll(stopSiloHostTasks);
 
             Console.WriteLine("Stopped all silos");
-
-
 
             return 0;
         }

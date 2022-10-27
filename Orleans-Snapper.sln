@@ -19,6 +19,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SnapperGeoReplication.Tests
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Experiments", "Experiments\Experiments.csproj", "{10A76471-70C5-4B0D-876F-3E7475096C4A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{D1D9D0DE-3D32-4FDF-9E9E-3C628F49A286}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -77,6 +79,10 @@ Global
 		{10A76471-70C5-4B0D-876F-3E7475096C4A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{10A76471-70C5-4B0D-876F-3E7475096C4A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{10A76471-70C5-4B0D-876F-3E7475096C4A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D1D9D0DE-3D32-4FDF-9E9E-3C628F49A286}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D1D9D0DE-3D32-4FDF-9E9E-3C628F49A286}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D1D9D0DE-3D32-4FDF-9E9E-3C628F49A286}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D1D9D0DE-3D32-4FDF-9E9E-3C628F49A286}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
