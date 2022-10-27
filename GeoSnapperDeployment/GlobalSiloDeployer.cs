@@ -115,6 +115,7 @@ namespace GeoSnapperDeployment
                 var siloHostBuilder = new SiloHostBuilder();
 
                 this.ConfigureLocalGrains(siloHostBuilder, regionalSiloPlacementInfo, localSiloPlacementInfo, regions);
+                this.ConfigurePrimarySilo(siloHostBuilder, regionalSiloPlacementInfo, localSiloPlacementInfo);
 
                 this.ConfigureSiloHost(siloHostBuilder,
                                        advertisedSiloIPAddress,
