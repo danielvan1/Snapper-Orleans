@@ -27,7 +27,8 @@ namespace Concurrency.Implementation.Configuration
         public async Task InitializeLocalCoordinators(string currentRegion)
         {
             this.logger.LogInformation("Initializing local coordinators in region: {currentRegion}", this.GrainReference, currentRegion);
-            if (!this.localConfiguration.SiloIdPerRegion.TryGetValue(currentRegion, out List<string> siloKeys))
+
+            if (!this.localConfiguration.SiloIdPerRegion.TryGetValue(currentRegion, out List<string> siloIds))
             {
                 this.logger.LogError("Currentregion: {currentRegion} does not exist in the dictionary", this.GrainReference, currentRegion);
 
@@ -38,18 +39,18 @@ namespace Concurrency.Implementation.Configuration
 
             // regionAndServerKey should be similar to EU-EU-1
             // which indicate: <deployed region>-<home region>-<server id>
-            foreach (string regionAndServerKey in siloKeys)
+            foreach (string siloId in siloIds)
             {
-                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(
-                    Constants.NumberOfLocalCoordinatorsPerSilo - 1, regionAndServerKey);
-                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, regionAndServerKey);
+                this.logger.LogInformation("Deploying current siloId: {siloId}", this.GrainReference, siloId);
+                var coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(Constants.NumberOfLocalCoordinatorsPerSilo - 1, siloId);
+                var nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(0, siloId);
                 initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
 
                 for (int i = 0; i < Constants.NumberOfLocalCoordinatorsPerSilo - 1; i++)
                 {
                     // TODO: we might need to change the ids from coordinators and transaction execution grains since their keys overlap.
-                    coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, regionAndServerKey);
-                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, regionAndServerKey);
+                    coordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i, siloId);
+                    nextCoordinator = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(i + 1, siloId);
                     initializeLocalCoordinatorsTasks.Add(coordinator.SpawnLocalCoordGrain(nextCoordinator));
                 }
             }
@@ -61,7 +62,7 @@ namespace Concurrency.Implementation.Configuration
             var passInitialTokenTasks = new List<Task>();
             // Wait until all of the local coordinators has started
             // Then pass the first coordinator in the chain the first token
-            foreach (string regionAndServerKey in siloKeys)
+            foreach (string regionAndServerKey in siloIds)
             {
                 passInitialTokenTasks.Add(this.PassInitialToken(regionAndServerKey));
             }
