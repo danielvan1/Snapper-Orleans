@@ -73,9 +73,11 @@ namespace GeoSnapperDeployment.Factories
         {
             var localSilos = siloConfigurations.Silos.LocalSilos;
 
+            var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(region)).First().IPAddress);
+
             Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
             Dictionary<string, SiloInfo> homeSilos = this.CreateHomeSiloInfos(siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfigurationRegionBuckets);
-            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets);
+            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets, advertisedSiloIPAddress);
 
             var homeAndReplicaSilos = this.MergeDictionaries(homeSilos, replicaSilos);
 
@@ -123,7 +125,7 @@ namespace GeoSnapperDeployment.Factories
             return homeSilos;
         }
 
-        private  Dictionary<string, SiloInfo> CreateReplicaSiloInfos(SiloConfigurations siloConfigurations, Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
+        private  Dictionary<string, SiloInfo> CreateReplicaSiloInfos(SiloConfigurations siloConfigurations, Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets, IPAddress advertisedSiloIPAddress)
         {
             string clusterId = siloConfigurations.ClusterId;
             string serviceId = siloConfigurations.ServiceId;
@@ -143,7 +145,6 @@ namespace GeoSnapperDeployment.Factories
                     for (int i = 0; i < configurations.Count; i++)
                     {
                         SiloConfiguration siloConfiguration = configurations[i];
-                        IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
                         SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress,
                                                                         clusterId, serviceId,
