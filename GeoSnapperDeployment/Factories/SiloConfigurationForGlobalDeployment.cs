@@ -69,7 +69,7 @@ namespace GeoSnapperDeployment.Factories
             };
         }
 
-        public LocalSiloPlacementInfo CreateLocalSiloPlacementInfo(SiloConfigurations siloConfigurations)
+        public LocalSiloPlacementInfo CreateLocalSiloPlacementInfo(SiloConfigurations siloConfigurations, string region)
         {
             var localSilos = siloConfigurations.Silos.LocalSilos;
 

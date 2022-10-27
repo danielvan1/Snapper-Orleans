@@ -56,7 +56,7 @@ namespace GeoSnapperDeployment
             RegionalSiloPlacementInfo regionalSilos = this.siloConfigurationFactory.CreateRegionalSiloPlacementInfo(siloConfigurations);
             RegionalCoordinatorConfiguration regionalConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations.Silos.LocalSilos);
             LocalCoordinatorConfiguration localConfiguration = this.siloConfigurationFactory.CreateLocalCoordinatorConfigurationForMaster(siloConfigurations.Silos.LocalSilos);
-            LocalSiloPlacementInfo localSilos = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
+            LocalSiloPlacementInfo localSilos = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations, region);
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
@@ -100,7 +100,7 @@ namespace GeoSnapperDeployment
 
             IReadOnlyCollection<SiloConfiguration> silos = siloConfigurations.Silos.LocalSilos;
 
-            LocalSiloPlacementInfo localSiloPlacementInfo = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations);
+            LocalSiloPlacementInfo localSiloPlacementInfo = this.siloConfigurationFactory.CreateLocalSiloPlacementInfo(siloConfigurations, region);
             RegionalSiloPlacementInfo regionalSiloPlacementInfo = this.siloConfigurationFactory.CreateRegionalSiloPlacementInfo(siloConfigurations);
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
