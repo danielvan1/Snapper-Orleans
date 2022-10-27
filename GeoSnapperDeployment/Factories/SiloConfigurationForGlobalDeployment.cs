@@ -191,8 +191,7 @@ namespace GeoSnapperDeployment.Factories
             {
                 for (int i = 0; i < configurations.Count; i++)
                 {
-                    // string siloId = this.CreateSiloId(homeRegion, homeRegion, i);
-                    string siloId = string.Empty;
+                    string siloId = this.CreateSiloId(homeRegion, homeRegion, i);
 
                     if (!siloIdsPerRegion.TryGetValue(homeRegion, out List<string> siloIds))
                     {
