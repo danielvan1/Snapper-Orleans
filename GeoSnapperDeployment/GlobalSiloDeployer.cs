@@ -149,7 +149,7 @@ namespace GeoSnapperDeployment
                             {
                                 options.AdvertisedIPAddress = advertisedSiloIPAdress;
                                 options.SiloListeningEndpoint = new IPEndPoint(IPAddress.Parse("0.0.0.0"), siloPort);
-                                options.GatewayListeningEndpoint = new IPEndPoint(IPAddress.Parse("127.0.0.0"), gatewayPort);
+                                options.GatewayListeningEndpoint = new IPEndPoint(IPAddress.Parse("0.0.0.0"), gatewayPort);
                                 options.SiloPort = siloPort;
                                 options.GatewayPort = gatewayPort;
                             })
