@@ -107,7 +107,7 @@ namespace GeoSnapperDeployment
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
-            foreach ((string siloRegion, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,2).Equals(region)))
+            foreach ((string siloRegion, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,region.Length).Equals(region)))
             {
                 IPAddress advertisedSiloIPAddress = siloInfo.IPEndPoint.Address;
                 Console.WriteLine($"Deploying local silo with int id: {siloInfo.SiloId}");
