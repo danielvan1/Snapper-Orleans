@@ -49,9 +49,9 @@ namespace GeoSnapperDeployment.Factories
             {
                 bool isReplica = false;
 
-                IPAddress siloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
+                IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
-                SiloInfo siloInfo = this.siloInfoFactory.Create(siloIPAddress, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloIntegerId,
+                SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloIntegerId,
                                                                 siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
                                                                 siloConfiguration.Region, isReplica);
 
@@ -110,8 +110,9 @@ namespace GeoSnapperDeployment.Factories
                     int siloPort = siloConfiguration.SiloPort;
                     int gatewayPort = siloConfiguration.GatewayPort;
                     bool isReplica = false;
+                    IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
-                    SiloInfo siloInfo = this.siloInfoFactory.Create(IPAddress.Loopback, clusterId, serviceId, siloIntegerId,
+                    SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, clusterId, serviceId, siloIntegerId,
                                                                     siloPort, gatewayPort, region, region, isReplica);
 
                     string siloId = this.CreateSiloId(region, region, i);
@@ -142,9 +143,9 @@ namespace GeoSnapperDeployment.Factories
                     for (int i = 0; i < configurations.Count; i++)
                     {
                         SiloConfiguration siloConfiguration = configurations[i];
-                        IPAddress siloPublicIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
+                        IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
-                        SiloInfo siloInfo = this.siloInfoFactory.Create(siloPublicIPAddress,
+                        SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress,
                                                                         clusterId, serviceId,
                                                                         replicaStartId, replicaStartPort,
                                                                         replicaStartGatewayPort, deploymentRegion,
