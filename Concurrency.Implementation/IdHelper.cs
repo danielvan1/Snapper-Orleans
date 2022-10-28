@@ -18,6 +18,7 @@ namespace Concurrency.Implementation
         public List<string> GetLocalReplicaSiloIds(string localSiloId)
         {
             var updatedDeploymentRegions = new List<string>();
+
             string currentRegion = localSiloId.Substring(0, 2);
 
             foreach(string region in this.regions)

@@ -25,9 +25,9 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
 
-            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 // SiloAddress siloAddress = context.GetCompatibleSilos(target)
                 //                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
