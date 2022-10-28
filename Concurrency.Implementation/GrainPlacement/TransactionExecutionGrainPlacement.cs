@@ -27,6 +27,7 @@ namespace Concurrency.Implementation.GrainPlacement
         {
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
             this.logger.LogInformation("TransactionExecutionGrain CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
+            this.logger.LogInformation("CurrentRegion: {region} ---- dict: {dict}", region, string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo.Select(kv => kv.Key)));
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {

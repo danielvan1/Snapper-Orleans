@@ -27,9 +27,11 @@ namespace Concurrency.Implementation.GrainPlacement
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
-            this.logger.LogInformation("Compatible silos: [{silos}]", string.Join(", ", compatibleSilos));
 
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
+
+            this.logger.LogInformation("RegionalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
+            this.logger.LogInformation("RegionalCoordinator: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo.Select(kv => kv.Key)));
 
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {

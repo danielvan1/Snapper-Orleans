@@ -16,21 +16,25 @@ namespace Concurrency.Implementation.GrainPlacement
     public class RegionalCoordinatorGrainPlacement : IPlacementDirector
     {
         private readonly ILogger<RegionalCoordinatorGrainPlacement> logger;
-        private readonly RegionalSiloPlacementInfo regionalSilos;
+        private readonly RegionalSiloPlacementInfo regionalPlacementInfo;
 
-        public RegionalCoordinatorGrainPlacement(ILogger<RegionalCoordinatorGrainPlacement> logger, RegionalSiloPlacementInfo regionalSilos)
+        public RegionalCoordinatorGrainPlacement(ILogger<RegionalCoordinatorGrainPlacement> logger, RegionalSiloPlacementInfo regionalPlacementInfo)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            this.regionalSilos = regionalSilos ?? throw new ArgumentNullException(nameof(regionalSilos));
+            this.regionalPlacementInfo = regionalPlacementInfo ?? throw new ArgumentNullException(nameof(regionalPlacementInfo));
         }
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
 
+
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            if (this.regionalSilos.RegionsSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
+            this.logger.LogInformation("RegionalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
+            this.logger.LogInformation("RegionalCoordinator: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.regionalPlacementInfo.RegionsSiloInfo.Select(kv => kv.Key)));
+
+            if (this.regionalPlacementInfo.RegionsSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
