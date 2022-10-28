@@ -97,13 +97,13 @@ namespace Experiments
                 }
             }
 
-            string USEU1 = "US-EU-1";
-            string USEU0 = "US-EU-0";
+            string USEU1 = $"US-{region}-1";
+            string USEU0 = $"US-{region}-0";
 
 
             await Task.Delay(1000);
             var replicaGrain0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
-            var replicaGrain1 = client.GetGrain<ISnapperTransactionalAccountGrain>(80, USEU1);
+            var replicaGrain1 = client.GetGrain<ISnapperTransactionalAccountGrain>(multitransfers, USEU1);
             var bankaccount0 = await replicaGrain0.GetState();
             var bankaccount1 = await replicaGrain1.GetState();
             Console.WriteLine($"Replica0 account balance: {bankaccount0.balance}");

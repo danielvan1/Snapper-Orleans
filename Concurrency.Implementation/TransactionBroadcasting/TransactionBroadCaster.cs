@@ -100,9 +100,9 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
             foreach(string replicaSiloId in replicaSiloIds)
             {
-                var localReplicaCoordinator = this.grainFactory.GetGrain<IRegionalReplicaCoordinator>(0, replicaSiloId);
+                var regionalReplicaCoordinator = this.grainFactory.GetGrain<IRegionalReplicaCoordinator>(0, replicaSiloId);
 
-                _ = localReplicaCoordinator.ReceiveRegionalSchedule(bid, previousBid, replicaSchedules);
+                _ = regionalReplicaCoordinator.ReceiveRegionalSchedule(bid, previousBid, replicaSchedules);
             }
 
             return Task.CompletedTask;
