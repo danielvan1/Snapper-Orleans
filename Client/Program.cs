@@ -39,6 +39,8 @@ namespace Client
             await regionalConfigGrainEU.InitializeRegionalCoordinators(region);
             await localConfigGrainEU.InitializeLocalCoordinators(region);
 
+            Console.WriteLine($"Finished initializing all the config grains and all the coordinators for region {region}");
+
             await client.Close();
 
             return 0;

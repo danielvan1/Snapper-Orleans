@@ -31,8 +31,15 @@ namespace Concurrency.Implementation.GrainPlacement
             if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
-                                                 .Where(siloAddress => siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
-                                                                       siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
+                                                 .Where(siloAddress =>
+                                                 {
+                                                     this.logger.LogInformation("SiloAddress info: {x}:{y}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port);
+                                                     this.logger.LogInformation("TransactionExecutionGrain SiloInfo: {siloInfo}:{port}", siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+
+                                                     return siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
+                                                                         siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort);
+
+                                                 })
                                                  .First();
 
                 // var siloAddress = SiloAddress.New(siloInfo.IPEndPoint, 0);
