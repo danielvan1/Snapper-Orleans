@@ -27,12 +27,6 @@ namespace Concurrency.Implementation.GrainPlacement
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
-            // var numberOfSilosInTestCluster = 2;
-            // bool isTestSilo = compatibleSilos.Count == numberOfSilosInTestCluster;
-            // if (isTestSilo) {
-            //     this.logger.Info("Is using test placement strategy");
-            //     return Task.FromResult(compatibleSilos[0]);
-            // }
 
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 

@@ -87,7 +87,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
-            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
+            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext.Item2, transactionContext.Item1);
         }

@@ -2,6 +2,7 @@
 using System.Diagnostics;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
 
 namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
@@ -43,6 +44,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             if (this.deterministicNodes.ContainsKey(subBatch.PreviousBid))
             {
                 var previousNode = this.deterministicNodes[subBatch.PreviousBid];
+
                 if (previousNode.Next == null)
                 {
                     previousNode.Next = node;
@@ -50,6 +52,8 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
                 }
                 else
                 {
+                    this.logger.LogError("batch: {bid}, prevBatch: {prev}, regionalBid: {regionalBid}, highestCommittedBid: {highest}", subBatch.Bid, subBatch.PreviousBid, regionalBid, highestCommittedBid);
+
                     Debug.Assert(!previousNode.Next.IsDet && previousNode.Next.Next == null);
                     previousNode.Next.Next = node;
                     node.Previous = previousNode.Next;
