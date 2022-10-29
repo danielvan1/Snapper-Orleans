@@ -41,6 +41,8 @@ namespace Concurrency.Implementation.GrainPlacement
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 
+                this.logger.LogInformation("RegionalCoordinator: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-port", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+
                 return Task.FromResult(siloAddress);
             }
 

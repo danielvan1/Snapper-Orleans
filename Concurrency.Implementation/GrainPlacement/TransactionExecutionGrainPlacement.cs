@@ -25,25 +25,21 @@ namespace Concurrency.Implementation.GrainPlacement
 
         public Task<SiloAddress> OnAddActivation(PlacementStrategy strategy, PlacementTarget target, IPlacementContext context)
         {
-            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string region);
-            this.logger.LogInformation("TransactionExecutionGrain CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
-            this.logger.LogInformation("CurrentRegion: {region} ---- dict: {dict}", region, string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo.Select(kv => kv.Key)));
+            long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(region, out SiloInfo siloInfo))
+            if (this.localSiloPlacementInfo.LocalSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
                 SiloAddress siloAddress = context.GetCompatibleSilos(target)
                                                  .Where(siloAddress =>
                                                  {
-                                                     this.logger.LogInformation("SiloAddress info: {x}:{y}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port);
-                                                     this.logger.LogInformation("TransactionExecutionGrain SiloInfo: {siloInfo}:{port}", siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
-
                                                      return siloAddress.Endpoint.Address.Equals(siloInfo.IPEndPoint.Address) &&
                                                                          siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort);
 
                                                  })
                                                  .First();
 
-                // var siloAddress = SiloAddress.New(siloInfo.IPEndPoint, 0);
+                this.logger.LogInformation("TransactionExecutionGrain: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-port", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+
                 return Task.FromResult(siloAddress);
             }
 
