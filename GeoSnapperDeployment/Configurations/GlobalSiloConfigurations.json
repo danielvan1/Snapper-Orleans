@@ -84,6 +84,13 @@
                     "Region": "US",
                     "SiloPort": 20002,
                     "GatewayPort": 30006
+                },
+                {
+                    "IPAddress" : "4.227.140.73",
+                    "SiloId": 3,
+                    "Region": "US",
+                    "SiloPort": 20003,
+                    "GatewayPort": 30007
                 }
             ]
         }
