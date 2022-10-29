@@ -7,7 +7,6 @@ namespace Concurrency.Implementation.Coordinator.Replica
 {
     public interface ILocalReplicaCoordinator : IGrainWithIntegerCompoundKey
     {
-
         Task ReceiveLocalSchedule(long bid, long previousBid, Dictionary<GrainAccessInfo, LocalSubBatch> schedule);
 
         /// <summary>

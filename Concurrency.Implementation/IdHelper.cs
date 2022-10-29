@@ -23,7 +23,7 @@ namespace Concurrency.Implementation
 
             foreach(string region in this.regions)
             {
-                if(region == localSiloId) continue;
+                if(region == currentRegion) continue;
 
                 updatedDeploymentRegions.Add(this.UpdateDeploymentRegion(region, localSiloId));
             }

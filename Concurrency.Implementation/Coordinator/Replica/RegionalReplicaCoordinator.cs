@@ -31,9 +31,9 @@ namespace Concurrency.Implementation.Coordinator.Replica
 
         public override Task OnActivateAsync()
         {
-            this.GetPrimaryKeyLong(out string regionKey);
+            this.GetPrimaryKeyLong(out string siloId);
 
-            this.currentRegion = regionKey;
+            this.currentRegion = siloId;
             this.highestCommittedBid = -1;
 
             this.expectedAcknowledgementsPerBatch = new Dictionary<long, int>();

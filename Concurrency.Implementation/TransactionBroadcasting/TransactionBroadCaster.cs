@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.Logging;
@@ -33,6 +34,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
         public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext, long highestCommittedBidFromMaster)
         {
             this.logger.LogInformation("BroadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
+            this.logger.LogInformation("Is functionInput null: {bool}", functionInput is null);
 
             string currentRegion = startGrain.SiloId.Substring(0, 2);
 
@@ -46,12 +48,12 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                 {
                     long id = grainAccessInfo.Id;
 
-                    string replicaRegion = grainAccessInfo.ReplaceDeploymentRegion(region);
+                    string replicaSiloId = grainAccessInfo.ReplaceDeploymentRegion(region);
 
                     newGrainAccessInfo.Add(new GrainAccessInfo()
                     {
                         Id = grainAccessInfo.Id,
-                        SiloId = replicaRegion,
+                        SiloId = replicaSiloId,
                         GrainClassNamespace = grainAccessInfo.GrainClassNamespace
                     });
                 }
@@ -76,6 +78,8 @@ namespace Concurrency.Implementation.TransactionBroadcasting
             {
                 subBatch.LocalCoordinatorId = 0;
             }
+
+            this.logger.LogInformation("ReplicaSiloIds: {replicaSiloIds}", string.Join(", ", replicaSiloIds));
 
             foreach(string replicaSiloId in replicaSiloIds)
             {
@@ -125,6 +129,9 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
                 newFunctionInput.DestinationGrains.Add(newTransactionInfo);
             }
+
+            this.logger.LogInformation("The region: {region} and the destinationGrain: {destinationGrain}",
+             region, string.Join(", ", newFunctionInput.DestinationGrains.Select(d => d.DestinationGrain)));
 
             return newFunctionInput;
         }
