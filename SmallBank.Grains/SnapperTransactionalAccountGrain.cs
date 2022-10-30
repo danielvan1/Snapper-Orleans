@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution;
@@ -20,8 +21,10 @@ namespace SmallBank.Grains
         public SnapperTransactionalAccountGrain(ILogger<SnapperTransactionalAccountGrain> logger,
                                                 ITransactionContextProviderFactory transactionContextProviderFactory,
                                                 ITransactionBroadCasterFactory transactionBroadCasterFactory,
-                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory)
-                                                : base(logger, transactionContextProviderFactory, transactionBroadCasterFactory, deterministicTransactionExecutorFactory, "SmallBank.Grains.SnapperTransactionalAccountGrain")
+                                                IDeterministicTransactionExecutorFactory deterministicTransactionExecutorFactory,
+                                                IIdHelper idHelper,
+                                                List<string> region)
+                                                : base(logger, transactionContextProviderFactory, transactionBroadCasterFactory, deterministicTransactionExecutorFactory, idHelper, "SmallBank.Grains.SnapperTransactionalAccountGrain",  region)
         {
             this.logger = logger;
         }
