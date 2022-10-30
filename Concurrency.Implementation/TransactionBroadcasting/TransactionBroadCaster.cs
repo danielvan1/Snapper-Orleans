@@ -79,7 +79,6 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                 subBatch.LocalCoordinatorId = 0;
             }
 
-
             foreach(string replicaSiloId in replicaSiloIds)
             {
                 this.logger.LogInformation("Broadcasting schedule to replica local coordinator: {region}", replicaSiloId);

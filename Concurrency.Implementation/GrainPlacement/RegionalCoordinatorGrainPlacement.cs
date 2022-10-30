@@ -28,7 +28,6 @@ namespace Concurrency.Implementation.GrainPlacement
         {
             IList<SiloAddress> compatibleSilos = context.GetCompatibleSilos(target);
 
-
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
             this.logger.LogInformation("RegionalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));

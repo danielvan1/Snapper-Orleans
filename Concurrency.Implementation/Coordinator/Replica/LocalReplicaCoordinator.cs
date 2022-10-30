@@ -122,8 +122,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 long regionalBid = localSubBatch.RegionalBid;
                 await this.regionalReplicaCoordinator.CommitAcknowledgement(regionalBid);
                 await this.WaitForRegionalBatchToCommit(regionalBid);
-                // await this.WaitForBatchToCommit(localSubBatch.RegionalBid);
             }
+
             this.logger.LogInformation("Herpderp3", this.GrainReference);
 
             // When this is done we can start to commit the current batch
