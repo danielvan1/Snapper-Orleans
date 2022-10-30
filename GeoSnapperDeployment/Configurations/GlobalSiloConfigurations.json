@@ -3,8 +3,8 @@
     {
         "ClusterId": "Snapper",
         "ServiceId": "Snapper",
-        "ReplicaStartPort" : 25000,
-        "ReplicaStartGatewayPort" : 35000,
+        "ReplicaStartPort" : 15003,
+        "ReplicaStartGatewayPort" : 30008,
         "ReplicaStartId" : 40000,
         "IPAddresses" : [
             {

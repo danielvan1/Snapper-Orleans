@@ -86,7 +86,6 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         public Task SpawnLocalCoordGrain(ILocalCoordinatorGrain neighbor)
         {
-
             this.neighborCoord = neighbor;
 
             return Task.CompletedTask;
