@@ -86,7 +86,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 string masterRegion = grainId.SiloId;
                 string replicaRegion = grainId.ReplaceDeploymentRegion(this.currentRegion);
 
-                this.logger.LogInformation("Sending local schedule to TransactionExecitionGrain: {grainId}-{replicaRegion}", this.GrainReference, id, replicaRegion);
+                this.logger.LogInformation("Sending local schedule to Replica TransactionExecitionGrain: {grainId}-{replicaRegion}", this.GrainReference, id, replicaRegion);
 
                 var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, replicaRegion, grainId.GrainClassNamespace);
 
@@ -104,7 +104,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
         /// <returns></returns>
         public async Task CommitAcknowledgement(long bid)
         {
-            this.logger.LogInformation("Received commit acknowledgment from grain for localbid: {localBid}. Current number of expected acknowledgements are: {acks}", this.GrainReference, bid, this.expectedAcknowledgementsPerBatch[bid]);
+            this.logger.LogInformation("Received commit acknowledgment from replica grain for localbid: {localBid}. Current number of expected acknowledgements are: {acks}", this.GrainReference, bid, this.expectedAcknowledgementsPerBatch[bid]);
             this.expectedAcknowledgementsPerBatch[bid]--;
 
             if(this.expectedAcknowledgementsPerBatch[bid] > 0)
@@ -141,7 +141,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             foreach ((GrainAccessInfo grainId, _) in currentScheduleMap)
             {
                 this.GetPrimaryKeyLong(out string siloId);
-                this.logger.LogInformation("Sending acknowledgement that local batch can commit to grain {grainId}-{siloId} for localbid: {localbid}", this.GrainReference, grainId.Id, siloId, bid);
+                this.logger.LogInformation("Sending acknowledgement that local batch can commit to replica grain {grainId}-{siloId} for localbid: {localbid}", this.GrainReference, grainId.Id, siloId, bid);
                 // this.logger.LogInformation($"Commit Grains", this.GrainReference);
                 // Debug.Assert(region == grainId.Region); // I think this should be true, we just have the same info multiple places now
                 var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(grainId.Id, siloId, grainId.GrainClassNamespace);

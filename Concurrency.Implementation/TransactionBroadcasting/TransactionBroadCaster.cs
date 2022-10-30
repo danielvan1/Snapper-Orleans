@@ -79,10 +79,10 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                 subBatch.LocalCoordinatorId = 0;
             }
 
-            this.logger.LogInformation("ReplicaSiloIds: {replicaSiloIds}", string.Join(", ", replicaSiloIds));
 
             foreach(string replicaSiloId in replicaSiloIds)
             {
+                this.logger.LogInformation("Broadcasting schedule to replica local coordinator: {region}", replicaSiloId);
                 var localReplicaCoordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, replicaSiloId);
 
                 _ = localReplicaCoordinator.ReceiveLocalSchedule(bid, previousBid, replicaSchedules);
@@ -104,6 +104,8 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
             foreach(string replicaSiloId in replicaSiloIds)
             {
+                this.logger.LogInformation("Broadcasting schedule to replica regional coordinator: {region}", replicaSiloId);
+
                 var regionalReplicaCoordinator = this.grainFactory.GetGrain<IRegionalReplicaCoordinator>(0, replicaSiloId);
 
                 _ = regionalReplicaCoordinator.ReceiveRegionalSchedule(bid, previousBid, replicaSchedules);

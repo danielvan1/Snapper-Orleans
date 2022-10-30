@@ -38,7 +38,7 @@ namespace Concurrency.Implementation.GrainPlacement
                                                  })
                                                  .First();
 
-                this.logger.LogInformation("TransactionExecutionGrain: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-port", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+                this.logger.LogInformation("TransactionExecutionGrain: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-{port}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
 
                 return Task.FromResult(siloAddress);
             }
