@@ -73,11 +73,10 @@ namespace GeoSnapperDeployment.Factories
         {
             var localSilos = siloConfigurations.Silos.LocalSilos;
 
-            var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(region)).First().IPAddress);
 
             Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
             Dictionary<string, SiloInfo> homeSilos = this.CreateHomeSiloInfos(siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfigurationRegionBuckets);
-            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets, advertisedSiloIPAddress);
+            Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets);
 
             var homeAndReplicaSilos = this.MergeDictionaries(homeSilos, replicaSilos);
 
@@ -126,7 +125,7 @@ namespace GeoSnapperDeployment.Factories
             return homeSilos;
         }
 
-        private  Dictionary<string, SiloInfo> CreateReplicaSiloInfos(SiloConfigurations siloConfigurations, Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets, IPAddress advertisedSiloIPAddress)
+        private  Dictionary<string, SiloInfo> CreateReplicaSiloInfos(SiloConfigurations siloConfigurations, Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets)
         {
             string clusterId = siloConfigurations.ClusterId;
             string serviceId = siloConfigurations.ServiceId;
@@ -138,6 +137,8 @@ namespace GeoSnapperDeployment.Factories
 
             foreach ((string deploymentRegion, _) in siloConfigurationRegionBuckets)
             {
+
+                var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(deploymentRegion)).First().IPAddress);
                 foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
                 {
                     // We don't want to create home silo info here, we do that another place
