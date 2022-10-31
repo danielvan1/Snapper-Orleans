@@ -317,13 +317,12 @@ namespace GeoSnapperDeployment
 
                 serviceCollection.AddSingleton<IIdHelper, IdHelper>();
                 serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
-                serviceCollection.AddSingleton<IScheduleInfoManager, ScheduleInfoManager>();
+                serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
 
                 serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
-                serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, LocalConfigurationGrainPlacementStrategy>(nameof(LocalConfigurationGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, LocalConfigurationGrainPlacement>(typeof(LocalConfigurationGrainPlacementStrategy));
@@ -333,6 +332,9 @@ namespace GeoSnapperDeployment
 
                 serviceCollection.AddSingletonNamedService<PlacementStrategy, TransactionExecutionGrainPlacementStrategy>(nameof(TransactionExecutionGrainPlacementStrategy));
                 serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, TransactionExecutionGrainPlacement>(typeof(TransactionExecutionGrainPlacementStrategy));
+
+                serviceCollection.AddSingletonNamedService<PlacementStrategy, RegionalCoordinatorGrainPlacementStrategy>(nameof(RegionalCoordinatorGrainPlacementStrategy));
+                serviceCollection.AddSingletonKeyedService<Type, IPlacementDirector, RegionalCoordinatorGrainPlacement>(typeof(RegionalCoordinatorGrainPlacementStrategy));
             });
         }
 

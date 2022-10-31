@@ -73,7 +73,6 @@ namespace GeoSnapperDeployment.Factories
         {
             var localSilos = siloConfigurations.Silos.LocalSilos;
 
-
             Dictionary<string, List<SiloConfiguration>> siloConfigurationRegionBuckets = this.PutEachSiloConfigurationInRegionBuckets(localSilos);
             Dictionary<string, SiloInfo> homeSilos = this.CreateHomeSiloInfos(siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfigurationRegionBuckets);
             Dictionary<string, SiloInfo> replicaSilos = this.CreateReplicaSiloInfos(siloConfigurations, siloConfigurationRegionBuckets);
@@ -107,7 +106,6 @@ namespace GeoSnapperDeployment.Factories
                 for (int i = 0; i < configurations.Count; i++)
                 {
                     var siloConfiguration = configurations[i];
-
                     int siloIntegerId = siloConfiguration.SiloIntegerId;
                     int siloPort = siloConfiguration.SiloPort;
                     int gatewayPort = siloConfiguration.GatewayPort;
@@ -137,7 +135,6 @@ namespace GeoSnapperDeployment.Factories
 
             foreach ((string deploymentRegion, _) in siloConfigurationRegionBuckets)
             {
-
                 var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(deploymentRegion)).First().IPAddress);
                 foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
                 {

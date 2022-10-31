@@ -292,7 +292,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
                     siloToSubBatch.Add(siloId, new SubBatch(currentBatchId, this.myId));
 
                     // randomly choose a local coord as the coordinator for this batch on that silo
-                    int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.numLocalCoordPerSilo);
+                    int randomlyChosenLocalCoordinatorID = this.random.Next(Constants.NumberOfLocalCoordinatorsPerSilo);
                     string localCoordinatorSiloId = siloId;
                     this.localCoordinatorPerSiloPerBatch[currentBatchId].Add(siloId, new Tuple<int, string>(randomlyChosenLocalCoordinatorID, localCoordinatorSiloId));
                 }

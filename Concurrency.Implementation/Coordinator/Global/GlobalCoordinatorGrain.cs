@@ -44,15 +44,6 @@ namespace Concurrency.Implementation.Coordinator.Global
             this.logger = logger;
         }
 
-        // for PACT
-        // public async Task<Tuple<TransactionRegisterInfo, Dictionary<string, int>>> NewTransaction(List<string> siloList)
-        // {
-        //     // var id = await detTxnProcessor.GetDeterministicTransactionBidAndTid(siloList);
-        //     // Debug.Assert(coordPerBatchPerSilo.ContainsKey(id.Item1));
-        //     // var info = new TransactionRegisterInfo(id.Item1, id.Item2, detTxnProcessor.highestCommittedBid);  // bid, tid, highest committed bid
-        //     // return new Tuple<TransactionRegisterInfo, Dictionary<string, int>>(info, coordPerBatchPerSilo[id.Item1]);
-        // }
-
         public Task PassToken(TokenBase token)
         {
             long curBatchID = -1;
@@ -84,37 +75,6 @@ namespace Concurrency.Implementation.Coordinator.Global
                 _ = dest.ReceiveBatchSchedule(item.Value);
             }
         }
-
-        // public async Task AckBatchCompletion(long bid)
-        // {
-        //     // count down the number of expected ACKs from different silos
-        //     expectedAcksPerBatch[bid]--;
-        //     if (expectedAcksPerBatch[bid] != 0) return;
-
-        //     // commit the batch
-        //     await detTxnProcessor.WaitPrevBatchToCommit(bid);
-        //     detTxnProcessor.AckBatchCommit(bid);
-
-        //     // send ACKs to local coordinators
-        //     var curScheduleMap = bidToSubBatches[bid];
-        //     var coords = coordPerBatchPerSilo[bid];
-        //     foreach (var item in curScheduleMap)
-        //     {
-        //         var localCoordID = coords[item.Key];
-        //         var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordID, "");
-        //         _ = dest.AckRegionalBatchCommit(bid);
-        //     }
-
-        //     // garbage collection
-        //     bidToSubBatches.Remove(bid);
-        //     coordPerBatchPerSilo.Remove(bid);
-        //     expectedAcksPerBatch.Remove(bid);
-        // }
-
-        // public async Task WaitBatchCommit(long bid)
-        // {
-        //     await detTxnProcessor.WaitBatchCommit(bid);
-        // }
 
         public Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor)
         {
