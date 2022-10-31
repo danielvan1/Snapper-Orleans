@@ -291,7 +291,6 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
-                serviceCollection.AddSingleton<ILocalDeterministicTransactionProcessorFactory, LocalDeterministicTransactionProcessorFactory>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
             });
         }
