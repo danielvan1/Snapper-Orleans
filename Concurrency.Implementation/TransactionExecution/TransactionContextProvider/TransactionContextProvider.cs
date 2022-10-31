@@ -32,8 +32,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
                                           ICoordinatorProvider coordinatorProvider,
                                           IPlacementManager placementManager,
                                           IGrainFactory grainFactory,
-                                          ILocalCoordinatorGrain localCoordinatorGrain,
-                                          IRegionalCoordinatorGrain regionalCoordinatorGrain,
                                           GrainReference grainReference,
                                           GrainId grainId)
         {
@@ -46,10 +44,8 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
             this.mySiloId = grainId.SiloId;
 
-            this.localCoordinator = localCoordinatorGrain;
-            this.regionalCoordinator = regionalCoordinatorGrain;
-            // this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.StringId, grainFactory);
-            // this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.StringId.Substring(0, 2), grainFactory);
+            this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.SiloId, grainFactory);
+            this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.SiloId.Substring(0, 2), grainFactory);
         }
 
         /// <summary>
@@ -71,6 +67,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
             // For a simple example, make sure that only 1 silo is involved in the transaction
             this.logger.LogInformation("Silolist count: {siloListCount}", this.grainReference, silos.Count);
+
             if (silos.Count > 1)
             {
                 return await this.GetRegionalContext(grainListPerSilo);

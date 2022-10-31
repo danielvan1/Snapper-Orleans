@@ -22,9 +22,9 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             this.placementManager = placementManager ?? throw new System.ArgumentNullException(nameof(placementManager));
         }
 
-        public ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId, ILocalCoordinatorGrain localCoordinatorGrain, IRegionalCoordinatorGrain regionalCoordinatorGrain)
+        public ITransactionContextProvider Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId)
         {
-            return new TransactionContextProvider(this.logger, this.coordinatorProvider, this.placementManager, grainFactory, localCoordinatorGrain, regionalCoordinatorGrain, grainReference, grainId);
+            return new TransactionContextProvider(this.logger, this.coordinatorProvider, this.placementManager, grainFactory, grainReference, grainId);
         }
     }
 }

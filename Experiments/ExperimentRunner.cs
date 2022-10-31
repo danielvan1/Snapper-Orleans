@@ -6,6 +6,7 @@ using Orleans.Configuration;
 using Orleans.Hosting;
 using SmallBank.Interfaces;
 using SnapperGeoRegionalIntegration.Tests;
+using ThirdParty.BouncyCastle.Asn1;
 using Utilities;
 
 namespace Experiments
@@ -18,7 +19,6 @@ namespace Experiments
 
             // Going to perform 2 init transactions on two accounts in the same region,
             // and then transfer 50$ from account id 0 to account id 1. They both
-            // get initialized to 100$(hardcoded inside of Init)
 
             var numberOfAccountsInEachServer = multitransfers;
             Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
@@ -100,7 +100,6 @@ namespace Experiments
             string USEU1 = $"US-{region}-1";
             string USEU0 = $"US-{region}-0";
 
-
             await Task.Delay(1000);
             var replicaGrain0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
             var replicaGrain1 = client.GetGrain<ISnapperTransactionalAccountGrain>(multitransfers, USEU1);
@@ -108,15 +107,6 @@ namespace Experiments
             var bankaccount1 = await replicaGrain1.GetState();
             Console.WriteLine($"Replica0 account balance: {bankaccount0.balance}");
             Console.WriteLine($"Replica1 account balance: {bankaccount1.balance}");
-
-
-            // var replicaActorUSEU0 = client.GetGrain<ISnapperTransactionalAccountGrain>(0, USEU0);
-            // TransactionResult balanceTaskReplica = await replicaActorUSEU0.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 0, SiloId = USEU0, GranClassNamespace = snapperTransactionalAccountGrainTypeName } });
-            // Console.WriteLine($"Replica ::: result: {balanceTaskReplica.resultObj} -- expected {initialBalance - numberOfAccountsInEachServer * oneDollar}");
-
-            // var replicaActorUSEU1 = client.GetGrain<ISnapperTransactionalAccountGrain>(70, USEU1);
-            // TransactionResult balanceTaskReplica1 = await replicaActorUSEU1.StartTransaction("Balance", null, new List<GrainAccessInfo>() { new GrainAccessInfo(){Id = 70, SiloId = USEU1, GranClassNamespace = snapperTransactionalAccountGrainTypeName } });
-            // Console.WriteLine($"Replica ::: result: {balanceTaskReplica1.resultObj} -- expected {initialBalance + numberOfAccountsInEachServer * oneDollar}");
 
             await client.Close();
         }

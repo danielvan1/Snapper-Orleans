@@ -26,13 +26,12 @@ namespace Concurrency.Implementation.Coordinator
         }
 
         // TODO: Add a way to get the number of regionalCoordinators.
-        public IRegionalCoordinatorGrain GetRegionalCoordinator(int id, string regionId, IGrainFactory grainFactory)
+        public IRegionalCoordinatorGrain GetRegionalCoordinator(int id, string siloId, IGrainFactory grainFactory)
         {
-            string region = regionId.Substring(0, 2);
             int regionalCoordinatorId = 0;
-            this.logger.LogInformation("Creating regional coordinator with id: {id} and region: {region}", regionalCoordinatorId, region);
+            this.logger.LogInformation("Creating regional coordinator with id: {id} and region: {region}", regionalCoordinatorId, siloId);
 
-            return grainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorId, region);
+            return grainFactory.GetGrain<IRegionalCoordinatorGrain>(regionalCoordinatorId, siloId);
         }
     }
 }

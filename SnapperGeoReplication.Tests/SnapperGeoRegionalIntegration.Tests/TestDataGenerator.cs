@@ -10,10 +10,8 @@ namespace SnapperGeoRegionalIntegration.Tests
     {
         public static List<string> GetAccessInfoClassNames(int n)
         {
-            Type snapperTransactionalAccountGrainType = typeof(SmallBank.Grains.SnapperTransactionalAccountGrain);
-            // string snapperTransactionalAccountGrainTypeName = snapperTransactionalAccountGrainType.ToString();
             string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
-            // Consol
+
             return Enumerable.Repeat(snapperTransactionalAccountGrainTypeName, n).ToList<string>();
         }
 
@@ -33,6 +31,7 @@ namespace SnapperGeoRegionalIntegration.Tests
                     GrainClassNamespace = grainClassName
                 });
             }
+
             return accountIds;
         }
 
