@@ -643,20 +643,20 @@ namespace Concurrency.Implementation.Coordinator.Local
         {
             var expiredGrains = new HashSet<GrainAccessInfo>();
 
-            // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            foreach (var item in token.PreviousBidPerGrain)
-            {
-                if (item.Value <= this.highestCommittedBid)
-                {
-                    expiredGrains.Add(item.Key);
-                }
-            }
+            // // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
+            // foreach (var item in token.PreviousBidPerGrain)
+            // {
+            //     if (item.Value <= this.highestCommittedBid)
+            //     {
+            //         expiredGrains.Add(item.Key);
+            //     }
+            // }
 
-            foreach (var item in expiredGrains)
-            {
-                token.PreviousBidPerGrain.Remove(item);
-                token.PreviousRegionalBidPerGrain.Remove(item);
-            }
+            // foreach (var item in expiredGrains)
+            // {
+            //     token.PreviousBidPerGrain.Remove(item);
+            //     token.PreviousRegionalBidPerGrain.Remove(item);
+            // }
 
             token.HighestCommittedBid = this.highestCommittedBid;
         }
