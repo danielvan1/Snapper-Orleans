@@ -8,6 +8,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 {
     public interface ITransactionContextProvider
     {
-        Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos);
+        Task<TransactionContext> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos);
     }
 }

@@ -19,7 +19,7 @@ namespace Utilities
 
         public override string ToString()
         {
-            return $"tid: {this.Tid}, bid: {this.Bid}, highestCommittedBid: {this.HighestCommittedBid}";
+            return $"Tid: {this.Tid}, Bid: {this.Bid}, HighestCommittedBid: {this.HighestCommittedBid}";
         }
     }
 }

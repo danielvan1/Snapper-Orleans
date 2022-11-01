@@ -71,23 +71,23 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
         {
             this.logger.LogInformation("Waiting for turn for {context}", this.grainReference, context);
             // check if it is a global PACT
-            if (context.regionalBid != -1)
+            if (context.RegionalBid != -1)
             {
                 // wait until the SubBatch has arrived this grain
-                if (!this.regionalBatchInfoPromise.ContainsKey(context.regionalBid))
+                if (!this.regionalBatchInfoPromise.ContainsKey(context.RegionalBid))
                 {
-                    this.regionalBatchInfoPromise.Add(context.regionalBid, new TaskCompletionSource<bool>());
+                    this.regionalBatchInfoPromise.Add(context.RegionalBid, new TaskCompletionSource<bool>());
                 }
 
                 this.logger.LogInformation("Waiting for regionalbatchInfoPromise for context: {context}", this.grainReference, context);
                 // First wait for the batch to arrive and that we can start executing the transactions in this specific batch.
-                await this.regionalBatchInfoPromise[context.regionalBid].Task;
+                await this.regionalBatchInfoPromise[context.RegionalBid].Task;
 
                 this.logger.LogInformation("Done waiting for regionalbatchInfoPromise for context: {context}", this.grainReference, context);
 
                 // need to map global info to the corresponding local tid and bid
-                context.localBid = this.regionalBidToLocalBid[context.regionalBid];
-                context.localTid = this.regionalBidToRegionalTidToLocalTidPerBatch[context.regionalBid][context.regionalTid];
+                context.LocalBid = this.regionalBidToLocalBid[context.RegionalBid];
+                context.LocalTid = this.regionalBidToRegionalTidToLocalTidPerBatch[context.RegionalBid][context.RegionalTid];
 
                 this.logger.LogInformation("HerpDerpContext: {context}", this.grainReference, context);
             }
@@ -95,22 +95,22 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
             {
                 this.logger.LogInformation("WaitForturn waiting", this.grainReference);
                 // wait until the SubBatch has arrived this grain
-                if (!this.localBatchInfoPromise.ContainsKey(context.localBid))
+                if (!this.localBatchInfoPromise.ContainsKey(context.LocalBid))
                 {
-                    this.localBatchInfoPromise.Add(context.localBid, new TaskCompletionSource<bool>());
+                    this.localBatchInfoPromise.Add(context.LocalBid, new TaskCompletionSource<bool>());
                 }
 
                 // First wait for the batch to arrive and that we can start executing the transactions in this specific batch.
-                await this.localBatchInfoPromise[context.localBid].Task;
+                await this.localBatchInfoPromise[context.LocalBid].Task;
 
                 this.logger.LogInformation("WaitForturn finished", this.grainReference);
             }
 
-            Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.localTid));
-            this.determinsticFunctionResults.TryAdd(context.localTid, new BasicFuncResult());
+            Debug.Assert(!this.determinsticFunctionResults.ContainsKey(context.LocalTid));
+            this.determinsticFunctionResults.TryAdd(context.LocalTid, new BasicFuncResult());
 
             // After the batch is arrived we are waiting for the turn of the current transaction.
-            await this.transactionScheduler.WaitForTurn(context.localBid, context.localTid);
+            await this.transactionScheduler.WaitForTurn(context.LocalBid, context.LocalTid);
             this.logger.LogInformation("Done waiting for turn for context: {context}", this.grainReference, context);
         }
 
@@ -128,23 +128,23 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
         public Task FinishExecuteDeterministicTransaction(TransactionContext context)
         {
             // This is the coordinatorId that sent the subbatch containing the current transaction.
-            var localCoordinatorId = this.transactionScheduler.IsBatchComplete(context.localBid, context.localTid);
+            var localCoordinatorId = this.transactionScheduler.IsBatchComplete(context.LocalBid, context.LocalTid);
 
             this.logger.LogInformation("FinishExecuteDeterministicTransaction: the coordinator that sent the subbatch: {coordinatorId} with context {context}",
                                         this.grainReference, localCoordinatorId, context);
 
             if (localCoordinatorId != -1)   // the current batch has completed on this grain
             {
-                this.localBatchInfoPromise.Remove(context.localBid);
+                this.localBatchInfoPromise.Remove(context.LocalBid);
 
-                if (context.regionalBid != -1)
+                if (context.RegionalBid != -1)
                 {
-                    this.regionalBidToLocalBid.Remove(context.regionalBid);
-                    this.regionalBidToRegionalTidToLocalTidPerBatch.Remove(context.regionalBid);
-                    this.regionalBatchInfoPromise.Remove(context.regionalBid);
+                    this.regionalBidToLocalBid.Remove(context.RegionalBid);
+                    this.regionalBidToRegionalTidToLocalTidPerBatch.Remove(context.RegionalBid);
+                    this.regionalBatchInfoPromise.Remove(context.RegionalBid);
                 }
 
-                this.transactionScheduler.CompleteDeterministicBatch(context.localBid);
+                this.transactionScheduler.CompleteDeterministicBatch(context.LocalBid);
 
                 // We use the current region, since we assume that the local coordinator is in the same silo
                 var localCoordinatorRegion = this.grainId.SiloId;
@@ -154,14 +154,14 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 if(context.IsReplicaTransaction)
                 {
                     this.logger.LogInformation("Send the local replica coordinator 0-{localCoordinatorRegion} the acknowledgement of the batch completion for batch id: {localBid}",
-                                               this.grainReference, localCoordinatorRegion, context.localBid);
+                                               this.grainReference, localCoordinatorRegion, context.LocalBid);
                     var coordinator = this.grainFactory.GetGrain<ILocalReplicaCoordinator>(0, localCoordinatorRegion);
-                    _ = coordinator.CommitAcknowledgement(context.localBid);
+                    _ = coordinator.CommitAcknowledgement(context.LocalBid);
                 }
                 else
                 {
                     var coordinator = this.grainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorId, localCoordinatorRegion);
-                    _ = coordinator.BatchCompletionAcknowledgement(context.localBid);
+                    _ = coordinator.BatchCompletionAcknowledgement(context.LocalBid);
                 }
 
                 this.logger.LogInformation("Done with current batch. The coordinator that sent the subbatch: {coordinatorId} with context {context}",

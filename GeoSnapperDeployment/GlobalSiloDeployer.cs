@@ -60,7 +60,6 @@ namespace GeoSnapperDeployment
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
-            Console.WriteLine($"");
             Console.WriteLine($"Starting to deploy region silo in region {region}. Regional silo configurations to deploy: {string.Join(" ,", silosToDeploy)}");
 
             foreach (SiloConfiguration regionalSiloConfiguration in silosToDeploy)

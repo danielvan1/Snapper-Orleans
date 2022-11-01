@@ -31,7 +31,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
             this.regions = regions ?? throw new ArgumentNullException(nameof(regions));
         }
 
-        public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext, long highestCommittedBidFromMaster)
+        public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext)
         {
             this.logger.LogInformation("BroadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
             this.logger.LogInformation("Is functionInput null: {bool}", functionInput is null);
@@ -60,7 +60,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
                 var transactionExecutionGrain = this.grainFactory.GetGrain<ITransactionExecutionGrain>(startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.SiloId), startGrain.GrainClassName);
 
-                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext, highestCommittedBidFromMaster );
+                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext);
             }
 
             this.logger.LogInformation("Finished broadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
@@ -132,7 +132,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
             }
 
             this.logger.LogInformation("The region: {region} and the destinationGrain: {destinationGrain}",
-             region, string.Join(", ", newFunctionInput.DestinationGrains.Select(d => d.DestinationGrain)));
+                                        region, string.Join(", ", newFunctionInput.DestinationGrains.Select(d => d.DestinationGrain)));
 
             return newFunctionInput;
         }

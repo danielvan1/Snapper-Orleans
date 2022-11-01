@@ -8,7 +8,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 {
     public interface ITransactionBroadCaster
     {
-        Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext, long highestCommittedBidFromMaster);
+        Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext);
 
         Task BroadCastLocalSchedules(string currentLocalSiloId, long bid, long previousBid, Dictionary<GrainAccessInfo, LocalSubBatch> replicaSchedules);
 

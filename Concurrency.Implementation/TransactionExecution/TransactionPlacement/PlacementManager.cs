@@ -42,12 +42,5 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionPlacement
 
             return siloIds;
         }
-
-        private bool IsMultiHome(IEnumerable<string> siloIds)
-        {
-            bool IsMultiHome = false;
-
-            return IsMultiHome;
-        }
     }
 }

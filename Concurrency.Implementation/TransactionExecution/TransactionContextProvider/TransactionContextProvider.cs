@@ -56,7 +56,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
         /// <param name="grainAccessInfos"></param>
         /// <param name="grainClassNames"></param>
         /// <returns></returns>
-        public async Task<Tuple<long, TransactionContext>> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
+        public async Task<TransactionContext> GetDeterministicContext(List<GrainAccessInfo> grainAccessInfos)
         {
             this.logger.LogInformation("Getting context for grainList: [{grainList}] and grainClassNames: [{grainClassNames}]",
                                        this.grainReference, string.Join(", ", grainAccessInfos));
@@ -98,18 +98,20 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             return grainListPerSilo;
         }
 
-        private async Task<Tuple<long, TransactionContext>> GetLocalContext(List<GrainAccessInfo> grainAccessInfos)
+        private async Task<TransactionContext> GetLocalContext(List<GrainAccessInfo> grainAccessInfos)
         {
             TransactionRegisterInfo info = await this.localCoordinator.NewLocalTransaction(grainAccessInfos);
             this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.localCoordinator);
 
-            var cxt2 = new TransactionContext(info.Tid, info.Bid);
-            var localContext = new Tuple<long, TransactionContext>(info.HighestCommittedBid, cxt2);
+            var localTransactionContext = new TransactionContext(info.Tid, info.Bid)
+            {
+                HighestCommittedBid = info.HighestCommittedBid
+            };
 
-            return localContext;
+            return localTransactionContext;
         }
 
-        private async Task<Tuple<long, TransactionContext>> GetRegionalContext(Dictionary<string, List<GrainAccessInfo>> grainListPerSilo)
+        private async Task<TransactionContext> GetRegionalContext(Dictionary<string, List<GrainAccessInfo>> grainListPerSilo)
         {
             var silos = grainListPerSilo.Keys.ToList();
             // get regional tid from regional coordinator
@@ -125,7 +127,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
             // send corresponding grainAccessInfo to local coordinators in different silos
             Debug.Assert(grainListPerSilo.ContainsKey(this.mySiloId));
-            Task<TransactionRegisterInfo> task = null;
+            Task<TransactionRegisterInfo> transactionRegisterInfoTask = null;
 
             for (int i = 0; i < silos.Count; i++)
             {
@@ -140,7 +142,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
                 if (coordId.Item2 == this.mySiloId)
                 {
                     this.logger.LogInformation($"Is calling NewRegionalTransaction w/ task", this.grainReference);
-                    task = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
+                    transactionRegisterInfoTask = localCoordinator.NewRegionalTransaction(regionalBid, regionalTid, grainListPerSilo[siloId]);
                 }
                 else
                 {
@@ -150,14 +152,18 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
                 }
             }
 
-            Debug.Assert(task != null);
+            Debug.Assert(transactionRegisterInfoTask != null);
+
             this.logger.LogInformation($"Waiting for task in GetDetContext", this.grainReference);
-            TransactionRegisterInfo localInfo = await task;
+            TransactionRegisterInfo localInfo = await transactionRegisterInfoTask;
             this.logger.LogInformation($"Is DONE waiting for task in GetDetContext, going to return tx context", this.grainReference);
-            var regionalContext = new TransactionContext(localInfo.Bid, localInfo.Tid, regionalBid, regionalTid);
+            var regionalContext = new TransactionContext(localInfo.Bid, localInfo.Tid, regionalBid, regionalTid)
+            {
+                HighestCommittedBid = -1
+            };
 
             // TODO: What is this -1??
-            return new Tuple<long, TransactionContext>(-1, regionalContext) ;
+            return regionalContext;
         }
     }
 }
