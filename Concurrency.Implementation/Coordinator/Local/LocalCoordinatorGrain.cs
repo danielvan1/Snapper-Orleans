@@ -47,7 +47,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         // for regional batch commitment
         private long highestCommittedRegionalBid;
-        private Dictionary<long, long> regionalBidToRegionalCoordID;
+        private Dictionary<long, long> regionalBidToRegionalCoordId;
         private Dictionary<long, bool> regionalBidToIsPreviousBatchRegional;                                // regional bid, if this batch's previous one is also a regional batch
         private Dictionary<long, TaskCompletionSource<bool>> regionalBatchCommit;                     // regional bid, commit promise
 
@@ -111,7 +111,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             this.regionalTidToLocalTidPerBatch = new Dictionary<long, Dictionary<long, long>>();
             this.regionalBidToIsPreviousBatchRegional = new Dictionary<long, bool>();
             this.regionalBatchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.regionalBidToRegionalCoordID = new Dictionary<long, long>();
+            this.regionalBidToRegionalCoordId = new Dictionary<long, long>();
         }
 
 
@@ -264,7 +264,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 await this.WaitForRegionalBatchToCommit(regionalBid);
 
                 this.localBidToRegionalBid.Remove(bid);
-                this.regionalBidToRegionalCoordID.Remove(regionalBid);
+                this.regionalBidToRegionalCoordId.Remove(regionalBid);
                 this.regionalBidToIsPreviousBatchRegional.Remove(regionalBid);
             }
 
@@ -314,11 +314,11 @@ namespace Concurrency.Implementation.Coordinator.Local
         public Task ReceiveBatchSchedule(SubBatch batch)
         {
             this.logger.LogInformation("Received batch schedule from regional coordinator {regionalCoordinatorId} with previous bid {previousBatchId} and current bid {bid}",
-                                       this.GrainReference, batch.LocalCoordinatorId, batch.PreviousBid, batch.Bid);
+                                       this.GrainReference, batch.CoordinatorId, batch.PreviousBid, batch.Bid);
 
             var regionalBid = batch.Bid;
             this.regionalBatchInfo.Add(regionalBid, batch);
-            this.regionalBidToRegionalCoordID.Add(regionalBid, batch.LocalCoordinatorId);
+            this.regionalBidToRegionalCoordId.Add(regionalBid, batch.CoordinatorId);
 
             if (!this.regionalTransactionInfo.ContainsKey(regionalBid))
             {
@@ -404,7 +404,7 @@ namespace Concurrency.Implementation.Coordinator.Local
         {
             this.GetPrimaryKeyLong(out string region);
             string region1 = new string(region);
-            var regionalCoordID = this.regionalBidToRegionalCoordID[regionalBid];
+            var regionalCoordID = this.regionalBidToRegionalCoordId[regionalBid];
             // Just try to get the regional silo somehow to see if it works
             string regionalCoordinatorRegion = region1.Substring(0, 2);
             this.logger.LogInformation("Complete current regional batch: {regionalBid} to RegionalCoordinator {id}-{region}", this.GrainReference, regionalBid, regionalCoordID, regionalCoordinatorRegion);
@@ -543,7 +543,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
                 if (!deterministicRequestToSubBatch.ContainsKey(grainId))
                 {
-                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(currentBatchId, myId));
+                    deterministicRequestToSubBatch.Add(grainId, new SubBatch(currentBatchId, this.myId));
                 }
 
                 // TODO: This seems pretty sketchy. Why do we add the same tid so many times?

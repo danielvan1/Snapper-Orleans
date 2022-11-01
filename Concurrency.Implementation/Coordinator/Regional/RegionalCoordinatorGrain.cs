@@ -121,27 +121,6 @@ namespace Concurrency.Implementation.Coordinator.Regional
             if (curBatchId != -1) await EmitBatch(curBatchId);
         }
 
-        private async Task EmitBatch(long bid)
-        {
-            this.logger.LogInformation("Going to emit batch {bid}", this.GrainReference, bid);
-            Dictionary<string, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
-
-            Dictionary<string, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
-
-            foreach ((string siloId,  SubBatch subBatch) in currentScheduleMap)
-            {
-                var localCoordID = coordinators[siloId];
-                var localCoordinatorID = localCoordID.Item1;
-                var localCoordinatorRegionAndServer = localCoordID.Item2;
-                this.logger.LogInformation("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",
-                                            this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer, subBatch);
-                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
-
-                _ = dest.ReceiveBatchSchedule(subBatch);
-            }
-
-            _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
-        }
 
         public async Task AckBatchCompletion(long bid)
         {
@@ -170,8 +149,8 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
 
-                this.logger.LogInformation("Sending acknowledgements to local coordinator {localCoordinatorId} that batch: {bid} can commit",
-                                           this.GrainReference, localCoordinatorID+localCoordinatorRegionAndServer,bid);
+                this.logger.LogInformation("Sending acknowledgements to local coordinator {localCoordinatorId}-{siloId} that batch: {bid} can commit",
+                                           this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer,bid);
 
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
                 _ = dest.AckRegionalBatchCommit(bid);
@@ -201,8 +180,6 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
         public Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor)
         {
-            // TODO: This seems not to be necessary as it is called in the ctor of detTxnProcessor
-
             this.neighborCoord = neighbor;
 
             this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
@@ -212,9 +189,30 @@ namespace Concurrency.Implementation.Coordinator.Regional
             return Task.CompletedTask;
         }
 
+        private async Task EmitBatch(long bid)
+        {
+            this.logger.LogInformation("Going to emit batch {bid}", this.GrainReference, bid);
+            Dictionary<string, SubBatch> currentScheduleMap = this.bidToSubBatches[bid];
 
-        // for PACT
-        public async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<string> serviceList)   // returns a Tuple<bid, tid>
+            Dictionary<string, Tuple<int, string>> coordinators = this.localCoordinatorPerSiloPerBatch[bid];
+
+            foreach ((string siloId,  SubBatch subBatch) in currentScheduleMap)
+            {
+                var localCoordID = coordinators[siloId];
+                var localCoordinatorID = localCoordID.Item1;
+                var localCoordinatorRegionAndServer = localCoordID.Item2;
+                this.logger.LogInformation("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",
+                                            this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer, subBatch);
+                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
+
+                _ = dest.ReceiveBatchSchedule(subBatch);
+            }
+
+            _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
+        }
+
+
+        private async Task<Tuple<long, long>> GetDeterministicTransactionBidAndTid(List<string> serviceList)   // returns a Tuple<bid, tid>
         {
             this.deterministicRequests.Add(serviceList);
             var promise = new TaskCompletionSource<Tuple<long, long>>();
@@ -237,7 +235,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
         /// This is called every time the corresponding coordinator receives the token.
         /// </summary>
         /// <returns>batchId</returns>
-        public long GenerateBatch(RegionalToken token)
+        private long GenerateBatch(RegionalToken token)
         {
             if (this.deterministicRequests.Count == 0)
             {
@@ -271,7 +269,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
         //
         // This is why we differentiate between the two with isRegionalCoordinator
         // This method creates the subbatch for each of the executiongrains
-        public void GenerateSchedulePerSilo(long tid, long currentBatchId, List<string> deterministicRequests)
+        private void GenerateSchedulePerSilo(long tid, long currentBatchId, List<string> deterministicRequests)
         {
             if (!this.bidToSubBatches.ContainsKey(currentBatchId))
             {
@@ -302,7 +300,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
             }
         }
 
-        public void UpdateToken(RegionalToken token, long currentBatchId, long globalBid)
+        private void UpdateToken(RegionalToken token, long currentBatchId, long globalBid)
         {
             Dictionary<string, SubBatch> siloIdToSubBatch = this.bidToSubBatches[currentBatchId];
             this.expectedAcksPerBatch.Add(currentBatchId, siloIdToSubBatch.Count);
@@ -345,7 +343,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
         }
 
 
-        public async Task WaitPrevBatchToCommit(long bid)
+        private async Task WaitPrevBatchToCommit(long bid)
         {
             var previousBid = this.bidToLastBid[bid];
             this.logger.LogInformation("Waiting for previous batch: {prevBid} to commit. Current bid: {bid}", this.GrainReference, previousBid, bid);
@@ -354,13 +352,14 @@ namespace Concurrency.Implementation.Coordinator.Regional
             if (this.highestCommittedBid < previousBid)
             {
                 var coordinator = this.bidToPreviousCoordinatorId[bid];
+
                 if (coordinator == this.myId)
                 {
                     await this.WaitBatchCommit(previousBid);
                 }
                 else
                 {
-                    this.logger.LogInformation("FUCKING HERP DERP", this.GrainReference);
+                    this.logger.LogInformation("Regional FUCKING HERP DERP: {prev}", this.GrainReference, coordinator);
                     this.GrainReference.GetPrimaryKeyLong(out string region);
                     string regionalCoordinatorRegion = region.Substring(0, 2);
                     var previousBatchRegionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, regionalCoordinatorRegion);
@@ -377,7 +376,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
             if (this.bidToPreviousCoordinatorId.ContainsKey(bid)) this.bidToPreviousCoordinatorId.Remove(bid);
         }
 
-        public void AckBatchCommit(long bid)
+        private void AckBatchCommit(long bid)
         {
             this.highestCommittedBid = Math.Max(bid, highestCommittedBid);
             if (this.batchCommit.ContainsKey(bid))

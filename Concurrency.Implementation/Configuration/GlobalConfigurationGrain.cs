@@ -23,12 +23,6 @@ namespace Concurrency.Implementation.Configuration
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.globalConfiguration = globalConfiguration ?? throw new System.ArgumentNullException(nameof(globalConfiguration));
-
-            // create the log folder if not exists
-            if (!Directory.Exists(Constants.LogPath))
-            {
-                Directory.CreateDirectory(Constants.LogPath);
-            }
         }
 
         public override Task OnActivateAsync()

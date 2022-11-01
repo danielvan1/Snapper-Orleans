@@ -1,5 +1,4 @@
-﻿using System.Net;
-using Concurrency.Interface.Configuration;
+﻿using Concurrency.Interface.Configuration;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +6,7 @@ using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
 using Unity;
+using Utilities;
 
 namespace GeoSnapperDeployment
 {
@@ -26,9 +26,9 @@ namespace GeoSnapperDeployment
                 throw new ArgumentException("Deployment type needs to be specified");
             }
 
-            if(!Directory.Exists(Utilities.Constants.LogPath))
+            if(!Directory.Exists(Constants.LogPath))
             {
-                Directory.CreateDirectory(Utilities.Constants.LogPath);
+                Directory.CreateDirectory(Constants.LogPath);
             }
 
             UnityContainer container = new UnityContainer();
@@ -42,6 +42,12 @@ namespace GeoSnapperDeployment
             string deploymentType = args[0];
             var siloHosts = new List<ISiloHost>();
 
+            // create the log folder if not exists
+            if (!Directory.Exists(Constants.LogPath))
+            {
+                Directory.CreateDirectory(Constants.LogPath);
+            }
+
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
                 IConfiguration config = new ConfigurationBuilder()
@@ -52,17 +58,7 @@ namespace GeoSnapperDeployment
 
                 var siloConfigurations = config.GetRequiredSection("SiloConfigurations").Get<SiloConfigurations>();
 
-                var primarySiloHost = await localSiloDeployer.DeployPrimarySilo(siloConfigurations);
-                siloHosts.Add(primarySiloHost);
-
-                var globalSiloHost = await localSiloDeployer.DeployGlobalSilo(siloConfigurations);
-                siloHosts.Add(globalSiloHost);
-
-                IList<ISiloHost> regionSiloHosts = await localSiloDeployer.DeployRegionalSilos(siloConfigurations);
-                siloHosts.AddRange(regionSiloHosts);
-
-                IList<ISiloHost> localSiloHosts = await localSiloDeployer.DeployLocalSilosAndReplicas(siloConfigurations);
-                siloHosts.AddRange(localSiloHosts);
+                siloHosts.AddRange(await localSiloDeployer.Deploy(siloConfigurations));
 
                 var client = new ClientBuilder()
                 .UseLocalhostClustering()

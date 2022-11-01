@@ -19,7 +19,7 @@ namespace Concurrency.Interface.Models
         {
             this.PreviousEmitBid = -1;
             this.PreviousEmitTid = -1;
-            this.PreviousCoordinatorId = -1;
+            this.PreviousCoordinatorId = 0;
             this.HighestCommittedBid = -1;
             this.IsLastEmitBidRegional = false;
         }

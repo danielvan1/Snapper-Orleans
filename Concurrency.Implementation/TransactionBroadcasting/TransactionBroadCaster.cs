@@ -76,7 +76,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
             foreach((_, LocalSubBatch subBatch) in replicaSchedulesUpdatedCoordinatorId)
             {
-                subBatch.LocalCoordinatorId = 0;
+                subBatch.CoordinatorId = 0;
             }
 
             foreach(string replicaSiloId in replicaSiloIds)
@@ -98,7 +98,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
             foreach((_, SubBatch subBatch) in replicaSchedulesUpdatedCoordinatorId)
             {
-                subBatch.LocalCoordinatorId = 0;
+                subBatch.CoordinatorId = 0;
             }
 
             foreach(string replicaSiloId in replicaSiloIds)

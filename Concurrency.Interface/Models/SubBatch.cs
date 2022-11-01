@@ -9,7 +9,7 @@ namespace Concurrency.Interface.Models
     {
         public long Bid { get; init; }
 
-        public long LocalCoordinatorId { get; set; }
+        public long CoordinatorId { get; set; }
 
         public long PreviousBid { get; set; }
 
@@ -22,7 +22,7 @@ namespace Concurrency.Interface.Models
         {
             this.PreviousBid = -1;
             this.Bid = bid;
-            this.LocalCoordinatorId = coordinatorId;
+            this.CoordinatorId = coordinatorId;
             this.Transactions = new List<long>();
             this.PreviousRegionalBid = -1;
         }
@@ -30,7 +30,7 @@ namespace Concurrency.Interface.Models
         public SubBatch(SubBatch subBatch)
         {
             this.Bid = subBatch.Bid;
-            this.LocalCoordinatorId = subBatch.LocalCoordinatorId;
+            this.CoordinatorId = subBatch.CoordinatorId;
             this.PreviousBid = subBatch.PreviousBid;
             this.Transactions = subBatch.Transactions;
             this.PreviousRegionalBid = subBatch.PreviousRegionalBid;
@@ -38,7 +38,7 @@ namespace Concurrency.Interface.Models
 
         public override string ToString()
         {
-            return $"Bid: {this.Bid}, PreviousBid: {this.PreviousBid}, LocalCoordinatorId: {this.LocalCoordinatorId}, previousRegionalBid: {PreviousRegionalBid}, Transactions: [{string.Join(", ", this.Transactions)}]";
+            return $"Bid: {this.Bid}, PreviousBid: {this.PreviousBid}, LocalCoordinatorId: {this.CoordinatorId}, previousRegionalBid: {PreviousRegionalBid}, Transactions: [{string.Join(", ", this.Transactions)}]";
         }
     }
 }

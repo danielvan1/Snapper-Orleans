@@ -95,7 +95,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 
             if (transactions.Count == 0)
             {
-                coordinatorId = this.batchInfo[bid].LocalCoordinatorId;
+                coordinatorId = this.batchInfo[bid].CoordinatorId;
                 this.batchInfo.Remove(bid);
             }
             else

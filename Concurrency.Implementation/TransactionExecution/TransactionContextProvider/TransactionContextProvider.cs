@@ -25,9 +25,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
         private readonly GrainId grainId;
         private readonly string mySiloId;
 
-        private readonly ILocalCoordinatorGrain localCoordinator;
-        private readonly IRegionalCoordinatorGrain regionalCoordinator;                                // use this coord to get tid for global transactions
-
         public TransactionContextProvider(ILogger<TransactionContextProvider> logger,
                                           ICoordinatorProvider coordinatorProvider,
                                           IPlacementManager placementManager,
@@ -43,9 +40,6 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             this.grainId = grainId ?? throw new ArgumentNullException(nameof(grainId));
 
             this.mySiloId = grainId.SiloId;
-
-            this.localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(grainId.IntId, grainId.SiloId, grainFactory);
-            this.regionalCoordinator = coordinatorProvider.GetRegionalCoordinator(grainId.IntId, grainId.SiloId.Substring(0, 2), grainFactory);
         }
 
         /// <summary>
@@ -100,12 +94,14 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
         private async Task<TransactionContext> GetLocalContext(List<GrainAccessInfo> grainAccessInfos)
         {
-            TransactionRegisterInfo info = await this.localCoordinator.NewLocalTransaction(grainAccessInfos);
-            this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, info, this.localCoordinator);
+            var localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(this.grainId.IntId, this.grainId.SiloId, this.grainFactory);
 
-            var localTransactionContext = new TransactionContext(info.Tid, info.Bid)
+            TransactionRegisterInfo localInfo = await localCoordinator.NewLocalTransaction(grainAccessInfos);
+            this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, localInfo, localCoordinator);
+
+            var localTransactionContext = new TransactionContext(localInfo.Tid, localInfo.Bid)
             {
-                HighestCommittedBid = info.HighestCommittedBid
+                HighestCommittedBid = localInfo.HighestCommittedBid
             };
 
             return localTransactionContext;
@@ -113,13 +109,15 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
         private async Task<TransactionContext> GetRegionalContext(Dictionary<string, List<GrainAccessInfo>> grainListPerSilo)
         {
+            var regionalCoordinator = this.coordinatorProvider.GetRegionalCoordinator(this.grainId.IntId, this.grainId.SiloId.Substring(0, 2), this.grainFactory);
+
             var silos = grainListPerSilo.Keys.ToList();
             // get regional tid from regional coordinator
             // Note the Dictionary<string, Tuple<int, string>> part of the
             // return type of NewTransaction(..) is a map between the region
             // and which local coordinators
             Tuple<TransactionRegisterInfo, Dictionary<string, Tuple<int, string>>> regionalInfo =
-                await this.regionalCoordinator.NewRegionalTransaction(silos);
+                await regionalCoordinator.NewRegionalTransaction(silos);
 
             var regionalTid = regionalInfo.Item1.Tid;
             var regionalBid = regionalInfo.Item1.Bid;
@@ -159,7 +157,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
             this.logger.LogInformation($"Is DONE waiting for task in GetDetContext, going to return tx context", this.grainReference);
             var regionalContext = new TransactionContext(localInfo.Bid, localInfo.Tid, regionalBid, regionalTid)
             {
-                HighestCommittedBid = -1
+                HighestCommittedBid = localInfo.HighestCommittedBid
             };
 
             // TODO: What is this -1??
