@@ -4,7 +4,7 @@ namespace Utilities
 {
     public class Constants
     {
-        public const int NumberOfLocalCoordinatorsPerSilo = 4;
+        public const int NumberOfLocalCoordinatorsPerSilo = 2;
         public const int NumberOfRegionalCoordinators = 2;
 
         public const int numSilo = 2;

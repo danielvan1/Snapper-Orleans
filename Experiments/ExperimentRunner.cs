@@ -13,6 +13,61 @@ namespace Experiments
 {
     public class ExperimentRunner
     {
+       public async Task StressRun(IClusterClient client, string region, int silos, int grainsPerSilo)
+        {
+            await client.Connect();
+
+            List<GrainAccessInfo>[] accountIds = new List<GrainAccessInfo>[silos];
+            int startId = 0;
+
+            for (int siloIndex = 0; siloIndex < silos; siloIndex++)
+            {
+                accountIds[siloIndex] = (TestDataGenerator.CreateAccountIds(grainsPerSilo, startId, region, region, siloIndex, "SmallBank.Grains.SnapperTransactionalAccountGrain"));
+                startId += grainsPerSilo;
+            }
+
+            int initialBalance = 1000;
+
+            foreach(var grainAccessInfoList in accountIds)
+            {
+                var initResults = await this.InitAccountsAsync(grainAccessInfoList, client, initialBalance);
+            }
+
+
+            var multiTransferTasks = new List<Task<TransactionResult>>();
+            for (int siloIndex = 0; siloIndex < accountIds.Length; siloIndex++)
+            {
+                List<GrainAccessInfo> grainAccessInfos = new List<GrainAccessInfo>();
+                var currentGrains = accountIds[siloIndex];
+
+                for (int next = 0; next < accountIds.Length; next++)
+                {
+                    if(siloIndex == next) continue;
+
+                    grainAccessInfos.AddRange(accountIds[next]);
+                }
+
+                FunctionInput functionInput = TestDataGenerator.CreateFunctionInput(grainAccessInfos);
+
+                for (int i = 0; i < grainsPerSilo; i++)
+                {
+                    var grain = currentGrains[i];
+                    var herp = grainAccessInfos.Append(grain).ToList();
+
+                    var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(grain.Id, grain.SiloId);
+                    multiTransferTasks.Add(actor.StartTransaction("MultiTransfer", functionInput, herp));
+                    // await actor.StartTransaction("MultiTransfer", functionInput, herp);
+                    // multiTransferTasks.Add(actor.StartTransaction("MultiTransfer", functionInput, grainAccessInfos));
+                }
+
+            }
+
+            await Task.WhenAll(multiTransferTasks);
+            // var results = await Task.WhenAll(multiTransferTasks);
+
+            await client.Close();
+        }
+
         public async Task ManyMultiTransferTransactions(IClusterClient client, string region, int multitransfers)
         {
             await client.Connect();
@@ -26,10 +81,10 @@ namespace Experiments
             string snapperTransactionalAccountGrainTypeName = "SmallBank.Grains.SnapperTransactionalAccountGrain";
             int startAccountId0 = 0;
             int startAccountId1 = numberOfAccountsInEachServer;
-            var accountIdsServer0 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId0, region, region, 0, snapperTransactionalAccountGrainTypeName);
-            var accountIdsServer1 = TestDataGenerator.GetAccountsFromRegion(numberOfAccountsInEachServer, startAccountId1, region, region, 1, snapperTransactionalAccountGrainTypeName);
+            var accountIdsServer0 = TestDataGenerator.CreateAccountIds(numberOfAccountsInEachServer, startAccountId0, region, region, 0, snapperTransactionalAccountGrainTypeName);
+            var accountIdsServer1 = TestDataGenerator.CreateAccountIds(numberOfAccountsInEachServer, startAccountId1, region, region, 1, snapperTransactionalAccountGrainTypeName);
 
-            var input1 = TestDataGenerator.GetAccountsFromRegion(accountIdsServer1);
+            var input1 = TestDataGenerator.CreateFunctionInput(accountIdsServer1);
             var accountIds = accountIdsServer0.Concat(accountIdsServer1).ToList();
             var initTasks = new List<Task>();
 
@@ -196,6 +251,61 @@ namespace Experiments
 
             Console.WriteLine("Ended deterministic tx");
 
+        }
+        private async Task<TransactionResult[]> InitAccountsAsync(List<GrainAccessInfo> accountIds, IClusterClient client, int initialBalance)
+        {
+            Console.WriteLine("Start Init accounts");
+
+            var initTasks = new List<Task<TransactionResult>>();
+
+            foreach (var accountId in accountIds)
+            {
+                var id = accountId.Id;
+                var regionAndServer = accountId.SiloId;
+                var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+                var initTask = actor.StartTransaction("Init", FunctionInputHelper.Create(initialBalance, new Tuple<int, string>(id, regionAndServer)), new List<GrainAccessInfo>() { accountId });
+
+                initTasks.Add(initTask);
+            }
+
+            var initResults = await Task.WhenAll(initTasks);
+
+            Console.WriteLine("End Init accounts");
+
+            return initResults;
+        }
+
+        private async Task<TransactionResult[]> GetAccountBalancesAsync(List<GrainAccessInfo> accountIds, IClusterClient client)
+        {
+            Console.WriteLine("Starting to get Balances");
+
+            var balanceTasks = new List<Task<TransactionResult>>();
+
+            foreach (var accountId in accountIds)
+            {
+                Console.WriteLine($"accountId: {accountId}");
+                var id = accountId.Id;
+                var regionAndServer = accountId.SiloId;
+                var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);
+
+                Task<TransactionResult> balanceTask = actor.StartTransaction("Balance", null, new List<GrainAccessInfo>() { accountId });
+
+                balanceTasks.Add(balanceTask);
+            }
+
+            var balances = await Task.WhenAll(balanceTasks);
+
+            Console.WriteLine("End of getting balances");
+
+            return balances;
+        }
+
+        private void PrintPerformance(Dictionary<string, List<TransactionResult>> transactionResultsPerRegion, string method)
+        {
+            foreach((string region, var transactionResults) in transactionResultsPerRegion)
+            {
+                // Console.WriteLine(string.Join(", ", transactionResults.Select(t => $"({region}, {method} PrepareTime: {t.PrepareTime}, ExecuteTime: {t.ExecuteTime}, CommitTime: {t.CommitTime}, Latency: {t.Latency})")));
+            }
         }
     }
 }

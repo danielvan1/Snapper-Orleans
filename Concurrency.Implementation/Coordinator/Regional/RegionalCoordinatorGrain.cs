@@ -97,15 +97,15 @@ namespace Concurrency.Implementation.Coordinator.Regional
         public async Task PassToken(RegionalToken token)
         {
             long curBatchId = -1;
-            Thread.Sleep(10);
+            Thread.Sleep(20);
 
-            var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
-            if (elapsedTime >= batchSizeInMSecs)
-            {
-                curBatchId = this.GenerateBatch(token);
+            // var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
+            // if (elapsedTime >= batchSizeInMSecs)
+            // {
+            curBatchId = this.GenerateBatch(token);
 
-                if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
-            }
+            //     if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
+            // }
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {

@@ -187,7 +187,7 @@ namespace Concurrency.Implementation.Coordinator.Local
         {
             long curBatchID;
             IList<long> curBatchIDs = new List<long>();
-            Thread.Sleep(10);
+            Thread.Sleep(20);
 
             // TODO: Why do we need to do it like this?
             curBatchIDs = this.GenerateRegionalBatch(token);

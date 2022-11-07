@@ -15,50 +15,51 @@ namespace Experiments
         {
             string deploymentType = args[0];
             string region = args[1];
-            int multitransfers = int.Parse(args[2]);
+            string function = args[2];
 
-            if("LocalDeployment".Equals(args[0]))
+            var client = CreateClusterClient(deploymentType);
+            ExperimentRunner experimentRunner = new ExperimentRunner();
+
+            // await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
+            if("Stress".Equals(function, StringComparison.CurrentCultureIgnoreCase))
             {
-                var client = new ClientBuilder()
-                    .Configure<ClusterOptions>(options =>
-                    {
-                        options.ClusterId = "Snapper";
-                        options.ServiceId = "Snapper";
-                    })
-                    .Configure<ClientMessagingOptions>(options =>
-                    {
-                        options.ResponseTimeout = new TimeSpan(0, 5, 0);
-                    })
-                    .UseLocalhostClustering()
-                    .Build();
+                int silos = int.Parse(args[3]);
+                int grainsPerSilo = int.Parse(args[4]);
 
-                ExperimentRunner experimentRunner = new ExperimentRunner();
-
-                await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
-
+                await experimentRunner.StressRun(client, region, silos, grainsPerSilo);
             }
             else
             {
-                const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
 
-                var client = new ClientBuilder()
-                    .Configure<ClusterOptions>(options =>
-                    {
-                        options.ClusterId = "Snapper";
-                        options.ServiceId = "Snapper";
-                    })
-                    .Configure<ClientMessagingOptions>(options =>
-                    {
-                        options.ResponseTimeout = new TimeSpan(0, 5, 0);
-                    })
-                    .UseAzureStorageClustering(options => options.ConfigureTableServiceClient(key1))
-                    .Build();
-
-                ExperimentRunner experimentRunner = new ExperimentRunner();
-
+                int multitransfers = int.Parse(args[3]);
                 await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
-
             }
+        }
+
+        private static IClusterClient CreateClusterClient(string deploymentType)
+        {
+            var clientBuilder = new ClientBuilder()
+                .Configure<ClusterOptions>(options =>
+                {
+                    options.ClusterId = "Snapper";
+                    options.ServiceId = "Snapper";
+                })
+                .Configure<ClientMessagingOptions>(options =>
+                {
+                    options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                });
+
+            if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))
+            {
+                clientBuilder.UseLocalhostClustering();
+            }
+            else if(deploymentType.Equals("GlobalDeployment", StringComparison.CurrentCultureIgnoreCase))
+            {
+                const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
+                clientBuilder.UseAzureStorageClustering(options => options.ConfigureTableServiceClient(key1));
+            }
+
+            return clientBuilder.Build();
         }
     }
 }
