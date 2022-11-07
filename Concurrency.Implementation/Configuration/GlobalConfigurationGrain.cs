@@ -50,11 +50,11 @@ namespace Concurrency.Implementation.Configuration
 
             this.logger.LogInformation("Deploying the global coordinators in region: {region}", this.GrainReference, deploymentRegion);
             // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(regions.Count - 1, deploymentRegion);
+            var coordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(Constants.NumberOfRegionalCoordinators - 1, deploymentRegion);
             var nextCoordinator = this.GrainFactory.GetGrain<IGlobalCoordinatorGrain>(0, deploymentRegion);
             initGlobalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
-            for (int i = 0; i < regions.Count - 1; i++)
+            for (int i = 0; i < Constants.NumberOfRegionalCoordinators - 1; i++)
             {
                 string nextRegion = regions[i + 1];
 
