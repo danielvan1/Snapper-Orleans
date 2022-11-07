@@ -19,7 +19,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
 
         public IDeterministicTransactionExecutor Create(IGrainFactory grainFactory, GrainReference grainReference, GrainId grainId)
         {
-            ITransactionScheduler transactionScheduler = this.transactionSchedulerFactory.Create();
+            ITransactionScheduler transactionScheduler = this.transactionSchedulerFactory.Create(grainReference);
 
             return new DeterministicTransactionExecutor(this.logger, transactionScheduler, grainFactory, grainReference, grainId);
         }

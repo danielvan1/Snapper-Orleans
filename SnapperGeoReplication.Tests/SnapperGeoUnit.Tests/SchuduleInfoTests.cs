@@ -21,7 +21,7 @@ namespace SnapperGeoReplication.Tests.SnapperGeoUnit.Tests
             SubBatch subBatchFirst = TestData.CreateSubBatch(firstBid, coordinatorId,firstPreviousBid, new List<long>() { 0, 1, 2 });
             SubBatch subBatchSecond = TestData.CreateSubBatch(secondBid, coordinatorId, secondPreviousBid, new List<long>() { 3, 4 });
 
-            ScheduleInfoManager scheduleInfo = new ScheduleInfoManager(null);
+            ScheduleInfoManager scheduleInfo = new ScheduleInfoManager(null, null);
             scheduleInfo.InsertDeterministicBatch(subBatchFirst, 0, -1);
             scheduleInfo.InsertDeterministicBatch(subBatchSecond, 3, 3);
 

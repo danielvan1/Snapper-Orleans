@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Concurrency.Implementation.Logging;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
 
 namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
@@ -16,12 +18,13 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         private readonly Dictionary<long, TaskCompletionSource<bool>> deterministicExecutionPromise;   // key: local tid
         private readonly ILogger<TransactionScheduler> logger;
         private readonly IScheduleInfoManager scheduleInfoManager;
+        private readonly GrainReference grainReference;
 
-        public TransactionScheduler(ILogger<TransactionScheduler> logger, IScheduleInfoManager scheduleInfoManager)
+        public TransactionScheduler(ILogger<TransactionScheduler> logger, IScheduleInfoManager scheduleInfoManager, GrainReference grainReference)
         {
             this.logger = logger ?? throw new ArgumentNullException(nameof(logger));
             this.scheduleInfoManager = scheduleInfoManager ?? throw new ArgumentNullException(nameof(scheduleInfoManager));
-
+            this.grainReference = grainReference ?? throw new ArgumentNullException(nameof(grainReference));
             this.batchInfo = new Dictionary<long, SubBatch>();
             this.tidToLastTid = new Dictionary<long, long>();
             this.deterministicExecutionPromise = new Dictionary<long, TaskCompletionSource<bool>>();
@@ -61,19 +64,22 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 
             if (previousTid == -1)
             {
-                this.logger.LogInformation("First transaction in the batch {bid} with tid: {tid}", bid, tid);
+                // this.logger.LogInformation("First transaction in the batch {bid} with tid: {tid}", bid, tid);
+                this.logger.LogError("First transaction in the batch {bid} with tid: {tid}", this.grainReference, bid, tid);
                 // if the tid is the first txn in the batch, wait for previous node
                 var previousNode = this.scheduleInfoManager.GetDependingNode(bid);
                 await previousNode.NextNodeCanExecute.Task;
             }
             else
             {
-                this.logger.LogInformation("Waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
+                // this.logger.LogInformation("Waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
+                this.logger.LogError("Waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", this.grainReference,  previousTid, tid, bid);
                 // wait for previous det txn
                 await this.deterministicExecutionPromise[previousTid].Task;
                 this.deterministicExecutionPromise.Remove(previousTid);
 
-                this.logger.LogInformation("Done waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
+                this.logger.LogError("Done waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", this.grainReference,  previousTid, tid, bid);
+                // this.logger.LogInformation("Done waiting for previousTid: {prev} to finish. Current tid is: {tid} in batch: {bid}", previousTid, tid, bid);
             }
         }
 

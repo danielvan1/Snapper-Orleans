@@ -1,5 +1,6 @@
 using System;
 using Microsoft.Extensions.Logging;
+using Orleans.Runtime;
 
 namespace Concurrency.Implementation.TransactionExecution.Scheduler
 {
@@ -14,11 +15,11 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
             this.scheduleInfoManagerLogger = scheduleInfoManagerLogger ?? throw new ArgumentNullException(nameof(scheduleInfoManagerLogger));
         }
 
-        public ITransactionScheduler Create()
+        public ITransactionScheduler Create(GrainReference grainReference)
         {
-            IScheduleInfoManager scheduleInfoManager = new ScheduleInfoManager(this.scheduleInfoManagerLogger);
+            IScheduleInfoManager scheduleInfoManager = new ScheduleInfoManager(this.scheduleInfoManagerLogger, grainReference);
 
-            return new TransactionScheduler(this.logger, scheduleInfoManager);
+            return new TransactionScheduler(this.logger, scheduleInfoManager, grainReference);
         }
     }
 }

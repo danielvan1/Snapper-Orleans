@@ -94,7 +94,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionContextProv
 
         private async Task<TransactionContext> GetLocalContext(List<GrainAccessInfo> grainAccessInfos)
         {
-            var localCoordinator = coordinatorProvider.GetLocalCoordinatorGrain(this.grainId.IntId, this.grainId.SiloId, this.grainFactory);
+            var localCoordinator = this.coordinatorProvider.GetLocalCoordinatorGrain(this.grainId.IntId, this.grainId.SiloId, this.grainFactory);
 
             TransactionRegisterInfo localInfo = await localCoordinator.NewLocalTransaction(grainAccessInfos);
             this.logger.LogInformation("Received TransactionRegisterInfo {info} from localCoordinator: {coordinator}", this.grainReference, localInfo, localCoordinator);

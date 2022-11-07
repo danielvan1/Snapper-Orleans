@@ -15,7 +15,7 @@ namespace SnapperGeoRegionalIntegration.Tests
             return Enumerable.Repeat(snapperTransactionalAccountGrainTypeName, n).ToList<string>();
         }
 
-        public static List<GrainAccessInfo> GetAccountsFromRegion(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex, string grainClassName)
+        public static List<GrainAccessInfo> CreateAccountIds(int n, int startAccountId, string deployedRegion, string homeRegion, int serverIndex, string grainClassName)
         {
             List<GrainAccessInfo> accountIds = new List<GrainAccessInfo>();
 
@@ -35,7 +35,7 @@ namespace SnapperGeoRegionalIntegration.Tests
             return accountIds;
         }
 
-        public static FunctionInput GetAccountsFromRegion(List<GrainAccessInfo> grainAccessInfos)
+        public static FunctionInput CreateFunctionInput(List<GrainAccessInfo> grainAccessInfos)
         {
             FunctionInput functionInput = new FunctionInput()
             {

@@ -15,12 +15,27 @@ namespace Experiments
         {
             string deploymentType = args[0];
             string region = args[1];
-            int multitransfers = int.Parse(args[2]);
+            string function = args[2];
 
-            var client = CreateClusterClient(deploymentType);
-            ExperimentRunner experimentRunner = new ExperimentRunner();
+            using(var client = CreateClusterClient(deploymentType))
+            {
+                ExperimentRunner experimentRunner = new ExperimentRunner();
 
-            await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
+                // await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
+                if("Stress".Equals(function, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    int silos = int.Parse(args[3]);
+                    int grainsPerSilo = int.Parse(args[4]);
+
+                    await experimentRunner.StressRun(client, region, silos, grainsPerSilo);
+                }
+                else
+                {
+
+                    int multitransfers = int.Parse(args[3]);
+                    await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
+                }
+            }
         }
 
         private static IClusterClient CreateClusterClient(string deploymentType)

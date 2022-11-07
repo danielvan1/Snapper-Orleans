@@ -8,6 +8,7 @@ using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
+using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
@@ -59,6 +60,8 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             this.myGrainId = new GrainId() { IntId = (int)this.GetPrimaryKeyLong(out string localRegion), SiloId = localRegion, GrainClassName = this.classNameSpace };
             this.state = new DeterministicState<TState>();
+
+            var herp = this.GrainReference.GetPrimaryKeyLong(out string siloId);
 
             this.deterministicTransactionExecutor = this.deterministicTransactionExecutorFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
             this.transactionContextProvider = this.transactionContextProviderFactory.Create(this.GrainFactory, this.GrainReference, this.myGrainId);
@@ -124,9 +127,9 @@ namespace Concurrency.Implementation.TransactionExecution
 
             var commitTime = DateTime.Now;
             var txnResult = new TransactionResult(resultObj);
-            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
+            txnResult.PrepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
+            txnResult.ExecuteTime = (finishExeTime - startExeTime).TotalMilliseconds;
+            txnResult.CommitTime = (commitTime - finishExeTime).TotalMilliseconds;
 
             return txnResult;
         }
@@ -147,7 +150,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Finished executing deterministic transaction with functioncall {call} and context {context} ",
                                         this.GrainReference, call, context);
 
-            return new Tuple<object, DateTime>(transactionResult.resultObj, time);
+            return new Tuple<object, DateTime>(transactionResult.ResultObj, time);
         }
 
         /// <summary>

@@ -158,6 +158,7 @@ namespace GeoSnapperDeployment
 
             return new LoggerConfiguration()
                         .WriteTo.File(logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .MinimumLevel.Warning()
                         .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
                         .CreateLogger();
         }

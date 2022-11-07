@@ -1,6 +1,5 @@
 using Concurrency.Implementation.Coordinator;
 using Concurrency.Implementation.TransactionExecution.TransactionPlacement;
-using Concurrency.Interface.Coordinator;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Runtime;
