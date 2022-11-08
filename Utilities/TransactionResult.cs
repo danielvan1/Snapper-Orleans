@@ -5,16 +5,14 @@ namespace Utilities
     [Serializable]
     public class TransactionResult
     {
-        public object resultObj;
+        public object ResultObj { get; init; }
 
         // investigate PACT breakdown latency
-        public double prepareTime;    // receive txn request ==> start execute txn
-        public double executeTime;    // start execute txn   ==> finish execute txn
-        public double commitTime;     // finish execute txn  ==> batch has committed
-
-        public TransactionResult(object resultObj = null)
-        {
-            this.resultObj = resultObj;
-        }
+        public double PrepareTime { get; init; }    // receive txn request ==> start execute txn
+        public double ExecuteTime { get; init; }    // start execute txn   ==> finish execute txn
+        public double CommitTime { get; init; }     // finish execute txn  ==> batch has committed
+        public double Latency { get; init; }
+        public bool IsReplica { get; init; }
+        public string FirstFunctionName { get; init; }
     }
 }

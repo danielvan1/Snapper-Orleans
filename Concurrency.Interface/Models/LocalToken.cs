@@ -11,8 +11,6 @@ namespace Concurrency.Interface.Models
         // for global coordinator: <siloID, latest global bid emitted to this silo>
         public Dictionary<GrainAccessInfo, long> PreviousBidPerGrain { get; }
 
-        // public Dictionary<GrainAccessInfo, long> PreviousBidPerGrain { get; }
-
         // this info is only used for local coordinators
         // TODO: This might need to be using the key: Tuple<int, string>
         // instead of just the string part. But currently the code

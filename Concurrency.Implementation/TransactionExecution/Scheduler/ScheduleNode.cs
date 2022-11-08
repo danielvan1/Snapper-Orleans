@@ -8,7 +8,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
 
         public bool IsDet { get; init; }
 
-        public TaskCompletionSource<bool> NextNodeCanExecute { get; init; }
+        public TaskCompletionSource<bool> NextNodeCanExecutePromise { get; init; }
 
         public ScheduleNode Previous { get; set; }
 
@@ -18,7 +18,7 @@ namespace Concurrency.Implementation.TransactionExecution.Scheduler
         {
             this.Bid = bid;
             this.IsDet = isDet;
-            this.NextNodeCanExecute = new TaskCompletionSource<bool>();
+            this.NextNodeCanExecutePromise = new TaskCompletionSource<bool>();
         }
     }
 }

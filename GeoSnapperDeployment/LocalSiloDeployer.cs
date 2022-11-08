@@ -278,6 +278,7 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton<IIdHelper, IdHelper>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
+                serviceCollection.AddSingleton<IScheduleInfoManagerFactory, ScheduleInfoManagerFactory >();
 
                 serviceCollection.AddSingleton(regions);
                 serviceCollection.AddSingleton(regionalSilos);
@@ -319,7 +320,7 @@ namespace GeoSnapperDeployment
                 serviceCollection.AddSingleton<IPlacementManager, PlacementManager>();
                 serviceCollection.AddSingleton<ICoordinatorProvider, CoordinatorProvider>();
                 serviceCollection.AddSingleton<ITransactionSchedulerFactory, TransactionSchedulerFactory>();
-
+                serviceCollection.AddSingleton<IScheduleInfoManagerFactory, ScheduleInfoManagerFactory >();
                 serviceCollection.AddSingleton<ITransactionContextProviderFactory, TransactionContextProviderFactory>();
                 serviceCollection.AddSingleton<ITransactionBroadCasterFactory, TransactionBroadCasterFactory>();
                 serviceCollection.AddSingleton<IDeterministicTransactionExecutorFactory, DeterministicTransactionExecutorFactory>();
@@ -343,6 +344,7 @@ namespace GeoSnapperDeployment
             return new LoggerConfiguration()
                         .WriteTo.File(this.logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
                         .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
+                        .MinimumLevel.Warning()
                         .CreateLogger();
         }
     }

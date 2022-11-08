@@ -8,6 +8,7 @@ using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
+using Utilities;
 
 namespace Concurrency.Implementation.Configuration
 {
@@ -45,11 +46,11 @@ namespace Concurrency.Implementation.Configuration
             var initRegionalCoordinatorTasks = new List<Task>();
 
             // Connecting last coordinator with the first, so making the ring of coordinators circular.
-            var coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(silos - 1, currentRegion);
+            var coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(Constants.NumberOfRegionalCoordinators - 1, currentRegion);
             var nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
             initRegionalCoordinatorTasks.Add(coordinator.SpawnGlobalCoordGrain(nextCoordinator));
 
-            for (int i = 0; i < silos - 1; i++)
+            for (int i = 0; i < Constants.NumberOfRegionalCoordinators - 1; i++)
             {
                 coordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i, currentRegion);
                 nextCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(i + 1, currentRegion);
@@ -63,7 +64,7 @@ namespace Concurrency.Implementation.Configuration
 
             if (!this.tokenEnabled)
             {
-                var coordinator0 = GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
+                var coordinator0 = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(0, currentRegion);
                 RegionalToken token = new RegionalToken();
                 await coordinator0.PassToken(token);
                 this.tokenEnabled = true;

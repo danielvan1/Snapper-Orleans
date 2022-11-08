@@ -60,7 +60,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
                 var transactionExecutionGrain = this.grainFactory.GetGrain<ITransactionExecutionGrain>(startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.SiloId), startGrain.GrainClassName);
 
-                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext, highestCommittedBidFromMaster );
+                transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext, highestCommittedBidFromMaster, DateTime.Now);
             }
 
             this.logger.LogInformation("Finished broadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));

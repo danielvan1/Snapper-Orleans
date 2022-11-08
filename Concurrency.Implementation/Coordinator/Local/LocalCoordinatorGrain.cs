@@ -14,6 +14,7 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
+using Serilog;
 using Utilities;
 
 namespace Concurrency.Implementation.Coordinator.Local
@@ -28,7 +29,7 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         // coord basic info
         private ILocalCoordinatorGrain neighborCoord;
-        private readonly ILogger logger;
+        private readonly ILogger<LocalCoordinatorGrain> logger;
         private readonly ITransactionBroadCasterFactory transactionBroadCasterFactory;
         private ITransactionBroadCaster transactionBroadCaster;
         private readonly IIdHelper idHelper;
@@ -187,7 +188,7 @@ namespace Concurrency.Implementation.Coordinator.Local
         {
             long curBatchID;
             IList<long> curBatchIDs = new List<long>();
-            Thread.Sleep(20);
+            Thread.Sleep(10);
 
             // TODO: Why do we need to do it like this?
             curBatchIDs = this.GenerateRegionalBatch(token);
@@ -203,12 +204,12 @@ namespace Concurrency.Implementation.Coordinator.Local
             }
 
             _ = this.neighborCoord.PassToken(token);
-            if (curBatchID != -1) await EmitBatch(curBatchID);
+            if (curBatchID != -1) _ = EmitBatch(curBatchID);
             if (curBatchIDs.Count != 0)
             {
                 foreach (var bid in curBatchIDs)
                 {
-                    await EmitBatch(bid);
+                    _ = EmitBatch(bid);
                 }
             }
         }
@@ -313,8 +314,8 @@ namespace Concurrency.Implementation.Coordinator.Local
         // Going to be called by our Regional Coordinator
         public Task ReceiveBatchSchedule(SubBatch batch)
         {
-            this.logger.LogInformation("Received batch schedule from regional coordinator {regionalCoordinatorId} with previous bid {previousBatchId} and current bid {bid}",
-                                       this.GrainReference, batch.LocalCoordinatorId, batch.PreviousBid, batch.Bid);
+            this.logger.LogError("Received batch schedule from regional coordinator {regionalCoordinatorId} with previous bid {previousBatchId} and current bid {bid}",
+                                  this.GrainReference, batch.LocalCoordinatorId, batch.PreviousBid, batch.Bid);
 
             var regionalBid = batch.Bid;
             this.regionalBatchInfo.Add(regionalBid, batch);
@@ -377,16 +378,16 @@ namespace Concurrency.Implementation.Coordinator.Local
                 this.localBidToRegionalBid.Add(currentBid, regionalBid);
                 this.regionalTidToLocalTidPerBatch.Add(currentBid, new Dictionary<long, long>());
 
-                foreach (var globalTid in subBatch.Transactions)
+                foreach (var regionalTid in subBatch.Transactions)
                 {
                     var localTid = ++token.PreviousEmitTid;
-                    this.regionalDetRequestPromise[globalTid].SetResult(new Tuple<long, long>(currentBid, localTid));
+                    this.regionalDetRequestPromise[regionalTid].SetResult(new Tuple<long, long>(currentBid, localTid));
 
-                    var grainAccessInfo = this.regionalTransactionInfo[regionalBid][globalTid];
-                    GenerateSchedulePerService(localTid, currentBid, grainAccessInfo);
+                    List<GrainAccessInfo> grainAccessInfo = this.regionalTransactionInfo[regionalBid][regionalTid];
+                    this.GenerateSchedulePerService(localTid, currentBid, grainAccessInfo);
 
-                    this.regionalTidToLocalTidPerBatch[currentBid].Add(globalTid, localTid);
-                    this.regionalDetRequestPromise.Remove(globalTid);
+                    this.regionalTidToLocalTidPerBatch[currentBid].Add(regionalTid, localTid);
+                    this.regionalDetRequestPromise.Remove(regionalTid);
                 }
 
                 this.regionalBidToIsPreviousBatchRegional.Add(regionalBid, token.IsLastEmitBidRegional);
@@ -460,15 +461,14 @@ namespace Concurrency.Implementation.Coordinator.Local
             foreach ((GrainAccessInfo grainId, SubBatch subBatch) in currentSchedule)
             {
                 int id = grainId.Id;
-                string region = grainId.SiloId;
+                string siloId = grainId.SiloId;
 
-                this.logger.LogInformation("Calling EmitBatch on transaction execution grain: {grainId}", this.GrainReference, grainId);
 
                 // I think this should be true, we just have the same info multiple places now
                 // The problem is if this is not true, then the local coordinator is talking to
                 // grains in other servers
 
-                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, region, grainId.GrainClassNamespace);
+                var destination = this.GrainFactory.GetGrain<ITransactionExecutionGrain>(id, siloId, grainId.GrainClassNamespace);
 
                 var localSubBatch = new LocalSubBatch(subBatch)
                 {
@@ -477,12 +477,14 @@ namespace Concurrency.Implementation.Coordinator.Local
                     RegionalTidToLocalTid = regionalTidToLocalTid
                 };
 
-                _ = destination.ReceiveBatchSchedule(localSubBatch);
+                this.logger.LogError("Calling EmitBatch on transaction execution grain: {grainId}-{siloId} with LocalSubbatch: {s}", this.GrainReference, grainId, siloId, localSubBatch);
+
+                await destination.ReceiveBatchSchedule(localSubBatch);
 
                 replicaSchedules.TryAdd(grainId, localSubBatch);
             }
 
-            _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
+            // _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
         }
 
 
@@ -559,23 +561,22 @@ namespace Concurrency.Implementation.Coordinator.Local
             this.logger.LogInformation("UpdateToken: for current batch: {bid} and token: {token}", this.GrainReference, currentBatchId, token);
 
             // update the previous batch ID for each service accessed by this batch
-            foreach (var serviceInfo in serviceIDToSubBatch)
+            foreach ((GrainAccessInfo grainId, SubBatch subBatch) in serviceIDToSubBatch)
             {
-                GrainAccessInfo serviceId = serviceInfo.Key;
-                SubBatch subBatch = serviceInfo.Value;
-                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.GrainReference, serviceId, subBatch);
+                this.logger.LogInformation("service: {service} and subbatch: {subbatch}", this.GrainReference, grainId, subBatch);
 
-                if (token.PreviousBidPerGrain.ContainsKey(serviceId))
+                if (token.PreviousBidPerGrain.ContainsKey(grainId))
                 {
-                    this.logger.LogInformation("New subbatch previousBid value: {value}", this.GrainReference, token.PreviousBidPerGrain[serviceId]);
-                    subBatch.PreviousBid = token.PreviousBidPerGrain[serviceId];
-                    subBatch.PreviousRegionalBid = token.PreviousRegionalBidPerGrain[serviceId];
+                    this.logger.LogError("Bid: {bid} ---- Old PrevBid: {b} ---- New PrevBid: {value}", this.GrainReference, subBatch.Bid, subBatch.PreviousBid, token.PreviousBidPerGrain[grainId]);
+                    subBatch.PreviousBid = token.PreviousBidPerGrain[grainId];
+                    subBatch.PreviousRegionalBid = token.PreviousRegionalBidPerGrain[grainId];
                 }
                 // else, the default value is -1
 
                 Debug.Assert(subBatch.Bid > subBatch.PreviousBid);
-                token.PreviousBidPerGrain[serviceId] = subBatch.Bid;
-                token.PreviousRegionalBidPerGrain[serviceId] = globalBid;
+                this.logger.LogError("Subbatch ID: {b} for grainId: {grainId}", this.GrainReference, subBatch.Bid, grainId);
+                token.PreviousBidPerGrain[grainId] = subBatch.Bid;
+                token.PreviousRegionalBidPerGrain[grainId] = globalBid;
             }
 
             this.bidToLastBid.Add(currentBatchId, token.PreviousEmitBid);
@@ -643,20 +644,20 @@ namespace Concurrency.Implementation.Coordinator.Local
         {
             var expiredGrains = new HashSet<GrainAccessInfo>();
 
-            // // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
-            // foreach (var item in token.PreviousBidPerGrain)
-            // {
-            //     if (item.Value <= this.highestCommittedBid)
-            //     {
-            //         expiredGrains.Add(item.Key);
-            //     }
-            // }
+            // only when last batch is already committed, the next emitted batch can have its lastBid = -1 again
+            foreach (var item in token.PreviousBidPerGrain)
+            {
+                if (item.Value <= this.highestCommittedBid)
+                {
+                    expiredGrains.Add(item.Key);
+                }
+            }
 
-            // foreach (var item in expiredGrains)
-            // {
-            //     token.PreviousBidPerGrain.Remove(item);
-            //     token.PreviousRegionalBidPerGrain.Remove(item);
-            // }
+            foreach (var item in expiredGrains)
+            {
+                token.PreviousBidPerGrain.Remove(item);
+                token.PreviousRegionalBidPerGrain.Remove(item);
+            }
 
             token.HighestCommittedBid = this.highestCommittedBid;
         }

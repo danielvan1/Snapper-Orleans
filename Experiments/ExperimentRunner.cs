@@ -1,4 +1,5 @@
 using System;
+using Concurrency.Implementation.Performance;
 using Concurrency.Interface;
 using Concurrency.Interface.Models;
 using Orleans;
@@ -23,7 +24,7 @@ namespace Experiments
             for (int siloIndex = 0; siloIndex < silos; siloIndex++)
             {
                 accountIds[siloIndex] = (TestDataGenerator.CreateAccountIds(grainsPerSilo, startId, region, region, siloIndex, "SmallBank.Grains.SnapperTransactionalAccountGrain"));
-                startId += grainsPerSilo;
+                // startId += grainsPerSilo * silos + 1;
             }
 
             int initialBalance = 1000;
@@ -56,14 +57,26 @@ namespace Experiments
 
                     var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(grain.Id, grain.SiloId);
                     multiTransferTasks.Add(actor.StartTransaction("MultiTransfer", functionInput, herp));
-                    // await actor.StartTransaction("MultiTransfer", functionInput, herp);
-                    // multiTransferTasks.Add(actor.StartTransaction("MultiTransfer", functionInput, grainAccessInfos));
                 }
 
             }
 
             await Task.WhenAll(multiTransferTasks);
-            // var results = await Task.WhenAll(multiTransferTasks);
+
+            var balanceTasks = new List<TransactionResult>();
+
+            foreach(var grainAccessInfoList in accountIds)
+            {
+                var balanceResult = await this.GetAccountBalancesAsync(grainAccessInfoList, client);
+                Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.ResultObj))}]");
+            }
+
+            await Task.Delay(2000);
+
+            var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
+            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
+            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
+            Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime()}");
 
             await client.Close();
         }
@@ -137,18 +150,17 @@ namespace Experiments
             var results = await Task.WhenAll(balanceTasks);
 
             int initialBalance = 1000;
-            Console.WriteLine($"Herp {results.Length}");
 
             for(int i = 0; i < results.Length; i++)
             {
                 var result = results[i];
                 if (i < numberOfAccountsInEachServer)
                 {
-                    Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
+                    Console.WriteLine($"result: {result.ResultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
                 }
                 else
                 {
-                    Console.WriteLine($"result: {result.resultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
+                    Console.WriteLine($"result: {result.ResultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
                 }
             }
 

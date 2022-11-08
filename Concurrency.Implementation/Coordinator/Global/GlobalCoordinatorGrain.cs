@@ -78,15 +78,10 @@ namespace Concurrency.Implementation.Coordinator.Global
 
         public Task SpawnGlobalCoordGrain(IGlobalCoordinatorGrain neighbor)
         {
-            // this.detTxnProcessor.Init();
 
             this.neighborCoord = neighbor;
 
-            // this.loggerGroup.GetLoggingProtocol(myID, out log);
 
-            this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
-            for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
-            this.timeOfBatchGeneration = DateTime.Now;
 
             return Task.CompletedTask;
         }

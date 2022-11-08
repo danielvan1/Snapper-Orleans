@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Concurrency.Implementation.GrainPlacement;
@@ -15,14 +16,13 @@ using Utilities;
 
 namespace Concurrency.Implementation.Coordinator.Regional
 {
-    // TODO: Move everything out.
     [Reentrant]
     [RegionalCoordinatorGrainPlacementStrategy]
     public class RegionalCoordinatorGrain : Grain, IRegionalCoordinatorGrain
     {
         private Random random;
         private long myId;
-        public long highestCommittedBid;
+        private long highestCommittedBid;
 
         // transaction processing
         private IList<List<string>> deterministicRequests;
@@ -96,16 +96,9 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
         public async Task PassToken(RegionalToken token)
         {
-            long curBatchId = -1;
             Thread.Sleep(20);
 
-            // var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
-            // if (elapsedTime >= batchSizeInMSecs)
-            // {
-            curBatchId = this.GenerateBatch(token);
-
-            //     if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
-            // }
+            long curBatchId = this.GenerateBatch(token);
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {
@@ -133,14 +126,14 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 var localCoordID = coordinators[siloId];
                 var localCoordinatorID = localCoordID.Item1;
                 var localCoordinatorRegionAndServer = localCoordID.Item2;
-                this.logger.LogInformation("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",
-                                            this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer, subBatch);
+                this.logger.LogError("Emit batch to localCoordinator {localCoordinatorID}-{localCoordinatorRegionAndServer} with sub batch {subbatch}",
+                                      this.GrainReference, localCoordinatorID, localCoordinatorRegionAndServer, subBatch);
                 var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
 
                 _ = dest.ReceiveBatchSchedule(subBatch);
             }
 
-            _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
+            // _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
         }
 
         public async Task AckBatchCompletion(long bid)
@@ -168,12 +161,12 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 var localCoordID = coordinators[item.Key];
 
                 var localCoordinatorID = localCoordID.Item1;
-                var localCoordinatorRegionAndServer = localCoordID.Item2;
+                var localCoordinatorSiloId = localCoordID.Item2;
 
-                this.logger.LogInformation("Sending acknowledgements to local coordinator {localCoordinatorId} that batch: {bid} can commit",
-                                           this.GrainReference, localCoordinatorID+localCoordinatorRegionAndServer,bid);
+                this.logger.LogInformation("Sending acknowledgements to local coordinator {localCoordinatorId}-{siloId} that batch: {bid} can commit",
+                                           this.GrainReference, localCoordinatorID, localCoordinatorSiloId, bid);
 
-                var dest = GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorRegionAndServer);
+                var dest = this.GrainFactory.GetGrain<ILocalCoordinatorGrain>(localCoordinatorID, localCoordinatorSiloId);
                 _ = dest.AckRegionalBatchCommit(bid);
             }
 
@@ -204,10 +197,6 @@ namespace Concurrency.Implementation.Coordinator.Regional
             // TODO: This seems not to be necessary as it is called in the ctor of detTxnProcessor
 
             this.neighborCoord = neighbor;
-
-            this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
-            for (int i = Constants.numSilo; i > 2; i /= 2) batchSizeInMSecs *= Constants.scaleSpeed;
-            this.timeOfBatchGeneration = DateTime.Now;
 
             return Task.CompletedTask;
         }
@@ -362,8 +351,8 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 {
                     this.logger.LogInformation("FUCKING HERP DERP", this.GrainReference);
                     this.GrainReference.GetPrimaryKeyLong(out string region);
-                    string regionalCoordinatorRegion = region.Substring(0, 2);
-                    var previousBatchRegionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, regionalCoordinatorRegion);
+                    // string regionalCoordinatorRegion = region.Substring(0, 2);
+                    var previousBatchRegionalCoordinator = this.GrainFactory.GetGrain<IRegionalCoordinatorGrain>(coordinator, region);
                     await previousBatchRegionalCoordinator.WaitBatchCommit(previousBid);
                 }
             }

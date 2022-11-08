@@ -30,6 +30,8 @@ namespace Concurrency.Implementation.GrainPlacement
 
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
+            // this.logger.LogError("TransactionExecutionGrain: CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
+            // this.logger.LogError("TransactionExecutionGrain: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo.Select(kv => kv.Key + ": " + kv.Value.IPEndPoint)));
             this.logger.LogInformation("LocalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
             this.logger.LogInformation("LocalCoordinator: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.localSiloPlacementInfo.LocalSiloInfo.Select(kv => kv.Key + ": " + kv.Value.IPEndPoint)));
 
@@ -40,9 +42,9 @@ namespace Concurrency.Implementation.GrainPlacement
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .FirstOrDefault();
 
-                this.logger.LogInformation("Is siloAddress null: {n}", siloAddress is null);
+                // this.logger.LogInformation("Is siloAddress null: {n}", siloAddress is null);
 
-                this.logger.LogInformation("LocalCoordinator: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-{port}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+                // this.logger.LogInformation("LocalCoordinator: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-{port}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
 
 
                 return Task.FromResult(siloAddress);

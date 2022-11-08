@@ -7,35 +7,36 @@ namespace Utilities
     public record TransactionContext
     {
         // only for PACT
-        public long localBid;
-        public long localTid;
-        public readonly long regionalBid;
+        public long LocalBid { get; set; }
+        public long LocalTid { get; set; }
+        public long RegionalBid { get; }
         // for global PACT and all ACT
-        public readonly long regionalTid;
+        public long RegionalTid { get; }
 
         public bool IsReplicaTransaction { get; set; } = false;
+        public DateTime StartTimeLatencyFromMaster { get; set; } = DateTime.MinValue;
 
         /// <summary> This constructor is only for local PACT </summary>
         public TransactionContext(long localTid, long localBid)
         {
-            this.localTid = localTid;
-            this.localBid = localBid;
-            regionalBid = -1;
-            regionalTid = -1;
+            this.LocalTid = localTid;
+            this.LocalBid = localBid;
+            RegionalBid = -1;
+            RegionalTid = -1;
         }
 
         /// <summary> This constructor is only for global PACT </summary>
         public TransactionContext(long localBid, long localTid, long globalBid, long globalTid)
         {
-            this.localBid = localBid;
-            this.localTid = localTid;
-            this.regionalBid = globalBid;
-            this.regionalTid = globalTid;
+            this.LocalBid = localBid;
+            this.LocalTid = localTid;
+            this.RegionalBid = globalBid;
+            this.RegionalTid = globalTid;
         }
 
         public override string ToString()
         {
-            return $"regionalBid: {this.regionalBid}, regionalTid: {this.regionalTid}, localBid: {this.localBid}, localTid: {this.localTid}, IsReplication: {this.IsReplicaTransaction}";
+            return $"regionalBid: {this.RegionalBid}, regionalTid: {this.RegionalTid}, localBid: {this.LocalBid}, localTid: {this.LocalTid}, IsReplication: {this.IsReplicaTransaction}";
         }
     }
 }

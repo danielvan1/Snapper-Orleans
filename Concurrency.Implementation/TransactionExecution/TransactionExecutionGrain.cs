@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
+using Concurrency.Implementation.Performance;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
@@ -89,14 +90,15 @@ namespace Concurrency.Implementation.TransactionExecution
 
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
-            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
+            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext.Item2, transactionContext.Item1);
         }
 
-        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster)
+        public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster, DateTime startTime)
         {
-            transactionContext.IsReplicaTransaction = true;
+            transactionContext.IsReplicaTransaction =  true;
+            transactionContext.StartTimeLatencyFromMaster = startTime;
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext, highestCommittedBidFromMaster);
         }
@@ -123,16 +125,26 @@ namespace Concurrency.Implementation.TransactionExecution
 
             // wait for this batch to commit
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction3", this.GrainReference);
-            await this.deterministicTransactionExecutor.WaitForBatchToCommit(transactionContext.localBid);
+            await this.deterministicTransactionExecutor.WaitForBatchToCommit(transactionContext.LocalBid);
             this.logger.LogInformation("TransactionExecutionGrain: StartTransaction4", this.GrainReference);
 
             var commitTime = DateTime.Now;
-            var txnResult = new TransactionResult(resultObj);
-            txnResult.prepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds;
-            txnResult.executeTime = (finishExeTime - startExeTime).TotalMilliseconds;
-            txnResult.commitTime = (commitTime - finishExeTime).TotalMilliseconds;
+            var transactionResult = new TransactionResult()
+            {
+                ResultObj = resultObj,
+                PrepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds,
+                ExecuteTime = (finishExeTime - startExeTime).TotalMilliseconds,
+                CommitTime = (commitTime - finishExeTime).TotalMilliseconds,
+                FirstFunctionName = firstFunction,
+                IsReplica = transactionContext.IsReplicaTransaction,
+                Latency = transactionContext.StartTimeLatencyFromMaster.Equals(DateTime.MinValue)
+                          ? 0
+                          : (DateTime.Now - transactionContext.StartTimeLatencyFromMaster).TotalMilliseconds,
+            };
 
-            return txnResult;
+            _ = this.SendResult(transactionResult);
+
+            return transactionResult;
         }
 
         public async Task<Tuple<object, DateTime>> ExecuteDeterministicTransaction(FunctionCall call, TransactionContext context)
@@ -147,11 +159,11 @@ namespace Concurrency.Implementation.TransactionExecution
 
             await this.deterministicTransactionExecutor.FinishExecuteDeterministicTransaction(context);
 
-            await this.deterministicTransactionExecutor.CleanUp(context.localTid);
+            await this.deterministicTransactionExecutor.CleanUp(context.LocalTid);
             this.logger.LogInformation("Finished executing deterministic transaction with functioncall {call} and context {context} ",
                                         this.GrainReference, call, context);
 
-            return new Tuple<object, DateTime>(transactionResult.resultObj, time);
+            return new Tuple<object, DateTime>(transactionResult.ResultObj, time);
         }
 
         /// <summary>
@@ -179,7 +191,7 @@ namespace Concurrency.Implementation.TransactionExecution
         /// <summary> When execute a transaction on the grain, call this interface to read / write grain state </summary>
         public async Task<TState> GetState(TransactionContext cxt, AccessMode mode)
         {
-            return this.deterministicTransactionExecutor.GetState<TState>(cxt.localTid, mode, this.state);
+            return this.deterministicTransactionExecutor.GetState<TState>(cxt.LocalTid, mode, this.state);
         }
 
         public async Task<TState> GetState()
@@ -199,13 +211,16 @@ namespace Concurrency.Implementation.TransactionExecution
 
             this.logger.LogInformation("Inside CallGrain, after call to grain: {graindId}-{region}", this.GrainReference, grainId.Item1, grainId.Item2);
 
-            return new TransactionResult(resultObj);
+            return new TransactionResult()
+            {
+                ResultObj = resultObj
+            };
         }
 
 
         private async Task<TransactionResult> InvokeFunction(FunctionCall call, TransactionContext context)
         {
-            if (context.localBid == -1)
+            if (context.LocalBid == -1)
             {
                 //this.logger.Error(1, $"[{id}-{region}] Inside of this cxt.localBid == -1 ??");
             }
@@ -221,6 +236,14 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Finished with invoking function {name}", this.GrainReference, call.funcName);
 
             return result;
+        }
+
+        private Task SendResult(TransactionResult transactionResult)
+        {
+            var performanceGrain = this.GrainFactory.GetGrain<IPerformanceGrain>(0, "US");
+            performanceGrain.AddTransactionResult(transactionResult);
+
+            return Task.CompletedTask;
         }
     }
 }

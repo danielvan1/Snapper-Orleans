@@ -95,7 +95,10 @@ namespace SmallBank.Grains
         {
             BankAccount myState = await this.GetState(context, AccessMode.Read);
 
-            return new TransactionResult(myState.balance);
+            return new TransactionResult()
+            {
+                ResultObj = myState.balance
+            };
         }
 
         public Task<BankAccount> GetState()

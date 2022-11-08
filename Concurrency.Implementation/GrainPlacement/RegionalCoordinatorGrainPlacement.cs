@@ -30,8 +30,8 @@ namespace Concurrency.Implementation.GrainPlacement
 
             long configGrainId = target.GrainIdentity.GetPrimaryKeyLong(out string siloId);
 
-            this.logger.LogInformation("RegionalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
-            this.logger.LogInformation("RegionalCoordinator: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.regionalPlacementInfo.RegionsSiloInfo.Select(kv => kv.Key)));
+            // this.logger.LogInformation("RegionalCoordinator CompataibleSilos: {silos}", context.GetCompatibleSilos(target));
+            // this.logger.LogInformation("RegionalCoordinator: CurrentRegion: {region} ---- dict: {dict}", siloId, string.Join(", ", this.regionalPlacementInfo.RegionsSiloInfo.Select(kv => kv.Key)));
 
             if (this.regionalPlacementInfo.RegionsSiloInfo.TryGetValue(siloId, out SiloInfo siloInfo))
             {
@@ -40,7 +40,7 @@ namespace Concurrency.Implementation.GrainPlacement
                                                                        siloAddress.Endpoint.Port.Equals(siloInfo.SiloPort))
                                                  .First();
 
-                this.logger.LogInformation("RegionalCoordinator: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-{port}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
+                // this.logger.LogInformation("RegionalCoordinator: Chosen siloAddress: {ad}-{port} --- The siloId {siloId} and SiloInfo: {ad}-{port}", siloAddress.Endpoint.Address, siloAddress.Endpoint.Port, siloId, siloInfo.IPEndPoint.Address, siloInfo.SiloPort);
 
                 return Task.FromResult(siloAddress);
             }
