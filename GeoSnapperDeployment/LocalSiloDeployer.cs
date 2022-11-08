@@ -21,6 +21,7 @@ using Orleans.Runtime;
 using Orleans.Runtime.Placement;
 using Serilog;
 using Serilog.Filters;
+using Microsoft.Extensions.Logging;
 
 namespace GeoSnapperDeployment
 {
@@ -28,7 +29,7 @@ namespace GeoSnapperDeployment
     {
         private readonly ISiloConfigurationFactory siloConfigurationFactory;
         private readonly string logPath = Path.Combine(Utilities.Constants.LogPath, $"Snapper-{DateTime.Now:ddMMyyyy-HHmm}.log");
-        private ILogger logger;
+        private Serilog.ILogger logger;
 
         public LocalSiloDeployer(ISiloConfigurationFactory siloConfigurationFactory)
         {
@@ -178,27 +179,46 @@ namespace GeoSnapperDeployment
         {
             siloHostBuilder.UseDevelopmentClustering(primarySiloEndpoint);
             siloHostBuilder.ConfigureEndpoints(IPAddress.Loopback, siloPort, gatewayPort)
-                           .UseDashboard(options =>
+                           /*.UseDashboard(options =>
                            {
                                options.Port = siloPort + 100; // e.g. 11211, TODO: Find something nicer
                                options.Host = "*";
                                options.HostSelf = true;
                                options.CounterUpdateIntervalMs = 10000;
-                           })
+                           })*/
                            .Configure<EndpointOptions>(options =>
                            {
                                options.AdvertisedIPAddress = IPAddress.Loopback;
                            })
+                           .Configure<ClusterMembershipOptions>(options => {
+                                options.DeathVoteExpirationTimeout = new TimeSpan(0, 10, 0);
+                                options.IAmAliveTablePublishTimeout = new TimeSpan(0, 10, 0);
+                                options.NumMissedTableIAmAliveLimit = 10;
+                                options.UseLivenessGossip = true;
+                                options.NumMissedProbesLimit = 200;
+                                options.EnableIndirectProbes = true;
+                                options.ProbeTimeout = new TimeSpan(0, 0, 10);
+                           })
                            .Configure<ClientMessagingOptions>(options =>
                            {
+                               //options.MaxMessageBodySize = 9999999;
+                               //options.MaxMessageHeaderSize = 9999999;
+                               //options.DropExpiredMessages = false;
+                               options.BufferPoolMaxSize = 10000;
+                               options.BufferPoolBufferSize = 10000;
                                options.ResponseTimeout = new TimeSpan(0, 5, 0);
                                options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
                            })
+                           .Configure<SiloMessagingOptions>(options => {
+                                options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                                options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
+                            })
                            .Configure<ClusterOptions>(options =>
                            {
                                options.ClusterId = clusterId;
                                options.ServiceId = serviceId;
-                           });
+                           })
+                           .ConfigureLogging(logging => logging.AddConsole());;
         }
 
         private List<string> GetRegions(IReadOnlyList<SiloConfiguration> localSilos)
@@ -339,12 +359,12 @@ namespace GeoSnapperDeployment
             });
         }
 
-        private ILogger CreateLogger()
+        private Serilog.ILogger CreateLogger()
         {
             return new LoggerConfiguration()
                         .WriteTo.File(this.logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
                         .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
-                        .MinimumLevel.Warning()
+                        .MinimumLevel.Fatal()
                         .CreateLogger();
         }
     }

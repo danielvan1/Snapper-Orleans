@@ -186,7 +186,7 @@ namespace Concurrency.Implementation.Coordinator.Local
         /// <returns></returns>
         public async Task PassToken(LocalToken token)
         {
-            Thread.Sleep(10);
+            await Task.Delay(100);
 
             // TODO: Why do we need to do it like this?
             var curBatchIDs = new List<long>();

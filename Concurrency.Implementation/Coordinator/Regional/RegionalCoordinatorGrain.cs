@@ -96,7 +96,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
         public async Task PassToken(RegionalToken token)
         {
-            Thread.Sleep(20);
+            await Task.Delay(100);
 
             long curBatchId = this.GenerateBatch(token);
 
