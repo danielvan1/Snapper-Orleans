@@ -186,13 +186,13 @@ namespace Concurrency.Implementation.Coordinator.Local
         /// <returns></returns>
         public async Task PassToken(LocalToken token)
         {
-            long curBatchID;
-            IList<long> curBatchIDs = new List<long>();
             Thread.Sleep(10);
 
             // TODO: Why do we need to do it like this?
-            curBatchIDs = this.GenerateRegionalBatch(token);
-            curBatchID = this.GenerateBatch(token);
+            var curBatchIDs = new List<long>();
+            var curBatchID = this.GenerateBatch(token);
+            // var curBatchIDs = this.GenerateRegionalBatch(token, currentBids);
+            this.GenerateRegionalBatch(token, curBatchIDs);
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {
@@ -351,9 +351,9 @@ namespace Concurrency.Implementation.Coordinator.Local
             return Task.CompletedTask;
         }
 
-        private IList<long> GenerateRegionalBatch(LocalToken token)
+        private void GenerateRegionalBatch(LocalToken token, List<long> currentBids)
         {
-            IList<long> currentBids = new List<long>();
+            // IList<long> currentBids = new List<long>();
 
             while (this.regionalBatchInfo.Count > 0)
             {
@@ -363,12 +363,14 @@ namespace Concurrency.Implementation.Coordinator.Local
 
                 if (subBatch.PreviousBid != token.PreviousEmitRegionalBid)
                 {
-                    return new List<long>();
+                    return;
+                    // return new List<long>();
                 }
 
                 if (subBatch.Transactions.Count != this.regionalTransactionInfo[regionalBid].Count)
                 {
-                    return new List<long>();
+                    return;
+                    // return new List<long>();
                 }
 
                 this.logger.LogInformation("HerpDerp", this.GrainReference);
@@ -398,7 +400,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 token.PreviousEmitRegionalBid = regionalBid;
             }
 
-            return currentBids;
+            // return currentBids;
         }
 
         private Task RegionalBatchCommitAcknowledgement(long regionalBid)
@@ -487,6 +489,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             // _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
         }
 
+        // 0-EU-EU-1 153 157
 
         /// <summary>
         /// This is called every time the corresponding coordinator receives the token.
@@ -578,6 +581,7 @@ namespace Concurrency.Implementation.Coordinator.Local
                 token.PreviousBidPerGrain[grainId] = subBatch.Bid;
                 token.PreviousRegionalBidPerGrain[grainId] = globalBid;
             }
+            // 0-EU-EU-0 175 213
 
             this.bidToLastBid.Add(currentBatchId, token.PreviousEmitBid);
 
