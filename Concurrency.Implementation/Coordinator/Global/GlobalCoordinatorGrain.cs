@@ -44,8 +44,10 @@ namespace Concurrency.Implementation.Coordinator.Global
             this.logger = logger;
         }
 
-        public Task PassToken(TokenBase token)
+        public async Task PassToken(TokenBase token)
         {
+            await Task.Delay(100);
+
             long curBatchID = -1;
             var elapsedTime = (DateTime.Now - timeOfBatchGeneration).TotalMilliseconds;
             // if (elapsedTime >= batchSizeInMSecs)
@@ -60,7 +62,7 @@ namespace Concurrency.Implementation.Coordinator.Global
 
             // _ = neighborCoord.PassToken(token);
             if (curBatchID != -1) _ = EmitBatch(curBatchID);
-            return Task.CompletedTask;
+            //return Task.CompletedTask;
         }
 
         async Task EmitBatch(long bid)

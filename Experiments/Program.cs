@@ -47,6 +47,7 @@ namespace Experiments
                 .Configure<ClientMessagingOptions>(options =>
                 {
                     options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                    options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
                 });
 
             if(deploymentType.Equals("LocalDeployment", StringComparison.CurrentCultureIgnoreCase))

@@ -9,6 +9,7 @@ using Concurrency.Interface.Models;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Utilities;
+using System.Threading;
 
 namespace Concurrency.Implementation.Configuration
 {
@@ -28,6 +29,7 @@ namespace Concurrency.Implementation.Configuration
         public override Task OnActivateAsync()
         {
             this.tokenEnabled = false;
+            ThreadPool.SetMinThreads(45000, 45000);
 
             return base.OnActivateAsync();
         }
