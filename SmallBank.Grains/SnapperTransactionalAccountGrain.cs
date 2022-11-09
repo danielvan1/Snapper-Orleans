@@ -78,7 +78,10 @@ namespace SmallBank.Grains
 
             this.logger.LogInformation("Done with multi transfer for context: {context}", this.GrainReference, context);
 
-            return new TransactionResult();
+            return new TransactionResult()
+            {
+                Result = myState.balance
+            };
         }
 
         public async Task<TransactionResult> Deposit(TransactionContext context, FunctionInput functionInput)
@@ -97,7 +100,7 @@ namespace SmallBank.Grains
 
             return new TransactionResult()
             {
-                ResultObj = myState.balance
+                Result = myState.balance
             };
         }
 

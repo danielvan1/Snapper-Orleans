@@ -14,7 +14,7 @@ namespace Utilities
         public long RegionalTid { get; }
 
         public bool IsReplicaTransaction { get; set; } = false;
-        public DateTime StartTimeLatencyFromMaster { get; set; } = DateTime.MinValue;
+        public double Latency { get; set; }
 
         /// <summary> This constructor is only for local PACT </summary>
         public TransactionContext(long localTid, long localBid)

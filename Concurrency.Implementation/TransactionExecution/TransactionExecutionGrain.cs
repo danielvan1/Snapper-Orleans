@@ -1,18 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics.Contracts;
-using System.Linq;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Threading.Tasks;
-using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
 using Concurrency.Implementation.Performance;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.TransactionContextProvider;
 using Concurrency.Implementation.TransactionExecution.TransactionExecution;
-using Concurrency.Interface.Coordinator;
 using Concurrency.Interface.Models;
 using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
@@ -91,7 +87,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
-            // _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
+            _ = this.transactionBroadCaster.StartTransactionInAllOtherRegions(firstFunction, functionInput, grainAccessInfo, this.myGrainId, transactionContext.Item2, transactionContext.Item1);
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext.Item2, transactionContext.Item1);
         }
@@ -99,7 +95,7 @@ namespace Concurrency.Implementation.TransactionExecution
         public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster, DateTime startTime)
         {
             transactionContext.IsReplicaTransaction =  true;
-            transactionContext.StartTimeLatencyFromMaster = startTime;
+            transactionContext.Latency = (DateTime.Now - startTime).TotalMilliseconds;
 
             return await this.RunTransaction(firstFunction, functionInput, grainAccessInfo, transactionContext, highestCommittedBidFromMaster);
         }
@@ -132,20 +128,18 @@ namespace Concurrency.Implementation.TransactionExecution
             var commitTime = DateTime.Now;
             var transactionResult = new TransactionResult()
             {
-                ResultObj = resultObj,
+                Result = resultObj,
                 PrepareTime = (startExeTime - receiveTxnTime).TotalMilliseconds,
                 ExecuteTime = (finishExeTime - startExeTime).TotalMilliseconds,
                 CommitTime = (commitTime - finishExeTime).TotalMilliseconds,
                 FirstFunctionName = firstFunction,
                 IsReplica = transactionContext.IsReplicaTransaction,
-                Latency = transactionContext.StartTimeLatencyFromMaster.Equals(DateTime.MinValue)
-                          ? 0
-                          : (DateTime.Now - transactionContext.StartTimeLatencyFromMaster).TotalMilliseconds,
+                Latency = transactionContext.Latency
             };
 
-            // _ = this.SendResult(transactionResult);
-            this.logger.LogCritical("FINISHED");
+            _ = this.SendResult(transactionResult);
 
+            this.logger.LogCritical("FINISHED");
 
             return transactionResult;
         }
@@ -166,7 +160,7 @@ namespace Concurrency.Implementation.TransactionExecution
             this.logger.LogInformation("Finished executing deterministic transaction with functioncall {call} and context {context} ",
                                         this.GrainReference, call, context);
 
-            return new Tuple<object, DateTime>(transactionResult.ResultObj, time);
+            return new Tuple<object, DateTime>(transactionResult.Result, time);
         }
 
         /// <summary>
@@ -216,7 +210,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             return new TransactionResult()
             {
-                ResultObj = resultObj
+                Result = resultObj
             };
         }
 

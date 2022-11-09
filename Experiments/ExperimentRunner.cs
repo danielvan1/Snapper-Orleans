@@ -68,15 +68,16 @@ namespace Experiments
             foreach(var grainAccessInfoList in accountIds)
             {
                 var balanceResult = await this.GetAccountBalancesAsync(grainAccessInfoList, client);
-                Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.ResultObj))}]");
+                Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
             }
 
-            await Task.Delay(2000);
+            await Task.Delay(10000);
 
             var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
-            // Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
-            // Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
-            // Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime()}");
+            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
+            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
+            Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime("MultiTransfer")}");
+            Console.WriteLine($"Replica Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults("MultiTransfer", true)).Select(r => r.Result))}]");
 
             await client.Close();
         }
@@ -156,11 +157,11 @@ namespace Experiments
                 var result = results[i];
                 if (i < numberOfAccountsInEachServer)
                 {
-                    Console.WriteLine($"result: {result.ResultObj} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
+                    Console.WriteLine($"result: {result.Result} -- expected: {initialBalance - numberOfAccountsInEachServer * oneDollar}");
                 }
                 else
                 {
-                    Console.WriteLine($"result: {result.ResultObj} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
+                    Console.WriteLine($"result: {result.Result} -- expected: {initialBalance + numberOfAccountsInEachServer * oneDollar}");
                 }
             }
 

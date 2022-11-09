@@ -11,12 +11,12 @@ namespace Concurrency.Implementation.Performance
     public class PerformanceGrain : Grain, IPerformanceGrain
     {
         private Dictionary<string, List<TransactionResult>> functionNamesToTransactionResults;
-        private List<TransactionResult> transactionResultsReplicas;
+        private Dictionary<string, List<TransactionResult>> functionNamesTotransactionResultsReplicas;
 
         public override Task OnActivateAsync()
         {
             this.functionNamesToTransactionResults = new Dictionary<string, List<TransactionResult>>();
-            this.transactionResultsReplicas = new List<TransactionResult>();
+            this.functionNamesTotransactionResultsReplicas = new Dictionary<string, List<TransactionResult>>();
 
             return Task.CompletedTask;
         }
@@ -37,7 +37,12 @@ namespace Concurrency.Implementation.Performance
             }
             else
             {
-                this.transactionResultsReplicas.Add(transactionResult);
+                if (!this.functionNamesTotransactionResultsReplicas.ContainsKey(functionName))
+                {
+                    this.functionNamesTotransactionResultsReplicas.Add(functionName, new List<TransactionResult>());
+                }
+
+                this.functionNamesTotransactionResultsReplicas[functionName].Add(transactionResult);
             }
 
             return Task.CompletedTask;
@@ -49,10 +54,27 @@ namespace Concurrency.Implementation.Performance
                                                                                        .Average());
         }
 
-        public Task<double> GetAverageLatencyTime()
+        public Task<double> GetAverageLatencyTime(string functionName)
         {
-            return Task.FromResult(this.transactionResultsReplicas.Select(r => r.Latency)
-                                                                  .Average());
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName].Select(r => r.Latency)
+                                                                                               .Average());
+        }
+
+        public Task<List<TransactionResult>> GetTransactionResults(string functionName, bool replicas)
+        {
+            return Task.FromResult(replicas
+                                   ? this.functionNamesTotransactionResultsReplicas[functionName]
+                                   : this.functionNamesToTransactionResults[functionName]);
+
+
+        }
+
+        public Task CleanUp()
+        {
+            this.functionNamesToTransactionResults.Clear();
+            this.functionNamesTotransactionResultsReplicas.Clear();
+
+            return Task.CompletedTask;
         }
     }
 }

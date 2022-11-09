@@ -139,7 +139,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
                 _ = dest.ReceiveBatchSchedule(subBatch);
             }
 
-            // _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
+            _ = this.transactionBroadCaster.BroadCastRegionalSchedules(this.region, bid, this.bidToLastBid[bid], currentScheduleMap);
         }
 
         public async Task AckBatchCompletion(long bid)

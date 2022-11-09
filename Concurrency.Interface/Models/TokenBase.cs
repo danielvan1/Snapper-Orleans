@@ -26,7 +26,7 @@ namespace Concurrency.Interface.Models
 
         public override string ToString()
         {
-            return $"lastEmitBid: {this.PreviousEmitBid}, lastEmitTid: {this.PreviousEmitTid}, lastCoordId: {this.PreviousCoordinatorId}, highestCommittedBid: {HighestCommittedBid}, isLastEmitBidGlobal: {this.IsLastEmitBidRegional}";
+            return $"lastEmitBid: {this.PreviousEmitBid}, lastEmitTid: {this.PreviousEmitTid}, lastCoordId: {this.PreviousCoordinatorId}, highestCommittedBid: {this.HighestCommittedBid}, isLastEmitBidGlobal: {this.IsLastEmitBidRegional}";
         }
     }
 }

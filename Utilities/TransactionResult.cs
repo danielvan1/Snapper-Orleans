@@ -5,7 +5,7 @@ namespace Utilities
     [Serializable]
     public class TransactionResult
     {
-        public object ResultObj { get; init; }
+        public object Result { get; init; }
 
         // investigate PACT breakdown latency
         public double PrepareTime { get; init; }    // receive txn request ==> start execute txn

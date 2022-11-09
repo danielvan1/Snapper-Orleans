@@ -241,7 +241,6 @@ namespace Concurrency.Implementation.Coordinator.Local
             this.logger.LogInformation("Got all acknowledgements for batch: {bid}. Is the batch regional: {isRegional} and is the previous batch regional: {isPreviousRegional}",
                                         this.GrainReference, bid, isRegional, isPreviousRegional);
 
-            // Some sick optimization.......
             if (isRegional)
             {
                 // ACK the regional coordinator
@@ -488,10 +487,8 @@ namespace Concurrency.Implementation.Coordinator.Local
                 replicaSchedules.TryAdd(grainId, localSubBatch);
             }
 
-            // _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
+            _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
         }
-
-        // 0-EU-EU-1 153 157
 
         /// <summary>
         /// This is called every time the corresponding coordinator receives the token.
