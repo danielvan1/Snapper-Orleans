@@ -33,7 +33,7 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
         public Task StartTransactionInAllOtherRegions(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfos, GrainId startGrain, TransactionContext transactionContext, long highestCommittedBidFromMaster)
         {
-            this.logger.LogInformation("BroadCasting transaction to all other regions. The grainaccessinfos are: {infos}", string.Join(", ", grainAccessInfos));
+            this.logger.LogInformation("BroadCasting transaction with first function: {fir} to all other regions. The grainaccessinfos are: {infos}", firstFunction, string.Join(", ", grainAccessInfos));
             this.logger.LogInformation("Is functionInput null: {bool}", functionInput is null);
 
             string currentRegion = startGrain.SiloId.Substring(0, 2);
@@ -60,6 +60,8 @@ namespace Concurrency.Implementation.TransactionBroadcasting
 
                 var transactionExecutionGrain = this.grainFactory.GetGrain<ITransactionExecutionGrain>(startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.SiloId), startGrain.GrainClassName);
 
+                this.logger.LogInformation("Sending schedule to replica grain: {id}-{siloId}", startGrain.IntId, this.ReplaceDeploymentRegion(region, startGrain.SiloId));
+
                 transactionExecutionGrain.StartReplicaTransaction(firstFunction, functionInput is null ? null : this.CreateFunctionInput(region, functionInput), newGrainAccessInfo, transactionContext, highestCommittedBidFromMaster, DateTime.Now);
             }
 
@@ -78,6 +80,8 @@ namespace Concurrency.Implementation.TransactionBroadcasting
             {
                 subBatch.LocalCoordinatorId = 0;
             }
+
+            this.logger.LogInformation("ReplicaScheduleCount = {c}", replicaSchedules.Count);
 
             foreach(string replicaSiloId in replicaSiloIds)
             {

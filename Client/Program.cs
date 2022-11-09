@@ -1,5 +1,4 @@
 ﻿using Concurrency.Interface.Configuration;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
@@ -16,8 +15,8 @@ namespace Client
         private static async Task<int> MainAsync(string[] args)
         {
             string region = args[0];
-
             const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
+
             var client = new ClientBuilder()
                 .Configure<ClusterOptions>(options =>
                 {
@@ -33,11 +32,11 @@ namespace Client
 
             await client.Connect();
 
-            IRegionalCoordinatorConfigGrain regionalConfigGrainEU = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, region);
-            ILocalConfigGrain localConfigGrainEU = client.GetGrain<ILocalConfigGrain>(0, region);
+            IRegionalCoordinatorConfigGrain regionalConfigGrain = client.GetGrain<IRegionalCoordinatorConfigGrain>(0, region);
+            ILocalConfigGrain localConfigGrain = client.GetGrain<ILocalConfigGrain>(0, region);
 
-            await regionalConfigGrainEU.InitializeRegionalCoordinators(region);
-            await localConfigGrainEU.InitializeLocalCoordinators(region);
+            await regionalConfigGrain.InitializeRegionalCoordinators(region);
+            await localConfigGrain.InitializeLocalCoordinators(region);
 
             Console.WriteLine($"Finished initializing all the config grains and all the coordinators for region {region}");
 

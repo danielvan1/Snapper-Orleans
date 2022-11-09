@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon.Runtime.SharedInterfaces;
 using Concurrency.Implementation.Coordinator.Replica;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.Logging;
@@ -59,7 +60,7 @@ namespace Concurrency.Implementation.Coordinator.Local
         private List<TaskCompletionSource<Tuple<long, long>>> deterministicRequestPromise; // <local bid, local tid>
 
         // batch processing
-        private Dictionary<long, long> bidToLastBid;
+        private Dictionary<long, long> bidToPreviousBid;
         private Dictionary<long, long> bidToLastCoordID; // <bid, coordID who emit this bid's lastBid>
         private Dictionary<long, TaskCompletionSource<bool>> batchCommit;
 
@@ -102,7 +103,7 @@ namespace Concurrency.Implementation.Coordinator.Local
             this.batchCommit = new Dictionary<long, TaskCompletionSource<bool>>();
             this.expectedAcksPerBatch = new Dictionary<long, int>();
             this.bidToSubBatches = new Dictionary<long, Dictionary<GrainAccessInfo, SubBatch>>();
-            this.bidToLastBid = new Dictionary<long, long>();
+            this.bidToPreviousBid = new Dictionary<long, long>();
             this.bidToLastCoordID = new Dictionary<long, long>(); // <bid, coordID who emit this bid's lastBid>
 
             this.regionalBatchInfo = new SortedDictionary<long, SubBatch>();
@@ -186,7 +187,6 @@ namespace Concurrency.Implementation.Coordinator.Local
         /// <returns></returns>
         public async Task PassToken(LocalToken token)
         {
-            await Task.Delay(10);
 
             // TODO: Why do we need to do it like this?
             long curBatchID;
@@ -442,7 +442,6 @@ namespace Concurrency.Implementation.Coordinator.Local
             await this.regionalBatchCommit[regionalBid].Task;
         }
 
-
         private async Task EmitBatch(long bid)
         {
             Dictionary<GrainAccessInfo, SubBatch> currentSchedule = this.bidToSubBatches[bid];
@@ -482,12 +481,15 @@ namespace Concurrency.Implementation.Coordinator.Local
 
                 this.logger.LogError("Calling EmitBatch on transaction execution grain: {grainId}-{siloId} with LocalSubbatch: {s}", this.GrainReference, grainId, siloId, localSubBatch);
 
-                await destination.ReceiveBatchSchedule(localSubBatch);
+                _ = destination.ReceiveBatchSchedule(localSubBatch);
 
                 replicaSchedules.TryAdd(grainId, localSubBatch);
             }
 
-            _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToLastBid[bid], replicaSchedules);
+            if(replicaSchedules.Count > 0)
+            {
+                _ = this.transactionBroadCaster.BroadCastLocalSchedules(this.siloId, bid, this.bidToPreviousBid[bid], replicaSchedules);
+            }
         }
 
         /// <summary>
@@ -580,9 +582,8 @@ namespace Concurrency.Implementation.Coordinator.Local
                 token.PreviousBidPerGrain[grainId] = subBatch.Bid;
                 token.PreviousRegionalBidPerGrain[grainId] = globalBid;
             }
-            // 0-EU-EU-0 175 213
 
-            this.bidToLastBid.Add(currentBatchId, token.PreviousEmitBid);
+            this.bidToPreviousBid.Add(currentBatchId, token.PreviousEmitBid);
 
             if (token.PreviousEmitBid != -1)
             {
@@ -598,9 +599,9 @@ namespace Concurrency.Implementation.Coordinator.Local
 
         public async Task WaitPrevBatchToCommit(long bid)
         {
-            var previousBid = this.bidToLastBid[bid];
+            var previousBid = this.bidToPreviousBid[bid];
             this.logger.LogInformation("Waiting for previous batch: {prevBid} to commit. Current bid: {bid}", this.GrainReference, previousBid, bid);
-            this.bidToLastBid.Remove(bid);
+            this.bidToPreviousBid.Remove(bid);
 
             if (this.highestCommittedBid < previousBid)
             {

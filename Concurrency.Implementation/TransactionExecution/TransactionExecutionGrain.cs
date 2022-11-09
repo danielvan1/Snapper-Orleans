@@ -82,8 +82,8 @@ namespace Concurrency.Implementation.TransactionExecution
         {
             var receiveTxnTime = DateTime.Now;
 
-            this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}, grainAccessInfo: [{grainAccessInfo}]",
-                                       this.GrainReference, firstFunction, functionInput, string.Join(", ", grainAccessInfo));
+            this.logger.LogInformation("StartTransaction called with startFunc: {startFunc}, funcInput: {funcInput}",
+                                       this.GrainReference, firstFunction, functionInput);
 
             Tuple<long, TransactionContext> transactionContext = await this.transactionContextProvider.GetDeterministicContext(grainAccessInfo);
 
@@ -94,6 +94,8 @@ namespace Concurrency.Implementation.TransactionExecution
 
         public async Task<TransactionResult> StartReplicaTransaction(string firstFunction, FunctionInput functionInput, List<GrainAccessInfo> grainAccessInfo, TransactionContext transactionContext, long highestCommittedBidFromMaster, DateTime startTime)
         {
+            this.logger.LogInformation("StartReplicaTransaction called with startFunc: {startFunc}, funcInput: {funcInput}",
+                                       this.GrainReference, firstFunction, functionInput);
             transactionContext.IsReplicaTransaction =  true;
             transactionContext.Latency = (DateTime.Now - startTime).TotalMilliseconds;
 
@@ -139,7 +141,7 @@ namespace Concurrency.Implementation.TransactionExecution
 
             _ = this.SendResult(transactionResult);
 
-            this.logger.LogCritical("FINISHED");
+            this.logger.LogError("FINISHED", this.GrainReference);
 
             return transactionResult;
         }
