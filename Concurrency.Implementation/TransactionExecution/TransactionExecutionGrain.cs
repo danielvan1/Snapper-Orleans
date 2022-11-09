@@ -18,6 +18,7 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
+using Serilog;
 using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
@@ -142,7 +143,9 @@ namespace Concurrency.Implementation.TransactionExecution
                           : (DateTime.Now - transactionContext.StartTimeLatencyFromMaster).TotalMilliseconds,
             };
 
-            _ = this.SendResult(transactionResult);
+            // _ = this.SendResult(transactionResult);
+            this.logger.LogCritical("FINISHED");
+
 
             return transactionResult;
         }

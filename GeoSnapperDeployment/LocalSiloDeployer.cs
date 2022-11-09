@@ -1,7 +1,6 @@
 using System.Net;
 using Concurrency.Implementation;
 using Concurrency.Implementation.Coordinator;
-using Concurrency.Implementation.Coordinator.Local;
 using Concurrency.Implementation.GrainPlacement;
 using Concurrency.Implementation.TransactionBroadcasting;
 using Concurrency.Implementation.TransactionExecution.Scheduler;
@@ -191,9 +190,23 @@ namespace GeoSnapperDeployment
                            })
                            .Configure<ClientMessagingOptions>(options =>
                            {
-                               options.ResponseTimeout = new TimeSpan(0, 5, 0);
-                               options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
+                               options.ResponseTimeout = new TimeSpan(0, 10, 0);
+                               options.ResponseTimeoutWithDebugger = new TimeSpan(0, 10, 0);
+                               options.BufferPoolMaxSize = 100000;
+                               options.BufferPoolBufferSize = 100000;
+                               options.DropExpiredMessages = false;
                            })
+                           .Configure<ClusterMembershipOptions>(options =>
+                           {
+                               options.DeathVoteExpirationTimeout = new TimeSpan(0, 10, 0);
+                               options.IAmAliveTablePublishTimeout = new TimeSpan(0, 10, 0);
+                               options.NumMissedTableIAmAliveLimit = 1000000;
+                               options.NumVotesForDeathDeclaration = 1000000;
+                           })
+                           .Configure<SiloMessagingOptions>(options => {
+                                options.ResponseTimeout = new TimeSpan(0, 5, 0);
+                                options.ResponseTimeoutWithDebugger = new TimeSpan(0, 5, 0);
+                            })
                            .Configure<ClusterOptions>(options =>
                            {
                                options.ClusterId = clusterId;
@@ -344,7 +357,7 @@ namespace GeoSnapperDeployment
             return new LoggerConfiguration()
                         .WriteTo.File(this.logPath).Filter.ByExcluding(Matching.FromSource("Orleans"))
                         .WriteTo.Console().Filter.ByExcluding(Matching.FromSource("Orleans"))
-                        .MinimumLevel.Warning()
+                        .MinimumLevel.Fatal()
                         .CreateLogger();
         }
     }

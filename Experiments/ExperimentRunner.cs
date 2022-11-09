@@ -34,8 +34,8 @@ namespace Experiments
                 var initResults = await this.InitAccountsAsync(grainAccessInfoList, client, initialBalance);
             }
 
-
             var multiTransferTasks = new List<Task<TransactionResult>>();
+
             for (int siloIndex = 0; siloIndex < accountIds.Length; siloIndex++)
             {
                 List<GrainAccessInfo> grainAccessInfos = new List<GrainAccessInfo>();
@@ -74,9 +74,9 @@ namespace Experiments
             await Task.Delay(2000);
 
             var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
-            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
-            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
-            Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime()}");
+            // Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
+            // Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
+            // Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime()}");
 
             await client.Close();
         }

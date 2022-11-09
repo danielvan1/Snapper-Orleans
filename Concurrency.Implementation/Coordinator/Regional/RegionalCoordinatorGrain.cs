@@ -96,9 +96,15 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
         public async Task PassToken(RegionalToken token)
         {
-            Thread.Sleep(20);
+            long curBatchId = -1;
 
-            long curBatchId = this.GenerateBatch(token);
+            var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
+
+            if (elapsedTime >= batchSizeInMSecs)
+            {
+                curBatchId = this.GenerateBatch(token);
+                if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
+            }
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {
@@ -111,7 +117,7 @@ namespace Concurrency.Implementation.Coordinator.Regional
 
             _ = this.neighborCoord.PassToken(token);
 
-            if (curBatchId != -1) await EmitBatch(curBatchId);
+            if (curBatchId != -1) _ = EmitBatch(curBatchId);
         }
 
         private async Task EmitBatch(long bid)
@@ -195,6 +201,9 @@ namespace Concurrency.Implementation.Coordinator.Regional
         public Task SpawnGlobalCoordGrain(IRegionalCoordinatorGrain neighbor)
         {
             // TODO: This seems not to be necessary as it is called in the ctor of detTxnProcessor
+            this.batchSizeInMSecs = Constants.batchSizeInMSecsBasic;
+            for (int i = Constants.numSilo; i > 2; i /= 2) this.batchSizeInMSecs *= Constants.scaleSpeed;
+            this.timeOfBatchGeneration = DateTime.Now;
 
             this.neighborCoord = neighbor;
 

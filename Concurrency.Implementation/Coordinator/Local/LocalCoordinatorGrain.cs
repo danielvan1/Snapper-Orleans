@@ -186,11 +186,12 @@ namespace Concurrency.Implementation.Coordinator.Local
         /// <returns></returns>
         public async Task PassToken(LocalToken token)
         {
-            Thread.Sleep(10);
+            await Task.Delay(10);
 
             // TODO: Why do we need to do it like this?
+            long curBatchID;
             var curBatchIDs = new List<long>();
-            var curBatchID = this.GenerateBatch(token);
+            curBatchID = this.GenerateBatch(token);
             // var curBatchIDs = this.GenerateRegionalBatch(token, currentBids);
             this.GenerateRegionalBatch(token, curBatchIDs);
 
@@ -204,12 +205,13 @@ namespace Concurrency.Implementation.Coordinator.Local
             }
 
             _ = this.neighborCoord.PassToken(token);
-            if (curBatchID != -1) _ = EmitBatch(curBatchID);
+
+            if (curBatchID != -1) await EmitBatch(curBatchID);
             if (curBatchIDs.Count != 0)
             {
                 foreach (var bid in curBatchIDs)
                 {
-                    _ = EmitBatch(bid);
+                    await EmitBatch(bid);
                 }
             }
         }
