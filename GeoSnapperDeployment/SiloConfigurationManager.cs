@@ -31,7 +31,7 @@ namespace GeoSnapperDeployment
                                                              int siloPort,
                                                              int gatewayPort)
         {
-            const string key1 = "DefaultEndpointsProtocol=https;AccountName=snapperstorage;AccountKey=OYoqvb955xUGAu9SkZEMapbNAxl3vN3En2wNqVQV6iEmZE4UWCydMFL/cO+78QvN0ufhxWZNlZIA+AStQx1IXQ==;EndpointSuffix=core.windows.net";
+            const string key1 = "";
             Console.WriteLine($"IP: {advertisedSiloIPAdress}, siloPort: {siloPort}, gatewayPort: {gatewayPort}, localhost: {IPAddress.Loopback}");
 
             siloHostBuilder.Configure<EndpointOptions>(options =>

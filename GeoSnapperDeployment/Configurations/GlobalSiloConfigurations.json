@@ -13,18 +13,18 @@
             },
             {
                 "Region" : "US",
-                "IPAddress" : "4.227.140.73"
+                "IPAddress" : "20.124.247.186"
             },
             {
                 "Region" : "AS",
-                "IPAddress" : "20.193.133.29"
+                "IPAddress" : "20.205.100.122"
             }
         ],
 
         "Silos": {
             "PrimarySilo" :
             {
-                "IPAddress" : "4.227.140.73",
+                "IPAddress" : "20.124.247.186",
                 "SiloId": 10000,
                 "Region": "US",
                 "SiloPort": 11111,
@@ -48,14 +48,14 @@
                     "GatewayPort": 30002
                 },
                 {
-                    "IPAddress" : "4.227.140.73",
+                    "IPAddress" : "20.124.247.186",
                     "SiloId": 15001,
                     "Region": "US",
                     "SiloPort": 15001,
                     "GatewayPort": 30003
                 },
                 {
-                    "IPAddress" : "20.193.133.29",
+                    "IPAddress" : "20.205.100.122",
                     "SiloId": 15002,
                     "Region": "AS",
                     "SiloPort": 15002,
@@ -65,28 +65,28 @@
 
             "LocalSilos": [
                 {
-                    "IPAddress" : "20.193.133.29",
+                    "IPAddress" : "20.205.100.122",
                     "SiloId": 0,
                     "Region": "AS",
                     "SiloPort": 20000,
                     "GatewayPort": 30004
                 },
                 {
-                    "IPAddress" : "20.193.133.29",
+                    "IPAddress" : "20.205.100.122",
                     "SiloId": 1,
                     "Region": "AS",
                     "SiloPort": 20001,
                     "GatewayPort": 30005
                 },
                 {
-                    "IPAddress" : "4.227.140.73",
+                    "IPAddress" : "20.124.247.186",
                     "SiloId": 2,
                     "Region": "US",
                     "SiloPort": 20002,
                     "GatewayPort": 30006
                 },
                 {
-                    "IPAddress" : "4.227.140.73",
+                    "IPAddress" : "20.124.247.186",
                     "SiloId": 3,
                     "Region": "US",
                     "SiloPort": 20003,

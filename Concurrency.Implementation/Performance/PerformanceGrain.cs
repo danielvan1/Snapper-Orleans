@@ -33,7 +33,6 @@ namespace Concurrency.Implementation.Performance
                 }
 
                 this.functionNamesToTransactionResults[functionName].Add(transactionResult);
-
             }
             else
             {

@@ -187,12 +187,12 @@ namespace Concurrency.Implementation.Coordinator.Local
         /// <returns></returns>
         public async Task PassToken(LocalToken token)
         {
+            await Task.Delay(20);
 
             // TODO: Why do we need to do it like this?
             long curBatchID;
             var curBatchIDs = new List<long>();
             curBatchID = this.GenerateBatch(token);
-            // var curBatchIDs = this.GenerateRegionalBatch(token, currentBids);
             this.GenerateRegionalBatch(token, curBatchIDs);
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
@@ -365,13 +365,11 @@ namespace Concurrency.Implementation.Coordinator.Local
                 if (subBatch.PreviousBid != token.PreviousEmitRegionalBid)
                 {
                     return;
-                    // return new List<long>();
                 }
 
                 if (subBatch.Transactions.Count != this.regionalTransactionInfo[regionalBid].Count)
                 {
                     return;
-                    // return new List<long>();
                 }
 
                 this.logger.LogInformation("HerpDerp", this.GrainReference);
