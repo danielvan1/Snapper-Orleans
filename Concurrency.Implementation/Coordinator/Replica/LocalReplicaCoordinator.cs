@@ -121,8 +121,8 @@ namespace Concurrency.Implementation.Coordinator.Replica
             {
                 this.logger.LogInformation("Current batch {bid} is regional in replica", this.GrainReference, bid);
                 long regionalBid = localSubBatch.RegionalBid;
-                _ = this.regionalReplicaCoordinator.CommitAcknowledgement(regionalBid);
-                _ = this.WaitForRegionalBatchToCommit(regionalBid);
+                await this.regionalReplicaCoordinator.CommitAcknowledgement(regionalBid);
+                await this.WaitForRegionalBatchToCommit(regionalBid);
             }
 
             this.logger.LogInformation("Herpderp3", this.GrainReference);

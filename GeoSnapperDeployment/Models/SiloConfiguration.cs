@@ -1,4 +1,3 @@
-using System.Net;
 namespace GeoSnapperDeployment.Models
 {
     public record SiloConfiguration
@@ -12,6 +11,5 @@ namespace GeoSnapperDeployment.Models
         public int SiloPort {get; init;}
 
         public int GatewayPort {get; init;}
-
     }
 }

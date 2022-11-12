@@ -71,14 +71,16 @@ namespace Experiments
                 Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
             }
 
-            await Task.Delay(10000);
+            await Task.Delay(20000);
 
             var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
-            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("Balance")}");
-            Console.WriteLine($"AverageExecutionTime: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
-            Console.WriteLine($"AverageLatency: {await performanceGrain.GetAverageLatencyTime("MultiTransfer")}");
-            Console.WriteLine($"Replica Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults("MultiTransfer", true)).Select(r => r.Result))}]");
-            Console.WriteLine($"Replica Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults("Balance", true)).Select(r => r.Result))}]");
+
+            Console.WriteLine($"AverageExecutionTime MultiTransfer: {await performanceGrain.GetAverageExecutionTime("MultiTransfer")}");
+            Console.WriteLine($"AverageExecutionTime Balance:: {await performanceGrain.GetAverageExecutionTime("Balance")}");
+            Console.WriteLine($"AverageLatency MultiTransfer: {await performanceGrain.GetAverageLatencyTime("MultiTransfer")}");
+            Console.WriteLine($"AverageLatency Balance: {await performanceGrain.GetAverageLatencyTime("Init")}");
+            Console.WriteLine($"Replica MultiTransfer Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults("MultiTransfer", true)).Select(r => r.Result))}]");
+            Console.WriteLine($"Replica Balance Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults("Balance", true)).Select(r => r.Result))}]");
 
             await client.Close();
         }
