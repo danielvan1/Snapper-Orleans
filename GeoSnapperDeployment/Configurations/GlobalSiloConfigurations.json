@@ -9,7 +9,7 @@
         "IPAddresses" : [
             {
                 "Region" : "EU",
-                "IPAddress" : "45.91.59.210"
+                "IPAddress" : "40.114.149.20"
             },
             {
                 "Region" : "US",
@@ -41,7 +41,7 @@
 
             "RegionalSilos" : [
                 {
-                    "IPAddress" : "109.198.140.200",
+                    "IPAddress" : "40.114.149.20",
                     "SiloId": 15000,
                     "Region": "EU",
                     "SiloPort": 15000,
@@ -91,6 +91,20 @@
                     "Region": "US",
                     "SiloPort": 20003,
                     "GatewayPort": 30007
+                },
+                {
+                    "IPAddress" : "40.114.149.20",
+                    "SiloId": 4,
+                    "Region": "EU",
+                    "SiloPort": 20004,
+                    "GatewayPort": 30008
+                },
+                {
+                    "IPAddress" : "40.114.149.20",
+                    "SiloId": 5,
+                    "Region": "EU",
+                    "SiloPort": 20004,
+                    "GatewayPort": 30009
                 }
             ]
         }
