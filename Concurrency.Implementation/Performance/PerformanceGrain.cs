@@ -47,6 +47,11 @@ namespace Concurrency.Implementation.Performance
             return Task.CompletedTask;
         }
 
+        public Task<int> NumberOfTransactions(string startFunctionName)
+        {
+            return Task.FromResult(this.functionNamesToTransactionResults[startFunctionName].Count);
+        }
+
         public Task<double> GetAverageExecutionTime(string functionName)
         {
             return Task.FromResult(this.functionNamesToTransactionResults[functionName].Select(r => r.ExecuteTime)

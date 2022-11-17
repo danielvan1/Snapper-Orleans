@@ -34,9 +34,9 @@ namespace SmallBank.Grains
             var accountID = functionInput.DestinationGrains.First();
             BankAccount myState =  await this.GetState(context, AccessMode.ReadWrite);
             myState.accountID = accountID.DestinationGrain;
-            myState.balance = accountID.Value;
+            myState.Balance = accountID.Value;
 
-            this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.balance);
+            this.logger.LogInformation("Balance {myStateBalance}", this.GrainReference, myState.Balance);
 
             return new TransactionResult();
         }
@@ -45,7 +45,8 @@ namespace SmallBank.Grains
         {
             var toAccounts = functionInput.DestinationGrains;
             var myState = await this.GetState(context, AccessMode.ReadWrite);
-            myState.balance -= toAccounts.Select(acc => acc.Value).Sum();
+            myState.Balance -= toAccounts.Select(acc => acc.Value)
+                                         .Sum();
 
             var task = new List<Task>();
 
@@ -63,11 +64,7 @@ namespace SmallBank.Grains
                 {
                     var herp = new FunctionInput()
                     {
-                        DestinationGrains = new List<TransactionInfo>()
-                        {
-                            accountID
-                        }
-
+                        DestinationGrains = new List<TransactionInfo>() { accountID }
                     };
 
                     task.Add(Deposit(context, herp));
@@ -80,7 +77,7 @@ namespace SmallBank.Grains
 
             return new TransactionResult()
             {
-                Result = myState.balance
+                Result = myState.Balance
             };
         }
 
@@ -89,7 +86,20 @@ namespace SmallBank.Grains
             var accountID = functionInput.DestinationGrains.First();
             var myState = await this.GetState(context, AccessMode.ReadWrite);
             this.logger.LogInformation("Going to deposit on this account: {accountId}", this.GrainReference, accountID);
-            myState.balance += accountID.Value;
+            myState.Balance += accountID.Value;
+
+            return new TransactionResult();
+        }
+
+        public async Task<TransactionResult> Remove(TransactionContext context, FunctionInput functionInput)
+        {
+            var accountID = functionInput.DestinationGrains.First();
+            BankAccount myState = await this.GetState(context, AccessMode.ReadWrite);
+            this.logger.LogInformation("Going to remove on this account: {accountId}, secondValue = {secondValue}", this.GrainReference, accountID, accountID.SecondValue);
+            myState.Balance /= accountID.Value;
+            myState.Balance += accountID.SecondValue;
+
+            this.logger.LogInformation("Balance {balance} after remove {accountId}", this.GrainReference, accountID, myState.Balance);
 
             return new TransactionResult();
         }
@@ -100,7 +110,7 @@ namespace SmallBank.Grains
 
             return new TransactionResult()
             {
-                Result = myState.balance
+                Result = myState.Balance
             };
         }
 

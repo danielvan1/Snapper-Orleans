@@ -10,7 +10,7 @@ namespace SmallBank.Interfaces
         [Key(0)]
         public Tuple<int, string> accountID = null;
         [Key(1)]
-        public float balance = 0;
+        public float Balance = 0;
 
         public BankAccount()
         {
@@ -20,21 +20,21 @@ namespace SmallBank.Interfaces
         public BankAccount(SerializationInfo info, StreamingContext context)
         {
             accountID = (Tuple<int, string>) info.GetValue("ID", typeof(Tuple<int, string>));
-            balance = (float)info.GetValue("balance", typeof(float));
+            Balance = (float)info.GetValue("balance", typeof(float));
         }
 
         /// <summary> This method is used to serialize values. </summary>
         public void GetObjectData(SerializationInfo info, StreamingContext context)
         {
             info.AddValue("ID", accountID, typeof(int));
-            info.AddValue("balance", balance, typeof(float));
+            info.AddValue("balance", Balance, typeof(float));
         }
 
         public object Clone()
         {
             var account = new BankAccount();
             account.accountID = accountID;
-            account.balance = balance;
+            account.Balance = Balance;
             return account;
         }
     }

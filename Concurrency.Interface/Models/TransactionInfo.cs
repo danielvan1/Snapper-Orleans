@@ -7,7 +7,9 @@ namespace Concurrency.Interface.Models
     {
         public Tuple<int, string> DestinationGrain;
 
-        public int Value;
+        public float Value;
+
+        public float SecondValue;
 
         public override string ToString()
         {

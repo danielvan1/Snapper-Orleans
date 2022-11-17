@@ -129,7 +129,8 @@ namespace Concurrency.Implementation.TransactionBroadcasting
                 TransactionInfo newTransactionInfo = new TransactionInfo()
                 {
                     DestinationGrain = transactionInfo.DestinationGrain is null ? null :  new Tuple<int, string>(transactionInfo.DestinationGrain.Item1, this.ReplaceDeploymentRegion(region, transactionInfo.DestinationGrain.Item2)),
-                    Value = transactionInfo.Value
+                    Value = transactionInfo.Value,
+                    SecondValue = transactionInfo.SecondValue
                 };
 
                 newFunctionInput.DestinationGrains.Add(newTransactionInfo);

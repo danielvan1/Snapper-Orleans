@@ -28,9 +28,16 @@ namespace Experiments
 
                 await experimentRunner.StressRun(client, region, silos, grainsPerSilo);
             }
-            else
+            else if("Correctness".Equals(function, StringComparison.CurrentCultureIgnoreCase))
             {
 
+                int silos = int.Parse(args[3]);
+                int grainsPerSilo = int.Parse(args[4]);
+
+                await experimentRunner.CorrectnessCheck(client, region, silos, grainsPerSilo);
+            }
+            else
+            {
                 int multitransfers = int.Parse(args[3]);
                 await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
             }

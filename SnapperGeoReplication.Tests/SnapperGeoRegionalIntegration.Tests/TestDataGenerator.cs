@@ -23,13 +23,12 @@ namespace SnapperGeoRegionalIntegration.Tests
 
             for (int accountId = startAccountId; accountId < n+startAccountId; accountId++)
             {
-                accountIds.Add(
-                new GrainAccessInfo()
-                {
-                    Id = accountId,
-                    SiloId = regionAndServer,
-                    GrainClassNamespace = grainClassName
-                });
+                accountIds.Add(new GrainAccessInfo()
+                               {
+                                   Id = accountId,
+                                   SiloId = regionAndServer,
+                                   GrainClassNamespace = grainClassName
+                               });
             }
 
             return accountIds;
@@ -50,6 +49,23 @@ namespace SnapperGeoRegionalIntegration.Tests
                     Value = 1
                 });
             }
+
+            return functionInput;
+        }
+
+        public static FunctionInput CreateFunctionInput(GrainAccessInfo grainAccessInfo, float divider, float value)
+        {
+            FunctionInput functionInput = new FunctionInput()
+            {
+                DestinationGrains = new List<TransactionInfo>()
+            };
+
+            functionInput.DestinationGrains.Add(new TransactionInfo()
+            {
+                DestinationGrain = new Tuple<int, string>(grainAccessInfo.Id, grainAccessInfo.SiloId),
+                Value = divider,
+                SecondValue = value
+            });
 
             return functionInput;
         }

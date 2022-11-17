@@ -14,5 +14,6 @@ namespace Utilities
         public double Latency { get; init; }
         public bool IsReplica { get; init; }
         public string FirstFunctionName { get; init; }
+        public string GrainId { get; init; }
     }
 }

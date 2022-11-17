@@ -136,7 +136,8 @@ namespace Concurrency.Implementation.TransactionExecution
                 CommitTime = (commitTime - finishExeTime).TotalMilliseconds,
                 FirstFunctionName = firstFunction,
                 IsReplica = transactionContext.IsReplicaTransaction,
-                Latency = transactionContext.Latency
+                Latency = transactionContext.Latency,
+                GrainId = this.myGrainId.ToString()
             };
 
             _ = this.SendResult(transactionResult);

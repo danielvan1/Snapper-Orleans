@@ -12,6 +12,8 @@ namespace Concurrency.Implementation.Performance
         Task<double> GetAverageExecutionTime(string functionName);
         Task<double> GetAverageLatencyTime(string functionName);
 
+        Task<int> NumberOfTransactions(string startFunctionName);
+
         Task<List<TransactionResult>> GetTransactionResults(string functionName, bool replicas);
 
         Task CleanUp();
