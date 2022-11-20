@@ -4,8 +4,8 @@ namespace Utilities
 {
     public class Constants
     {
-        public const int NumberOfLocalCoordinatorsPerSilo = 2;
-        public const int NumberOfRegionalCoordinators = 2;
+        public const int NumberOfLocalCoordinatorsPerSilo = 1;
+        public const int NumberOfRegionalCoordinators = 1;
 
         public const double scaleSpeed = 1.75;
         public const int batchSizeInMSecsBasic = RealScaleOut ? 30 : 20;
