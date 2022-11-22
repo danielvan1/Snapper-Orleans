@@ -6,6 +6,6 @@ namespace GeoSnapperDeployment.Models
 
         public string IPAddress { get; init; }
 
-        public string ServerIndex { get; init; }
+        public int ServerIndex { get; init; }
     }
 }
