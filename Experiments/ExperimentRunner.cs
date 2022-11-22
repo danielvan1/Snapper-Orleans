@@ -11,7 +11,11 @@ namespace Experiments
 {
     public class ExperimentRunner
     {
-       public async Task CorrectnessCheck(IClusterClient client, string region, int silos, int grainsPerSilo)
+        private const string US = "US";
+        private const string EU = "EU";
+        private const string ASIA = "AS";
+
+        public async Task CorrectnessCheck(IClusterClient client, string region, int silos, int grainsPerSilo)
        {
             await client.Connect();
             Random random = new Random();
@@ -71,18 +75,19 @@ namespace Experiments
             Console.WriteLine($"RegionalCoordinators: {Constants.NumberOfRegionalCoordinators}");
 
             Console.WriteLine($"AverageExecutionTime Balance:: {await performanceGrain.GetAverageExecutionTime(Balance)}");
-            Console.WriteLine($"AverageLatency Balance: {await performanceGrain.GetAverageLatencyTime(Init)}");
+            Console.WriteLine($"AverageLatency Balance: {await performanceGrain.GetAverageLatencyTime(Init, "US")}");
             Console.WriteLine($"Replica Balance Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults(Balance, true)).Select(r => $"{r.GrainId} = {r.Result}"))}]");
 
             await client.Close();
        }
 
-       public async Task StressRun(IClusterClient client, string region, int silos, int grainsPerSilo)
+       public async Task StressRun(IClusterClient client, string region, int silos, int grainsPerSilo, int transactionSize)
        {
             await client.Connect();
 
             List<GrainAccessInfo>[] accountIds = new List<GrainAccessInfo>[silos];
             int startId = 0;
+
 
             for (int siloIndex = 0; siloIndex < silos; siloIndex++)
             {
@@ -90,7 +95,7 @@ namespace Experiments
                 // startId += grainsPerSilo * silos + 1;
             }
 
-            int initialBalance = 1000;
+            int initialBalance = 10000;
             var initTasks = new List<Task>();
 
             Stopwatch stopwatch = Stopwatch.StartNew();
@@ -102,6 +107,10 @@ namespace Experiments
 
             await Task.WhenAll(initTasks);
 
+            stopwatch.Stop();
+            long initTime = stopwatch.ElapsedMilliseconds;
+
+            stopwatch = Stopwatch.StartNew();
             var multiTransferTasks = new List<Task<TransactionResult>>();
 
             for (int siloIndex = 0; siloIndex < accountIds.Length; siloIndex++)
@@ -113,7 +122,10 @@ namespace Experiments
                 {
                     if(siloIndex == next) continue;
 
-                    grainAccessInfos.AddRange(accountIds[next]);
+                    for (int i = 0; i < transactionSize; i++)
+                    {
+                        grainAccessInfos.Add(accountIds[next][i]);
+                    }
                 }
 
                 FunctionInput functionInput = TestDataGenerator.CreateFunctionInput(grainAccessInfos);
@@ -131,14 +143,20 @@ namespace Experiments
             await Task.WhenAll(multiTransferTasks);
 
             stopwatch.Stop();
+            long multihomeTime = stopwatch.ElapsedMilliseconds;
 
             var balanceTasks = new List<TransactionResult>();
+
+            stopwatch = Stopwatch.StartNew();
 
             foreach(var grainAccessInfoList in accountIds)
             {
                 var balanceResult = await this.GetAccountBalancesAsync(grainAccessInfoList, client);
-                Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
+                // Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
             }
+
+            stopwatch.Stop();
+            long balanceTime = stopwatch.ElapsedMilliseconds;
 
             await Task.Delay(20000);
 
@@ -149,15 +167,49 @@ namespace Experiments
 
             Console.WriteLine($"LocalCoordinators: {Constants.NumberOfLocalCoordinatorsPerSilo}");
             Console.WriteLine($"RegionalCoordinators: {Constants.NumberOfRegionalCoordinators}");
-            Console.WriteLine($"Time running init and multitransfers: {stopwatch.ElapsedMilliseconds}");
-            Console.WriteLine($"Number of init and multitransfer transactions: {await performanceGrain.NumberOfTransactions(Init) + await performanceGrain.NumberOfTransactions(MultiTransfer)}");
+            Console.WriteLine($"TransactionSize: {transactionSize}");
 
+            int initTransactions = await performanceGrain.NumberOfTransactions(Init);
+            int multiTransfers = await performanceGrain.NumberOfTransactions(MultiTransfer);
+            int balanceTransactions = await performanceGrain.NumberOfTransactions(Balance);
+
+            Console.WriteLine($"Number of init transactions: {initTransactions}");
+            Console.WriteLine($"Number of multitransfer transactions: {multiTransfers}");
+            Console.WriteLine($"Number of balance transactions: {balanceTransactions}");
+            Console.WriteLine($"Total transactions: {initTransactions + multiTransfers + balanceTransactions}");
+
+            Console.WriteLine($"AveragePrepareTime Init: {await performanceGrain.GetAveragePrepareTime(Init)}");
+            Console.WriteLine($"AveragePrepareTime MultiTransfer: {await performanceGrain.GetAveragePrepareTime(MultiTransfer)}");
+            Console.WriteLine($"AveragePrepareTime Balance:: {await performanceGrain.GetAveragePrepareTime(Balance)}");
+
+            Console.WriteLine($"AverageExecutionTime Init: {await performanceGrain.GetAverageExecutionTime(Init)}");
             Console.WriteLine($"AverageExecutionTime MultiTransfer: {await performanceGrain.GetAverageExecutionTime(MultiTransfer)}");
             Console.WriteLine($"AverageExecutionTime Balance:: {await performanceGrain.GetAverageExecutionTime(Balance)}");
-            Console.WriteLine($"AverageLatency MultiTransfer: {await performanceGrain.GetAverageLatencyTime(MultiTransfer)}");
-            Console.WriteLine($"AverageLatency Balance: {await performanceGrain.GetAverageLatencyTime(Init)}");
-            Console.WriteLine($"Replica MultiTransfer Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults(MultiTransfer, true)).Select(r => r.Result))}]");
-            Console.WriteLine($"Replica Balance Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults(Balance, true)).Select(r => r.Result))}]");
+
+            Console.WriteLine($"AverageCommitTime Init: {await performanceGrain.GetAverageCommitTime(Init)}");
+            Console.WriteLine($"AverageCommitTime MultiTransfer: {await performanceGrain.GetAverageCommitTime(MultiTransfer)}");
+            Console.WriteLine($"AverageCommitTime Balance:: {await performanceGrain.GetAverageCommitTime(Balance)}");
+
+            Console.WriteLine($"AverageExecutionTime Replica Init US: {await performanceGrain.GetAverageExecutionTimeReplica(Init, US)}");
+            Console.WriteLine($"AverageExecutionTime Replica MultiTransfer US: {await performanceGrain.GetAverageExecutionTimeReplica(MultiTransfer, US)}");
+            Console.WriteLine($"AverageExecutionTime Replica Balance US: {await performanceGrain.GetAverageExecutionTimeReplica(Balance, US)}");
+
+            Console.WriteLine($"AverageLatency Init US: {await performanceGrain.GetAverageLatencyTime(Init, US)}");
+            Console.WriteLine($"AverageLatency MultiTransfer US: {await performanceGrain.GetAverageLatencyTime(MultiTransfer, US)}");
+            Console.WriteLine($"AverageLatency Balance US: {await performanceGrain.GetAverageLatencyTime(Balance, US)}");
+
+            Console.WriteLine($"AverageExecutionTime Replica Init ASIA: {await performanceGrain.GetAverageExecutionTimeReplica(Init, ASIA)}");
+            Console.WriteLine($"AverageExecutionTime Replica MultiTransfer ASIA: {await performanceGrain.GetAverageExecutionTimeReplica(MultiTransfer, ASIA)}");
+            Console.WriteLine($"AverageExecutionTime Replica Balance ASIA: {await performanceGrain.GetAverageExecutionTimeReplica(Balance, ASIA)}");
+
+            Console.WriteLine($"AverageLatency Init ASIA: {await performanceGrain.GetAverageLatencyTime(Init, ASIA)}");
+            Console.WriteLine($"AverageLatency MultiTransfer ASIA: {await performanceGrain.GetAverageLatencyTime(MultiTransfer, ASIA)}");
+            Console.WriteLine($"AverageLatency Balance ASIA: {await performanceGrain.GetAverageLatencyTime(Balance, ASIA)}");
+
+            await performanceGrain.CleanUp();
+
+            // Console.WriteLine($"Replica MultiTransfer Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults(MultiTransfer, true)).Select(r => r.Result))}]");
+            // Console.WriteLine($"Replica Balance Results: [{string.Join(", ", (await performanceGrain.GetTransactionResults(Balance, true)).Select(r => r.Result))}]");
 
             await client.Close();
         }
@@ -290,7 +342,6 @@ namespace Experiments
 
             foreach (var accountId in accountIds)
             {
-                Console.WriteLine($"accountId: {accountId}");
                 var id = accountId.Id;
                 var regionAndServer = accountId.SiloId;
                 var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(id, regionAndServer);

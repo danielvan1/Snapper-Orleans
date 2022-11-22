@@ -10,6 +10,8 @@ namespace GeoSnapperDeployment.Models
 
         public int SiloPort {get; init;}
 
+        public int ServerIndex {get; init;}
+
         public int GatewayPort {get; init;}
     }
 }

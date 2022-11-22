@@ -109,13 +109,13 @@ namespace GeoSnapperDeployment.Factories
                     int siloIntegerId = siloConfiguration.SiloIntegerId;
                     int siloPort = siloConfiguration.SiloPort;
                     int gatewayPort = siloConfiguration.GatewayPort;
+                    int serverIndex = siloConfiguration.ServerIndex;
                     bool isReplica = false;
                     IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
-                    SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, clusterId, serviceId, siloIntegerId,
-                                                                    siloPort, gatewayPort, region, region, isReplica);
+                    SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, clusterId, serviceId, siloIntegerId, siloPort, gatewayPort, region, region, isReplica);
 
-                    string siloId = this.CreateSiloId(region, region, i);
+                    string siloId = this.CreateSiloId(region, region, serverIndex);
 
                     homeSilos.Add(siloId, siloInfo);
                 }
@@ -135,7 +135,6 @@ namespace GeoSnapperDeployment.Factories
 
             foreach ((string deploymentRegion, _) in siloConfigurationRegionBuckets)
             {
-                var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(deploymentRegion)).First().IPAddress);
                 foreach ((string homeRegion, List<SiloConfiguration> configurations) in siloConfigurationRegionBuckets)
                 {
                     // We don't want to create home silo info here, we do that another place
@@ -144,6 +143,7 @@ namespace GeoSnapperDeployment.Factories
                     for (int i = 0; i < configurations.Count; i++)
                     {
                         SiloConfiguration siloConfiguration = configurations[i];
+                        var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(deploymentRegion) && IPConfig.ServerIndex.Equals(siloConfiguration.ServerIndex)).First().IPAddress);
 
                         SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress,
                                                                         clusterId, serviceId,
@@ -151,7 +151,7 @@ namespace GeoSnapperDeployment.Factories
                                                                         replicaStartGatewayPort, deploymentRegion,
                                                                         homeRegion, true);
 
-                        string regionAndServerKey = this.CreateSiloId(deploymentRegion, homeRegion, i);
+                        string regionAndServerKey = this.CreateSiloId(deploymentRegion, homeRegion, siloConfiguration.ServerIndex);
 
                         replicaSilos.Add(regionAndServerKey, siloInfo);
 

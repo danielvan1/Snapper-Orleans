@@ -15,5 +15,6 @@ namespace Utilities
         public bool IsReplica { get; init; }
         public string FirstFunctionName { get; init; }
         public string GrainId { get; init; }
+        public string Region { get; init; }
     }
 }

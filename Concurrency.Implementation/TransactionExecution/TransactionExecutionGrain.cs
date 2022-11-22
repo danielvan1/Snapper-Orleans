@@ -137,8 +137,9 @@ namespace Concurrency.Implementation.TransactionExecution
                 FirstFunctionName = firstFunction,
                 IsReplica = transactionContext.IsReplicaTransaction,
                 Latency = transactionContext.Latency,
-                GrainId = this.myGrainId.ToString()
-            };
+                GrainId = this.myGrainId.ToString(),
+                Region = this.myGrainId.SiloId.Substring(0, 2)
+        };
 
             _ = this.SendResult(transactionResult);
 

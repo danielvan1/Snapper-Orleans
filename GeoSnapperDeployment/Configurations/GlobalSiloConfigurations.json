@@ -9,14 +9,32 @@
         "IPAddresses" : [
             {
                 "Region" : "EU",
+                "ServerIndex" : 0,
                 "IPAddress" : "40.114.149.20"
             },
             {
                 "Region" : "US",
+                "ServerIndex" : 0,
                 "IPAddress" : "20.124.247.186"
             },
             {
                 "Region" : "AS",
+                "ServerIndex" : 0,
+                "IPAddress" : "20.205.100.122"
+            },
+            {
+                "Region" : "US",
+                "ServerIndex" : 1,
+                "IPAddress" : "20.25.30.145"
+            },
+            {
+                "Region" : "EU",
+                "ServerIndex" : 1,
+                "IPAddress" : "20.16.236.177"
+            },
+            {
+                "Region" : "AS",
+                "ServerIndex" : 1,
                 "IPAddress" : "20.205.100.122"
             }
         ],
@@ -69,68 +87,42 @@
                     "SiloId": 0,
                     "Region": "AS",
                     "SiloPort": 20000,
+                    "ServerIndex" : 0,
                     "GatewayPort": 30004
                 },
                 {
                     "IPAddress" : "20.124.247.186",
-                    "SiloId": 2,
+                    "SiloId": 1,
                     "Region": "US",
                     "SiloPort": 20002,
+                    "ServerIndex" : 0,
                     "GatewayPort": 30006
                 },
                 {
+                    "IPAddress" : "20.25.30.145",
+                    "SiloId": 2,
+                    "Region": "US",
+                    "SiloPort": 20003,
+                    "ServerIndex" : 1,
+                    "GatewayPort": 30007
+                },
+                {
                     "IPAddress" : "40.114.149.20",
-                    "SiloId": 4,
+                    "SiloId": 3,
                     "Region": "EU",
                     "SiloPort": 20004,
+                    "ServerIndex" : 0,
                     "GatewayPort": 30008
+                },
+                {
+                    "IPAddress" : "20.16.236.177",
+                    "SiloId": 4,
+                    "Region": "EU",
+                    "SiloPort": 20005,
+                    "ServerIndex" : 1,
+                    "GatewayPort": 30009
                 }
             ]
-
-            // "LocalSilos": [
-            //     {
-            //         "IPAddress" : "20.205.100.122",
-            //         "SiloId": 0,
-            //         "Region": "AS",
-            //         "SiloPort": 20000,
-            //         "GatewayPort": 30004
-            //     },
-            //     {
-            //         "IPAddress" : "20.205.100.122",
-            //         "SiloId": 1,
-            //         "Region": "AS",
-            //         "SiloPort": 20001,
-            //         "GatewayPort": 30005
-            //     },
-            //     {
-            //         "IPAddress" : "20.124.247.186",
-            //         "SiloId": 2,
-            //         "Region": "US",
-            //         "SiloPort": 20002,
-            //         "GatewayPort": 30006
-            //     },
-            //     {
-            //         "IPAddress" : "20.124.247.186",
-            //         "SiloId": 3,
-            //         "Region": "US",
-            //         "SiloPort": 20003,
-            //         "GatewayPort": 30007
-            //     },
-            //     {
-            //         "IPAddress" : "40.114.149.20",
-            //         "SiloId": 4,
-            //         "Region": "EU",
-            //         "SiloPort": 20004,
-            //         "GatewayPort": 30008
-            //     },
-            //     {
-            //         "IPAddress" : "40.114.149.20",
-            //         "SiloId": 5,
-            //         "Region": "EU",
-            //         "SiloPort": 20004,
-            //         "GatewayPort": 30009
-            //     }
-            // ]
         }
     }
 }

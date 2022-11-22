@@ -58,10 +58,48 @@ namespace Concurrency.Implementation.Performance
                                                                                        .Average());
         }
 
-        public Task<double> GetAverageLatencyTime(string functionName)
+        public Task<double> GetAveragePrepareTime(string functionName)
         {
-            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName].Select(r => r.Latency)
-                                                                                               .Average());
+            return Task.FromResult(this.functionNamesToTransactionResults[functionName].Select(r => r.PrepareTime)
+                                                                                       .Average());
+        }
+
+        public Task<double> GetAverageCommitTime(string functionName)
+        {
+            return Task.FromResult(this.functionNamesToTransactionResults[functionName].Select(r => r.CommitTime)
+                                                                                       .Average());
+        }
+
+        public Task<double> GetAveragePrepareTimeReplica(string functionName, string region)
+        {
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName]
+                .Where(r => r.Region.Equals(region))
+                .Select(r => r.PrepareTime)
+                .Average());
+        }
+
+        public Task<double> GetAverageCommitTimeReplica(string functionName, string region)
+        {
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName]
+                .Where(r => r.Region.Equals(region))
+                .Select(r => r.CommitTime)
+                .Average());
+        }
+
+        public Task<double> GetAverageExecutionTimeReplica(string functionName, string region)
+        {
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName]
+                .Where(r => r.Region.Equals(region))
+                .Select(r => r.ExecuteTime)
+                .Average());
+        }
+
+        public Task<double> GetAverageLatencyTime(string functionName, string region)
+        {
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName]
+                .Where(r => r.Region.Equals(region))
+                .Select(r => r.Latency)
+                .Average());
         }
 
         public Task<List<TransactionResult>> GetTransactionResults(string functionName, bool replicas)
@@ -69,8 +107,13 @@ namespace Concurrency.Implementation.Performance
             return Task.FromResult(replicas
                                    ? this.functionNamesTotransactionResultsReplicas[functionName]
                                    : this.functionNamesToTransactionResults[functionName]);
+        }
 
-
+        public Task<int> GetNumberOfTransactionResultsReplica(string functionName, string region)
+        {
+            return Task.FromResult(this.functionNamesTotransactionResultsReplicas[functionName]
+                .Where(r => r.Region.Equals(region))
+                .Count());
         }
 
         public Task CleanUp()

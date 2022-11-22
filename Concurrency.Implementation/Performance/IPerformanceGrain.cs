@@ -10,10 +10,17 @@ namespace Concurrency.Implementation.Performance
         Task AddTransactionResult(TransactionResult transactionResult);
 
         Task<double> GetAverageExecutionTime(string functionName);
-        Task<double> GetAverageLatencyTime(string functionName);
+        Task<double> GetAveragePrepareTime(string functionName);
+        Task<double> GetAverageCommitTime(string functionName);
+
+        Task<double> GetAveragePrepareTimeReplica(string functionName, string region);
+        Task<double> GetAverageCommitTimeReplica(string functionName, string region);
+        Task<double> GetAverageExecutionTimeReplica(string functionName, string region);
+        Task<double> GetAverageLatencyTime(string functionName, string region);
+        Task<int> GetNumberOfTransactionResultsReplica(string functionName, string region);
+
 
         Task<int> NumberOfTransactions(string startFunctionName);
-
         Task<List<TransactionResult>> GetTransactionResults(string functionName, bool replicas);
 
         Task CleanUp();

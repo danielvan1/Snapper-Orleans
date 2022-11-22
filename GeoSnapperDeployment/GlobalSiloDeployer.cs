@@ -3,9 +3,6 @@ using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Factories;
 using GeoSnapperDeployment.Models;
-using Microsoft.Extensions.DependencyInjection;
-using Orleans;
-using Orleans.Configuration;
 using Orleans.Hosting;
 
 namespace GeoSnapperDeployment

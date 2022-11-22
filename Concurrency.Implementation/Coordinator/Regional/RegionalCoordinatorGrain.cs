@@ -98,13 +98,15 @@ namespace Concurrency.Implementation.Coordinator.Regional
         {
             long curBatchId = -1;
 
-            var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
+            // var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
 
-            if (elapsedTime >= batchSizeInMSecs)
-            {
-                curBatchId = this.GenerateBatch(token);
-                if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
-            }
+            await Task.Delay(10);
+            curBatchId = this.GenerateBatch(token);
+            // if (elapsedTime >= batchSizeInMSecs)
+            // {
+            //     curBatchId = this.GenerateBatch(token);
+            //     if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
+            // }
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {

@@ -5,5 +5,7 @@ namespace GeoSnapperDeployment.Models
         public string Region { get; init; }
 
         public string IPAddress { get; init; }
+
+        public string ServerIndex { get; init; }
     }
 }

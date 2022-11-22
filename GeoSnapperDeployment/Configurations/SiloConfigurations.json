@@ -43,6 +43,13 @@
                     "Region": "US",
                     "SiloPort": 15001,
                     "GatewayPort": 30003
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 15002,
+                    "Region": "AS",
+                    "SiloPort": 15002,
+                    "GatewayPort": 30010
                 }
             ],
 
@@ -74,6 +81,20 @@
                     "Region": "US",
                     "SiloPort": 20003,
                     "GatewayPort": 30007
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 4,
+                    "Region": "AS",
+                    "SiloPort": 20004,
+                    "GatewayPort": 30008
+                },
+                {
+                    "IPAddress" : "127.0.0.1",
+                    "SiloId": 5,
+                    "Region": "AS",
+                    "SiloPort": 20005,
+                    "GatewayPort": 30009
                 }
             ]
         }

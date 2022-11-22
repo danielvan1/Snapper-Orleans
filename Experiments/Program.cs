@@ -25,8 +25,9 @@ namespace Experiments
             {
                 int silos = int.Parse(args[3]);
                 int grainsPerSilo = int.Parse(args[4]);
+                int transactionSize = int.Parse(args[5]);
 
-                await experimentRunner.StressRun(client, region, silos, grainsPerSilo);
+                await experimentRunner.StressRun(client, region, silos, grainsPerSilo, transactionSize);
             }
             else if("Correctness".Equals(function, StringComparison.CurrentCultureIgnoreCase))
             {
