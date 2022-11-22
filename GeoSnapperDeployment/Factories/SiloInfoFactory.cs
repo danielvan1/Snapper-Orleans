@@ -5,7 +5,7 @@ namespace GeoSnapperDeployment.Factories
 {
     public class SiloInfoFactory : ISiloInfoFactory
     {
-        public SiloInfo Create(IPAddress ipAddress, string clusterId, string serviceId, int siloId, int siloPort, int gatewayPort, string region, string homeRegion, bool IsReplica)
+        public SiloInfo Create(IPAddress ipAddress, string clusterId, string serviceId, int siloId, int siloPort, int gatewayPort, string region, string homeRegion, bool IsReplica, int serverIndex = 0)
         {
             IPEndPoint IPAddress = new IPEndPoint(ipAddress, siloPort);
 
@@ -19,7 +19,8 @@ namespace GeoSnapperDeployment.Factories
                 Region = region,
                 HomeRegion = homeRegion,
                 IsReplica = IsReplica,
-                IPEndPoint = IPAddress
+                IPEndPoint = IPAddress,
+                ServerIndex = serverIndex
             };
         }
     }

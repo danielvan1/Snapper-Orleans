@@ -16,22 +16,22 @@ namespace GeoSnapperDeployment
             this.siloConfigurationFactory = siloConfigurationFactory ?? throw new ArgumentNullException(nameof(siloConfigurationFactory));
         }
 
-        public async Task<List<ISiloHost>> Deploy(SiloConfigurations siloConfigurations, string region)
+        public async Task<List<ISiloHost>> Deploy(SiloConfigurations siloConfigurations, string region, int serverIndex)
         {
-            var regionals = await this.DeployRegionalSilos(siloConfigurations, region);
-            var locals = await this.DeployLocalSilosAndReplicas(siloConfigurations, region);
+            var regionals = await this.DeployRegionalSilos(siloConfigurations, region, serverIndex);
+            var locals = await this.DeployLocalSilosAndReplicas(siloConfigurations, region, serverIndex);
 
             return regionals.Concat(locals)
                             .ToList();
         }
 
-        public async Task<IList<ISiloHost>> DeployRegionalSilos(SiloConfigurations siloConfigurations, string region)
+        public async Task<IList<ISiloHost>> DeployRegionalSilos(SiloConfigurations siloConfigurations, string region, int serverIndex)
         {
             Console.WriteLine($"Regional silo configurations: {string.Join(" ,", siloConfigurations.Silos.RegionalSilos)}");
             var siloHosts = new List<ISiloHost>();
             var startSiloTasks = new List<Task>();
 
-            IEnumerable<SiloConfiguration> silosToDeploy = siloConfigurations.Silos.RegionalSilos.Where(config => config.Region.Equals(region));
+            IEnumerable<SiloConfiguration> silosToDeploy = siloConfigurations.Silos.RegionalSilos.Where(config => config.Region.Equals(region) && config.ServerIndex.Equals(serverIndex));
 
             RegionalSiloPlacementInfo regionalPlacementInfo = this.siloConfigurationFactory.CreateRegionalSiloPlacementInfo(siloConfigurations);
             RegionalCoordinatorConfiguration regionalCoordinatorConfiguration = this.siloConfigurationFactory.CreateRegionalConfiguration(siloConfigurations.Silos.LocalSilos);
@@ -40,7 +40,6 @@ namespace GeoSnapperDeployment
 
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
 
-            Console.WriteLine($"");
             Console.WriteLine($"Starting to deploy region silo in region {region}. Regional silo configurations to deploy: {string.Join(" ,", silosToDeploy)}");
 
             foreach (SiloConfiguration regionalSiloConfiguration in silosToDeploy)
@@ -74,7 +73,7 @@ namespace GeoSnapperDeployment
             return siloHosts;
         }
 
-        public async Task<IList<ISiloHost>> DeployLocalSilosAndReplicas(SiloConfigurations siloConfigurations, string region)
+        public async Task<IList<ISiloHost>> DeployLocalSilosAndReplicas(SiloConfigurations siloConfigurations, string region, int serverIndex)
         {
             Console.WriteLine("Starting local silo deployment");
             var siloHosts = new List<ISiloHost>();
@@ -88,7 +87,7 @@ namespace GeoSnapperDeployment
             var regions = this.GetRegions(siloConfigurations.Silos.LocalSilos);
             Console.WriteLine($"LocalSiloInfos: {string.Join(", ", localSiloPlacementInfo.LocalSiloInfo.Keys)}");
 
-            foreach ((string siloId, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,region.Length).Equals(region)))
+            foreach ((string siloId, SiloInfo siloInfo) in localSiloPlacementInfo.LocalSiloInfo.Where(kv => kv.Key.Substring(0,region.Length).Equals(region) && kv.Value.ServerIndex.Equals(serverIndex)))
             {
                 IPAddress advertisedSiloIPAddress = siloInfo.IPEndPoint.Address;
                 Console.WriteLine($"Deploying local silo with int id: {siloInfo.SiloId}");

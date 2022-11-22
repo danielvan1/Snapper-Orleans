@@ -3,10 +3,10 @@ using System.Net;
 using Concurrency.Interface.Configuration;
 using Concurrency.Interface.Models;
 using GeoSnapperDeployment.Models;
+using Microsoft.AspNetCore.Hosting;
 
 namespace GeoSnapperDeployment.Factories
 {
-
     public class SiloConfigurationForGlobalDeployment : ISiloConfigurationForGlobalDeployment
     {
         private readonly ISiloInfoFactory siloInfoFactory;
@@ -31,16 +31,6 @@ namespace GeoSnapperDeployment.Factories
             };
         }
 
-        public SiloInfo CreateGlobalSiloInfo(SiloConfigurations siloConfigurations)
-        {
-            SiloConfiguration globalSiloConfiguration = siloConfigurations.Silos.GlobalSilo;
-
-            IPAddress regionIPAddress = IPAddress.Parse(globalSiloConfiguration.IPAddress);
-
-            return this.siloInfoFactory.Create(regionIPAddress, siloConfigurations.ClusterId, siloConfigurations.ServiceId, globalSiloConfiguration.SiloIntegerId,
-                                               globalSiloConfiguration.SiloPort, globalSiloConfiguration.GatewayPort, globalSiloConfiguration.Region, globalSiloConfiguration.Region, false);
-        }
-
         public RegionalSiloPlacementInfo CreateRegionalSiloPlacementInfo(SiloConfigurations siloConfigurations)
         {
             var regionalSilos = new Dictionary<string, SiloInfo>();
@@ -53,7 +43,7 @@ namespace GeoSnapperDeployment.Factories
 
                 SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, siloConfigurations.ClusterId, siloConfigurations.ServiceId, siloConfiguration.SiloIntegerId,
                                                                 siloConfiguration.SiloPort, siloConfiguration.SiloPort, siloConfiguration.Region,
-                                                                siloConfiguration.Region, isReplica);
+                                                                siloConfiguration.Region, isReplica, siloConfiguration.ServerIndex);
 
                 regionalSilos.Add(siloConfiguration.Region, siloInfo);
             }
@@ -106,6 +96,7 @@ namespace GeoSnapperDeployment.Factories
                 for (int i = 0; i < configurations.Count; i++)
                 {
                     var siloConfiguration = configurations[i];
+
                     int siloIntegerId = siloConfiguration.SiloIntegerId;
                     int siloPort = siloConfiguration.SiloPort;
                     int gatewayPort = siloConfiguration.GatewayPort;
@@ -113,7 +104,7 @@ namespace GeoSnapperDeployment.Factories
                     bool isReplica = false;
                     IPAddress advertisedSiloIPAddress = IPAddress.Parse(siloConfiguration.IPAddress);
 
-                    SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, clusterId, serviceId, siloIntegerId, siloPort, gatewayPort, region, region, isReplica);
+                    SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress, clusterId, serviceId, siloIntegerId, siloPort, gatewayPort, region, region, isReplica, serverIndex);
 
                     string siloId = this.CreateSiloId(region, region, serverIndex);
 
@@ -143,13 +134,14 @@ namespace GeoSnapperDeployment.Factories
                     for (int i = 0; i < configurations.Count; i++)
                     {
                         SiloConfiguration siloConfiguration = configurations[i];
+
                         var advertisedSiloIPAddress = IPAddress.Parse(siloConfigurations.IPAddresses.Where(IPConfig => IPConfig.Region.Equals(deploymentRegion) && IPConfig.ServerIndex.Equals(siloConfiguration.ServerIndex)).First().IPAddress);
 
                         SiloInfo siloInfo = this.siloInfoFactory.Create(advertisedSiloIPAddress,
                                                                         clusterId, serviceId,
                                                                         replicaStartId, replicaStartPort,
                                                                         replicaStartGatewayPort, deploymentRegion,
-                                                                        homeRegion, true);
+                                                                        homeRegion, true, siloConfiguration.ServerIndex);
 
                         string regionAndServerKey = this.CreateSiloId(deploymentRegion, homeRegion, siloConfiguration.ServerIndex);
 

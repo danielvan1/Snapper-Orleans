@@ -1,14 +1,18 @@
+using System;
 using System.Net;
 
 namespace Concurrency.Interface.Models
 {
-    public record SiloInfo
+    [Serializable]
+    public class SiloInfo
     {
         public IPEndPoint IPEndPoint {get; init;}
 
         public string ClusterId {get; set;}
 
         public string ServiceId {get; set;}
+
+        public int ServerIndex { get; set; }
 
         public int SiloId {get; init;}
 
@@ -19,8 +23,6 @@ namespace Concurrency.Interface.Models
         public string Region {get; set;}
 
         public string HomeRegion {get; set;}
-
-        public string SiloKey {get { return $"{this.HomeRegion}-{this.Region}"; }}
 
         public bool IsReplica {get; set;}
     }

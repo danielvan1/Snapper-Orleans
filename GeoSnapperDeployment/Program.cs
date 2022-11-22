@@ -96,6 +96,7 @@ namespace GeoSnapperDeployment
             else if(deploymentType.Equals("GlobalDeployment", StringComparison.CurrentCultureIgnoreCase))
             {
                 string region = args[1];
+                int serverIndex = int.Parse(args[2]);
 
                 IConfiguration config = new ConfigurationBuilder()
                 .AddJsonFile(Path.Combine(Configurations, "GlobalSiloConfigurations.json"))
@@ -108,7 +109,7 @@ namespace GeoSnapperDeployment
 
                 var globalSiloDeployer = container.Resolve<GlobalSiloDeployer>();
 
-                siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region));
+                siloHosts.AddRange(await globalSiloDeployer.Deploy(siloConfigurations, region, serverIndex));
             }
 
             Console.WriteLine("All silos created successfully");

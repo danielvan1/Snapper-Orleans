@@ -63,21 +63,24 @@
                     "SiloId": 15000,
                     "Region": "EU",
                     "SiloPort": 15000,
-                    "GatewayPort": 30002
+                    "GatewayPort": 30002,
+                    "ServerIndex" : 0
                 },
                 {
                     "IPAddress" : "20.124.247.186",
                     "SiloId": 15001,
                     "Region": "US",
                     "SiloPort": 15001,
-                    "GatewayPort": 30003
+                    "GatewayPort": 30003,
+                    "ServerIndex" : 0
                 },
                 {
                     "IPAddress" : "20.205.100.122",
                     "SiloId": 15002,
                     "Region": "AS",
                     "SiloPort": 15002,
-                    "GatewayPort": 30004
+                    "GatewayPort": 30004,
+                    "ServerIndex" : 0
                 }
             ],
 
