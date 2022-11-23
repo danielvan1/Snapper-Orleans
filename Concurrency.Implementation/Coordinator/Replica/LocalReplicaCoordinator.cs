@@ -49,6 +49,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.batchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
             this.bidToPreviousBid = new Dictionary<long, long>();
             this.regionalbatchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
+            this.bidToPreviousBid.Add(0, -1);
 
             return Task.CompletedTask;
         }
