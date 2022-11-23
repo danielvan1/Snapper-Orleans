@@ -94,14 +94,6 @@
                     "GatewayPort": 30004
                 },
                 {
-                    "IPAddress" : "20.205.100.122",
-                    "SiloId": 1,
-                    "Region": "AS",
-                    "SiloPort": 20001,
-                    "ServerIndex" : 1,
-                    "GatewayPort": 30005
-                },
-                {
                     "IPAddress" : "20.124.247.186",
                     "SiloId": 1,
                     "Region": "US",
