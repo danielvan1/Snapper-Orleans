@@ -73,26 +73,10 @@
                     "SiloPort": 15000,
                     "GatewayPort": 30003,
                     "ServerIndex" : 0
-                },
-                {
-                    "IPAddress" : "20.205.100.122",
-                    "SiloId": 15000,
-                    "Region": "AS",
-                    "SiloPort": 15000,
-                    "GatewayPort": 30004,
-                    "ServerIndex" : 0
                 }
             ],
 
             "LocalSilos": [
-                {
-                    "IPAddress" : "20.205.100.122",
-                    "SiloId": 0,
-                    "Region": "AS",
-                    "SiloPort": 20000,
-                    "ServerIndex" : 0,
-                    "GatewayPort": 30004
-                },
                 {
                     "IPAddress" : "20.124.247.186",
                     "SiloId": 1,
