@@ -9,6 +9,7 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
+using Orleans.Runtime;
 
 namespace Concurrency.Implementation.Coordinator.Replica
 {
@@ -49,7 +50,7 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.batchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
             this.bidToPreviousBid = new Dictionary<long, long>();
             this.regionalbatchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
-            this.bidToPreviousBid.Add(0, -1);
+            // this.bidToPreviousBid.Add(0, -1);
 
             return Task.CompletedTask;
         }
@@ -126,12 +127,12 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 await this.WaitForRegionalBatchToCommit(regionalBid);
             }
 
-            this.logger.LogCritical("Herpderp3", this.GrainReference);
+            this.logger.LogInformation("Herpderp3", this.GrainReference);
 
             // When this is done we can start to commit the current batch
             await this.WaitForPreviousBatchToCommit(bid);
             // this.logger.LogInformation("Herpderp4", this.GrainReference);
-            this.logger.LogCritical("Herpderp4", this.GrainReference);
+            this.logger.LogInformation("Herpderp4", this.GrainReference);
 
             this.BatchCommitAcknowledgement(bid);
             this.logger.LogInformation("Herpderp5", this.GrainReference);
