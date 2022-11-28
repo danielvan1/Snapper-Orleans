@@ -1,6 +1,8 @@
-﻿using Orleans;
+﻿using Concurrency.Implementation.Performance;
+using Orleans;
 using Orleans.Configuration;
 using Orleans.Hosting;
+using Utilities;
 
 namespace Experiments
 {
@@ -21,13 +23,89 @@ namespace Experiments
             ExperimentRunner experimentRunner = new ExperimentRunner();
 
             // await experimentRunner.ManyMultiTransferTransactions(client, region, multitransfers);
-            if("Stress".Equals(function, StringComparison.CurrentCultureIgnoreCase))
+            if("StressLocal".Equals(function, StringComparison.CurrentCultureIgnoreCase))
             {
                 int silos = int.Parse(args[3]);
                 int grainsPerSilo = int.Parse(args[4]);
                 int transactionSize = int.Parse(args[5]);
 
                 await experimentRunner.StressRun(client, region, silos, grainsPerSilo, transactionSize);
+            }
+            else if("Stress".Equals(function, StringComparison.CurrentCultureIgnoreCase))
+            {
+                int silos = int.Parse(args[3]);
+                int grainsPerSilo = int.Parse(args[4]);
+                int transactionSize = int.Parse(args[5]);
+                int runs = 1;
+
+                const string MultiTransfer = "MultiTransfer";
+
+                double averagePrepateTimeMultiTransfer = 0;
+                double averageExecutionTimeMultiTransfer = 0;
+                double averageCommitTimeMultiTransfer = 0;
+
+                double averagePrepateTimeMultiTransferReplica = 0;
+                double averageExecutionTimeMultiTransferReplica = 0;
+                double averageCommitTimeMultiTransferReplica = 0;
+
+                double averageLatencyMultiTransfer = 0;
+
+                int multiTransfers = 0;
+
+                await client.Connect();
+
+                for (int i = 0; i < runs; i++)
+                {
+                    await experimentRunner.StressRun(client, region, silos, grainsPerSilo, transactionSize);
+
+                    await Task.Delay(3000);
+
+                    var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
+
+                    multiTransfers = await performanceGrain.NumberOfTransactions(MultiTransfer);
+
+                    averagePrepateTimeMultiTransfer += await performanceGrain.GetAveragePrepareTime(MultiTransfer);
+                    averageExecutionTimeMultiTransfer += await performanceGrain.GetAverageExecutionTime(MultiTransfer);
+                    averageCommitTimeMultiTransfer += await performanceGrain.GetAverageCommitTime(MultiTransfer);
+
+                    // averagePrepateTimeMultiTransferReplica += await performanceGrain.GetAveragePrepareTimeReplica(MultiTransfer, US);
+                    // averageExecutionTimeMultiTransferReplica += await performanceGrain.GetAverageExecutionTimeReplica(MultiTransfer, US);
+                    // averageCommitTimeMultiTransferReplica += await performanceGrain.GetAverageCommitTimeReplica(MultiTransfer, US);
+
+                    // averageLatencyMultiTransfer += await performanceGrain.GetAverageLatencyTime(MultiTransfer, US);
+
+                    await performanceGrain.CleanUp();
+                }
+
+                Console.WriteLine($"TransactionSize: {transactionSize}");
+                Console.WriteLine($"LocalCoordinators: {Constants.NumberOfLocalCoordinatorsPerSilo}");
+                Console.WriteLine($"RegionalCoordinators: {Constants.NumberOfRegionalCoordinators}");
+                Console.WriteLine($"Number of multitransfer transactions: {multiTransfers}");
+
+                Console.WriteLine("");
+                Console.WriteLine("###############################################");
+                Console.WriteLine("");
+
+                Console.WriteLine($"AveragePrepareTime MultiTransfer: {averagePrepateTimeMultiTransfer / runs}");
+                Console.WriteLine($"AverageExecutionTime MultiTransfer: {averageExecutionTimeMultiTransfer / runs}");
+                Console.WriteLine($"AverageCommitTime MultiTransfer: {averageCommitTimeMultiTransfer / runs}");
+
+                Console.WriteLine("");
+                Console.WriteLine("###############################################");
+                Console.WriteLine("");
+
+                Console.WriteLine($"AveragePrepareTime Replica MultiTransfer: {averagePrepateTimeMultiTransferReplica / runs}");
+                Console.WriteLine($"AverageExecutionTime Replica MultiTransfer US: {averageExecutionTimeMultiTransferReplica / runs}");
+                Console.WriteLine($"AverageCommitTime Replica MultiTransfer: {averageCommitTimeMultiTransferReplica / runs}");
+
+                Console.WriteLine("");
+                Console.WriteLine("###############################################");
+                Console.WriteLine("");
+
+                Console.WriteLine($"AverageLatency MultiTransfer US: {averageLatencyMultiTransfer / runs}");
+
+                await client.Close();
+
             }
             else if("Correctness".Equals(function, StringComparison.CurrentCultureIgnoreCase))
             {

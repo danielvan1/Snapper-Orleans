@@ -98,15 +98,9 @@ namespace Concurrency.Implementation.Coordinator.Regional
         {
             long curBatchId = -1;
 
-            // var elapsedTime = (DateTime.Now - this.timeOfBatchGeneration).TotalMilliseconds;
+            await Task.Delay(20);
 
-            await Task.Delay(10);
             curBatchId = this.GenerateBatch(token);
-            // if (elapsedTime >= batchSizeInMSecs)
-            // {
-            //     curBatchId = this.GenerateBatch(token);
-            //     if (curBatchId != -1) this.timeOfBatchGeneration = DateTime.Now;
-            // }
 
             if (this.highestCommittedBid > token.HighestCommittedBid)
             {

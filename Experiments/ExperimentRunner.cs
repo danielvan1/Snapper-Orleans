@@ -81,6 +81,75 @@ namespace Experiments
             await client.Close();
        }
 
+       public async Task StressRun1(IClusterClient client, string region, int silos, int grainsPerSilo, int transactionSize)
+       {
+            List<GrainAccessInfo>[] accountIds = new List<GrainAccessInfo>[silos];
+            int startId = 0;
+
+            for (int siloIndex = 0; siloIndex < silos; siloIndex++)
+            {
+                accountIds[siloIndex] = (TestDataGenerator.CreateAccountIds(grainsPerSilo, startId, region, region, siloIndex, "SmallBank.Grains.SnapperTransactionalAccountGrain"));
+                // startId += grainsPerSilo * silos + 1;
+            }
+
+            int initialBalance = 10000;
+            var initTasks = new List<Task>();
+
+            Stopwatch stopwatch = Stopwatch.StartNew();
+
+            foreach(var grainAccessInfoList in accountIds)
+            {
+                initTasks.Add(this.InitAccountsAsync(grainAccessInfoList, client, initialBalance));
+            }
+
+            await Task.WhenAll(initTasks);
+
+            stopwatch.Stop();
+            long initTime = stopwatch.ElapsedMilliseconds;
+
+            stopwatch = Stopwatch.StartNew();
+            var multiTransferTasks = new List<Task<TransactionResult>>();
+
+            for (int siloIndex = 0; siloIndex < accountIds.Length; siloIndex++)
+            {
+                List<GrainAccessInfo> grainAccessInfos = new List<GrainAccessInfo>();
+                var currentGrains = accountIds[siloIndex];
+
+                for (int next = 0; next < accountIds.Length; next++)
+                {
+                    if(siloIndex == next) continue;
+
+                    for (int i = 0; i < transactionSize; i++)
+                    {
+                        grainAccessInfos.Add(accountIds[next][i]);
+                    }
+                }
+
+                FunctionInput functionInput = TestDataGenerator.CreateFunctionInput(grainAccessInfos);
+
+                for (int i = 0; i < grainsPerSilo; i++)
+                {
+                    var grain = currentGrains[i];
+                    var herp = grainAccessInfos.Append(grain).ToList();
+
+                    var actor = client.GetGrain<ISnapperTransactionalAccountGrain>(grain.Id, grain.SiloId);
+                    multiTransferTasks.Add(actor.StartTransaction("MultiTransfer", functionInput, herp));
+                }
+            }
+
+            await Task.WhenAll(multiTransferTasks);
+
+            stopwatch.Stop();
+            long multihomeTime = stopwatch.ElapsedMilliseconds;
+
+            // foreach(var grainAccessInfoList in accountIds)
+            // {
+            //     var balanceResult = await this.GetAccountBalancesAsync(grainAccessInfoList, client);
+            //     // Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
+            // }
+
+        }
+
        public async Task StressRun(IClusterClient client, string region, int silos, int grainsPerSilo, int transactionSize)
        {
             await client.Connect();

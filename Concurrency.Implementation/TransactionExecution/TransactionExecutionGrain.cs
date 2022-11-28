@@ -14,7 +14,6 @@ using Concurrency.Interface.TransactionExecution;
 using Microsoft.Extensions.Logging;
 using Orleans;
 using Orleans.Concurrency;
-using Serilog;
 using Utilities;
 
 namespace Concurrency.Implementation.TransactionExecution
@@ -30,11 +29,11 @@ namespace Concurrency.Implementation.TransactionExecution
         private readonly IIdHelper idHelper;
         private ITransactionContextProvider transactionContextProvider;
         private ITransactionBroadCaster transactionBroadCaster;
+        private IDeterministicTransactionExecutor deterministicTransactionExecutor;
 
         private readonly string classNameSpace;
         private readonly List<string> regions;
 
-        private IDeterministicTransactionExecutor deterministicTransactionExecutor;
         private GrainId myGrainId;
 
         // transaction execution

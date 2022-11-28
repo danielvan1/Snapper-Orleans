@@ -126,11 +126,12 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 await this.WaitForRegionalBatchToCommit(regionalBid);
             }
 
-            this.logger.LogInformation("Herpderp3", this.GrainReference);
+            this.logger.LogCritical("Herpderp3", this.GrainReference);
 
             // When this is done we can start to commit the current batch
             await this.WaitForPreviousBatchToCommit(bid);
-            this.logger.LogInformation("Herpderp4", this.GrainReference);
+            // this.logger.LogInformation("Herpderp4", this.GrainReference);
+            this.logger.LogCritical("Herpderp4", this.GrainReference);
 
             this.BatchCommitAcknowledgement(bid);
             this.logger.LogInformation("Herpderp5", this.GrainReference);
