@@ -40,7 +40,6 @@ namespace Concurrency.Implementation.Coordinator.Replica
             this.bidToPreviousBid = new Dictionary<long, long>();
             this.batchCommitPromises = new Dictionary<long, TaskCompletionSource<bool>>();
             this.bidToSiloIds = new Dictionary<long, ICollection<string>>();
-            this.bidToPreviousBid.Add(0, -1);
 
             return Task.CompletedTask;
         }

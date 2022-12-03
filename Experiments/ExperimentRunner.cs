@@ -157,11 +157,9 @@ namespace Experiments
             List<GrainAccessInfo>[] accountIds = new List<GrainAccessInfo>[silos];
             int startId = 0;
 
-
             for (int siloIndex = 0; siloIndex < silos; siloIndex++)
             {
                 accountIds[siloIndex] = (TestDataGenerator.CreateAccountIds(grainsPerSilo, startId, region, region, siloIndex, "SmallBank.Grains.SnapperTransactionalAccountGrain"));
-                // startId += grainsPerSilo * silos + 1;
             }
 
             int initialBalance = 10000;
@@ -176,12 +174,9 @@ namespace Experiments
 
             await Task.WhenAll(initTasks);
 
-            stopwatch.Stop();
-            long initTime = stopwatch.ElapsedMilliseconds;
-
-            stopwatch = Stopwatch.StartNew();
             var multiTransferTasks = new List<Task<TransactionResult>>();
 
+            Console.WriteLine("Starting multitransfer transactions");
             for (int siloIndex = 0; siloIndex < accountIds.Length; siloIndex++)
             {
                 List<GrainAccessInfo> grainAccessInfos = new List<GrainAccessInfo>();
@@ -210,24 +205,20 @@ namespace Experiments
             }
 
             await Task.WhenAll(multiTransferTasks);
+            Console.WriteLine("Done with multitransfer transactions");
 
-            stopwatch.Stop();
-            long multihomeTime = stopwatch.ElapsedMilliseconds;
 
             var balanceTasks = new List<TransactionResult>();
-
-            stopwatch = Stopwatch.StartNew();
-
             foreach(var grainAccessInfoList in accountIds)
             {
                 var balanceResult = await this.GetAccountBalancesAsync(grainAccessInfoList, client);
-                // Console.WriteLine($"BalanceResults: [{string.Join(", ", balanceResult.Select(r => r.Result))}]");
             }
 
-            stopwatch.Stop();
             long balanceTime = stopwatch.ElapsedMilliseconds;
 
-            await Task.Delay(20000);
+            int milliseconds = 20000;
+            Console.WriteLine($"Waiting {milliseconds} for the performance grain to receive all the results");
+            await Task.Delay(milliseconds);
 
             var performanceGrain = client.GetGrain<IPerformanceGrain>(0, "US");
             const string Init = "Init";

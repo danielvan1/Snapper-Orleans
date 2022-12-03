@@ -91,7 +91,7 @@ namespace Concurrency.Implementation.TransactionExecution.TransactionExecution
                 context.LocalBid = this.regionalBidToLocalBid[context.RegionalBid];
                 context.LocalTid = this.regionalBidToRegionalTidToLocalTidPerBatch[context.RegionalBid][context.RegionalTid];
 
-                this.logger.LogInformation("HerpDerpContext: {context}", this.grainReference, context);
+                this.logger.LogInformation("Context: {context}", this.grainReference, context);
             }
             else
             {

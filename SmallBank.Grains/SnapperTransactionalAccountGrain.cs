@@ -48,7 +48,7 @@ namespace SmallBank.Grains
             myState.Balance -= toAccounts.Select(acc => acc.Value)
                                          .Sum();
 
-            var task = new List<Task>();
+            var tasks = new List<Task>();
 
             foreach (var accountID in toAccounts)
             {
@@ -57,21 +57,21 @@ namespace SmallBank.Grains
                 {
                     var funcCall = new FunctionCall("Deposit", functionInput, typeof(SnapperTransactionalAccountGrain));
                     var t = this.CallGrain(context, accountID.DestinationGrain, "SmallBank.Grains.SnapperTransactionalAccountGrain", funcCall);
-                    task.Add(t);
+                    tasks.Add(t);
                 }
                 // This logic is weird, one of the recipients could be it self
                 else
                 {
-                    var herp = new FunctionInput()
+                    var task = new FunctionInput()
                     {
                         DestinationGrains = new List<TransactionInfo>() { accountID }
                     };
 
-                    task.Add(Deposit(context, herp));
+                    tasks.Add(Deposit(context, task));
                 }
             }
 
-            await Task.WhenAll(task);
+            await Task.WhenAll(tasks);
 
             this.logger.LogInformation("Done with multi transfer for context: {context}", this.GrainReference, context);
 

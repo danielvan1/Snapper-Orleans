@@ -113,11 +113,9 @@ namespace Concurrency.Implementation.Coordinator.Replica
             {
                 return;
             }
-            this.logger.LogInformation("Herpderp1", this.GrainReference);
 
             LocalSubBatch localSubBatch = this.bidToSchedules[bid].First().Value;
 
-            this.logger.LogInformation("Herpderp2", this.GrainReference);
 
             if(this.IsBatchRegional(localSubBatch))
             {
@@ -127,19 +125,13 @@ namespace Concurrency.Implementation.Coordinator.Replica
                 await this.WaitForRegionalBatchToCommit(regionalBid);
             }
 
-            this.logger.LogInformation("Herpderp3", this.GrainReference);
-
             // When this is done we can start to commit the current batch
             await this.WaitForPreviousBatchToCommit(bid);
-            // this.logger.LogInformation("Herpderp4", this.GrainReference);
-            this.logger.LogInformation("Herpderp4", this.GrainReference);
 
             this.BatchCommitAcknowledgement(bid);
-            this.logger.LogInformation("Herpderp5", this.GrainReference);
 
             // TODO: Change coordinator ID to this
             Dictionary<GrainAccessInfo, LocalSubBatch> currentScheduleMap = this.bidToSchedules[bid];
-            this.logger.LogInformation("Herpderp6: currentschedulemapcount: {count}", this.GrainReference, currentScheduleMap.Count);
 
             // Sent message that the transaction grains can commit
             foreach ((GrainAccessInfo grainId, _) in currentScheduleMap)
